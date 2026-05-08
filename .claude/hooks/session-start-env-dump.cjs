@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// .claude/hooks/session-start-env-dump.js
+// .claude/hooks/session-start-env-dump.cjs
 //
 // SessionStart hook (matchers: startup, resume, clear, compact).
 // Outputs project state as a JSON envelope on stdout — Claude Code injects
@@ -22,7 +22,7 @@ function safe(cmd, opts) {
   catch (e) { return null; }
 }
 
-function encodePathForAppdata(p) {
+function encodeProjectPathForMemory(p) {
   return p.replace(/:/g, '-').replace(/\//g, '-').replace(/\\/g, '-')
           .replace(/\./g, '-').replace(/ /g, '-').replace(/\(/g, '-').replace(/\)/g, '-');
 }
@@ -127,7 +127,7 @@ function readMemory(root) {
   const tdir = path.join(root, '.claude', 'memory-templates');
   if (!fs.existsSync(tdir)) return { templates_present: false };
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  const adir = path.join(home, '.claude', 'projects', encodePathForAppdata(path.resolve(root)), 'memory');
+  const adir = path.join(home, '.claude', 'projects', encodeProjectPathForMemory(path.resolve(root)), 'memory');
   const tfiles = fs.readdirSync(tdir).filter(f => f.endsWith('.md'));
   const apresent = fs.existsSync(adir);
   const afiles = apresent ? fs.readdirSync(adir).filter(f => f.endsWith('.md')) : [];
@@ -139,10 +139,10 @@ function readMemory(root) {
   return {
     templates_present: true,
     templates_count: tfiles.length,
-    appdata_synced_count: afiles.length,
+    memory_synced_count: afiles.length,
     drift_count: drift.length,
     drift_files: drift.slice(0, 5),
-    appdata_dir: adir
+    memory_dir: adir
   };
 }
 
@@ -184,7 +184,7 @@ function readYoloMode(root) {
 
   try { fs.writeFileSync(path.join(root, '.claude', '.session-env.json'), JSON.stringify(env, null, 2)); } catch (e) {}
 
-  process.stdout.write('## Session-start environment context (auto-injected by .claude/hooks/session-start-env-dump.js)\n\n');
+  process.stdout.write('## Session-start environment context (auto-injected by .claude/hooks/session-start-env-dump.cjs)\n\n');
   process.stdout.write('```json\n' + JSON.stringify(env, null, 2) + '\n```\n');
   process.stdout.write('\n*Reminder: Unity is the session default per `.claude/CLAUDE.md`. Memory layer in `~/.claude/projects/<encoded>/memory/` auto-loads at session start.*\n');
 
@@ -195,7 +195,7 @@ function readYoloMode(root) {
     }
   }
   if (env.memory.templates_present && env.memory.drift_count > 0) {
-    process.stdout.write('\n⚠ **Memory drift detected** — ' + env.memory.drift_count + ' feedback file(s) in `memory-templates/` are newer than appdata copies. The PostToolUse memory-sync hook will sync on next edit, or run `start.sh` to refresh manually.\n');
+    process.stdout.write('\n⚠ **Memory drift detected** — ' + env.memory.drift_count + ' feedback file(s) in `memory-templates/` are newer than the user-profile memory copies. The PostToolUse memory-sync hook will sync on next edit, or run `start.sh` to refresh manually.\n');
   }
   if (env.yolo_mode.enabled) {
     process.stdout.write('\n⚡ **YOLO mode is ENABLED** — lead-dev autonomy posture per `.claude/commands/yolo.md`. Unity acts then verifies; user test plan required on every task closure. `/sober` to deactivate.\n');

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # .claude/hooks/session-start-env-dump.sh
 #
-# Bash fallback for session-start-env-dump.js.
-# Use this in settings.local.json if a team member's machine doesn't have
-# node available. Functional parity is best-effort — the .js version is
+# Bash fallback for session-start-env-dump.cjs.
+# Use this in settings.json if a team member's machine doesn't have
+# node available. Functional parity is best-effort — the .cjs version is
 # preferred when both are available.
 #
 # Outputs project state JSON on stdout for Claude Code context injection.

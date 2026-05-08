@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// .claude/hooks/stop-session-writeup.js
+// .claude/hooks/stop-session-writeup.cjs
 //
 // Stop hook. Fires when Claude finishes responding (turn boundary).
 // Updates .claude/.last-session.md with a "where we left off" paragraph so
@@ -49,7 +49,7 @@ function safe(cmd, opts) {
   const block = [
     '# Last Session Recap',
     '',
-    '_Auto-written by `.claude/hooks/stop-session-writeup.js` on every turn boundary. Read by the next SessionStart hook._',
+    '_Auto-written by `.claude/hooks/stop-session-writeup.cjs` on every turn boundary. Read by the next SessionStart hook._',
     '',
     '## Last update',
     '',

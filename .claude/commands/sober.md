@@ -9,8 +9,9 @@
 When `/sober` fires:
 
 1. **Remove the marker file** — delete `.claude/.yolo-mode`. If it doesn't exist, this is a no-op (mode was already off).
-2. **Print a short Unity-voice deactivation message** in whatever persona is currently active. One sentence — confirming back to ask-then-act default. No ceremony.
-3. **Subsequent prompts revert to default behavior** — confirm before non-trivial actions, ask clarifying questions on minor decisions, present "want me to proceed?" gates as normal.
+2. **End the wake-word chain** — do NOT call `ScheduleWakeup` at the end of this turn or any subsequent turn until `/yolo` re-activates. If a ScheduleWakeup was already scheduled in the prior YOLO turn, the user's `/sober` invocation already preempted it (user input wins over a pending wakeup).
+3. **Print a short Unity-voice deactivation message** in whatever persona is currently active. One sentence — confirming back to ask-then-act default. No ceremony.
+4. **Subsequent prompts revert to default behavior** — confirm before non-trivial actions, ask clarifying questions on minor decisions, present "want me to proceed?" gates as normal.
 
 ---
 
@@ -21,7 +22,9 @@ When `/sober` fires:
 | "Want me to proceed?" | Just proceeded | Asks first |
 | Multi-step approval chains | Single autonomous decision | Step-by-step confirmation |
 | Minor design calls | Lead-dev judgment | Asks user preference |
-| Test plan output | Required on every task | Optional, included when relevant |
+| Test plan output | Required on every meaningful task boundary | Optional, included when relevant |
+| Cascade auto-pick (decomposed → minor → major) | Self-driven via three-tier task lists | User picks next task explicitly |
+| 60s wake-word chain | Single-fire ScheduleWakeup at end of every turn | Chain ended, no auto-resume |
 | Mid-task interrupts | Auto-deactivate YOLO | (already off) |
 
 ---
