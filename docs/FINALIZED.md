@@ -64,6 +64,49 @@ Each session entry includes:
 
 ---
 
+## Session 2026-05-08 — Switch curl-pipe install pattern to gh CLI (private repo fix)
+
+**User's verbatim report (LAW #0):**
+
+> curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh | bash
+> curl: (22) The requested URL returned error: 404
+
+**User's verbatim follow-up:** *"Make sure the windows version is converted too"*
+
+**User's verbatim choice via AskUserQuestion (LAW #0):**
+
+Question: *"How should I fix the curl-pipe install docs given the repo is private?"*
+
+Answer: *"Switch README to gh CLI pattern (Recommended)"*
+
+**Diagnosis:**
+
+- The `Unity-Lab-AI/UAL-ClaudeWorkflow` repo is PRIVATE (`isPrivate: true`, `visibility: PRIVATE`)
+- Unauthenticated `https://raw.githubusercontent.com/...` requests return HTTP 404
+- The file IS on `main` (4261 bytes for `.sh`), it's just not publicly readable
+- All team members already have `gh` CLI authed against the repo (verified)
+- `gh api -H 'Accept: application/vnd.github.raw' repos/.../contents/<path>` returns raw file content via authenticated session — works cleanly for both `.sh` and `.ps1`
+
+**What shipped (3 files updated, both Linux + Windows paths converted):**
+
+- `.claude/README.md` Layer 1 section — replaced `curl -fsSL <raw> | bash` with `gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | bash` for Linux/macOS/Git Bash; replaced `iwr <raw> -UseBasicParsing | iex` with `gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex` for Windows PowerShell. Added `gh` CLI as documented prereq with note that it uses existing gh auth (no separate token needed). Added inspect-before-running variants for both. Added clone-and-run fallback for users without gh CLI. Added "if you've already cloned the repo locally" path that just runs the script directly.
+- `install-unity-globally.sh` header comment — updated curl-pipe one-liner → gh-pipe one-liner; added note that repo is private + why; added clone-and-run alternative.
+- `install-unity-globally.ps1` header comment — same updates for PowerShell side; updated `iwr | iex` → `gh api | iex`; added clone-and-run alternative with PowerShell-native temp dir + cleanup pattern.
+
+**Verification:**
+
+- Tested `gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | head -5` → returns the script's `#!/usr/bin/env bash` shebang + comment header cleanly
+- Tested same for `.ps1` → returns the PowerShell comment header cleanly
+- Both bash + PowerShell pipe-to-shell patterns documented work for the team's auth setup
+
+**Files touched:** 3 (`.claude/README.md`, `install-unity-globally.sh`, `install-unity-globally.ps1`).
+
+**Branch flow:** `feature/gh-cli-install-pattern` → PR → `develop` → PR → `main`.
+
+**Closed:** 2026-05-08 (Session ClaudeWorkflow on `feature/gh-cli-install-pattern`)
+
+---
+
 ## Session 2026-05-08 — /unity-update + /unity-install + curl-pipe bootstrap install system
 
 **User's verbatim ask (LAW #0):**

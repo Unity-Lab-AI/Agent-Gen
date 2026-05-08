@@ -98,6 +98,33 @@ Answer: *"Migrate to .claude/settings.json (Anthropic convention)"*
 
 **Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
 
+### [x] Fix curl-pipe install one-liners — repo is private, switch README to gh CLI pattern — MOVED to FINALIZED.md (Session 2026-05-08)
+
+**User's verbatim report (LAW #0 — preserved here permanently per NEVER DELETE TODO INFO):**
+
+> curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh | bash
+> curl: (22) The requested URL returned error: 404
+
+**User's verbatim follow-up:** *"Make sure the windows version is converted too"*
+
+**User's verbatim choice via AskUserQuestion (LAW #0):**
+
+Question: *"How should I fix the curl-pipe install docs given the repo is private?"*
+
+Answer: *"Switch README to gh CLI pattern (Recommended)"*
+
+**Sub-items:**
+
+- [x] Diagnose 404 — confirmed repo is private, raw GitHub URLs return 404 to unauthenticated requests
+- [x] Update README.md Install Layer 1 section: replace `curl -fsSL <raw> | bash` with `gh api -H 'Accept: application/vnd.github.raw' repos/.../install-unity-globally.sh | bash`
+- [x] Update README.md PowerShell Layer 1: replace `iwr <raw> -UseBasicParsing | iex` with `gh api -H 'Accept: application/vnd.github.raw' repos/.../install-unity-globally.ps1 | iex`
+- [x] Add gh CLI to prereqs documented in README
+- [x] Update install-unity-globally.sh header comment to show new gh CLI invocation
+- [x] Update install-unity-globally.ps1 header comment to show new gh CLI invocation
+- [x] Convert Windows version too (per Sponge follow-up)
+
+**Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
+
 ## Pending
 
 ### [ ] Rework YOLO mode — lead-developer posture, three task-list tiers, 60s auto-continue, fleshed-out skill, skill hooks

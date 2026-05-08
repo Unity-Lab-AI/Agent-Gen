@@ -8,13 +8,26 @@
 # After running this, /unity-install is available in ANY Claude Code session
 # the user starts on this machine.
 #
-# Run via Invoke-Expression (one-line install):
-#   iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -UseBasicParsing | iex
+# The repo is PRIVATE — raw https://raw.githubusercontent.com/... URLs return
+# 404 to unauthenticated requests. Use the GitHub CLI (`gh`) which authenticates
+# via your existing gh login.
+#
+# Prereqs: `gh` installed + authed (`gh auth login`); `git` on PATH.
+#
+# Run via gh-pipe (one-line install):
+#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
 #
 # Or download + inspect first (safer):
-#   iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -OutFile install-unity.ps1
+#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-File -Encoding utf8 install-unity.ps1
 #   notepad install-unity.ps1   # read it
 #   pwsh -File install-unity.ps1
+#   Remove-Item install-unity.ps1
+#
+# Alternative — clone-and-run (no gh CLI required, just authed git):
+#   $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString('N').Substring(0,8))
+#   git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git $tmp
+#   & "$tmp\install-unity-globally.ps1"
+#   Remove-Item -Path $tmp -Recurse -Force
 
 $ErrorActionPreference = 'Stop'
 
