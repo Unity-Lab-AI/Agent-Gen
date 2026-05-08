@@ -30,34 +30,63 @@ The team runs a three-layer install/update flow so onboarding new contributors a
 
 Installs JUST the `/unity-install` command into your user-global Claude Code commands folder (`~/.claude/commands/unity-install.md`). Run once per machine. After this, `/unity-install` is available in any Claude Code session you start, anywhere on your machine.
 
+> **Prereqs (per machine, one-time):** GitHub CLI (`gh`) installed and authenticated against an account with read access to `Unity-Lab-AI/UAL-ClaudeWorkflow`. `gh auth login` if not already done. The repo is **private** so raw `https://raw.githubusercontent.com/...` curl-pipe URLs return 404 to unauthenticated requests — `gh api` uses your existing gh auth to fetch raw content cleanly. (`git` on PATH and `claude` CLI installed are also assumed.)
+
 **Linux / macOS / Git Bash:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh | bash
+gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | bash
 ```
 
 **Windows PowerShell:**
 
 ```powershell
-iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -UseBasicParsing | iex
+gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
 ```
 
-What it does (both versions): clones the repo into a temp dir → copies `.claude/commands/unity-install.md` to `~/.claude/commands/unity-install.md` → cleans up the temp dir. Done.
+What it does (both versions): fetches the bootstrap script via your authenticated `gh` session → pipes raw content to bash / iex → script clones the repo into a temp dir → copies `.claude/commands/unity-install.md` to `~/.claude/commands/unity-install.md` → cleans up the temp dir. Done.
 
-To inspect before running (recommended):
+To inspect before running (recommended for any pipe-to-shell pattern):
 
 ```bash
 # Linux / macOS / Git Bash
-curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh -o install-unity.sh
+gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh > install-unity.sh
 less install-unity.sh
 bash install-unity.sh
+rm install-unity.sh
 ```
 
 ```powershell
 # Windows PowerShell
-iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -OutFile install-unity.ps1
+gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-File -Encoding utf8 install-unity.ps1
 notepad install-unity.ps1
 pwsh -File install-unity.ps1
+Remove-Item install-unity.ps1
+```
+
+**Alternative — clone-and-run** (works without gh CLI as long as your `git` is authed against the private repo, e.g. via SSH key, HTTPS PAT, or `gh auth setup-git`):
+
+```bash
+# Linux / macOS / Git Bash
+TMP=$(mktemp -d) && git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git "$TMP/repo" && bash "$TMP/repo/install-unity-globally.sh" && rm -rf "$TMP"
+```
+
+```powershell
+# Windows PowerShell
+$tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString('N').Substring(0,8))
+git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git $tmp
+& "$tmp\install-unity-globally.ps1"
+Remove-Item -Path $tmp -Recurse -Force
+```
+
+**If you've already cloned the repo locally** (e.g., for development on the template itself), just run the script directly:
+
+```bash
+bash ./install-unity-globally.sh
+```
+
+```powershell
+.\install-unity-globally.ps1
 ```
 
 ### Layer 2 — Install the template into a project (`/unity-install`)

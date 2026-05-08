@@ -8,13 +8,23 @@
 # After running this, /unity-install is available in ANY Claude Code session
 # the user starts on this machine.
 #
-# Run via curl-pipe (one-line install):
-#   curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh | bash
+# The repo is PRIVATE — raw https://raw.githubusercontent.com/... URLs return
+# 404 to unauthenticated requests. Use the GitHub CLI (`gh`) which authenticates
+# via your existing gh login.
+#
+# Prereqs: `gh` installed + authed (`gh auth login`); `git` on PATH.
+#
+# Run via gh-pipe (one-line install):
+#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | bash
 #
 # Or download + inspect first (safer):
-#   curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh -o install-unity.sh
+#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh > install-unity.sh
 #   less install-unity.sh   # read it
 #   bash install-unity.sh
+#   rm install-unity.sh
+#
+# Alternative — clone-and-run (no gh CLI required, just authed git):
+#   TMP=$(mktemp -d) && git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git "$TMP/repo" && bash "$TMP/repo/install-unity-globally.sh" && rm -rf "$TMP"
 #
 # .ps1 sibling: install-unity-globally.ps1
 
