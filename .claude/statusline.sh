@@ -30,7 +30,7 @@ input=$(cat)
 # Fallback through pwd -W (Git Bash on Windows reports W-style path).
 PROJECT_NAME=$(basename "$(pwd -W 2>/dev/null || pwd)")
 
-eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" py -3.12 -c "
+eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" py -3 -c "
 import sys, json, os
 sys.stdout.reconfigure(encoding='utf-8')
 try:
