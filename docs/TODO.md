@@ -125,6 +125,26 @@ Answer: *"Switch README to gh CLI pattern (Recommended)"*
 
 **Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
 
+### [x] Fix repo-root README.md — has ZERO updates (was editing .claude/README.md instead) — MOVED to FINALIZED.md (Session 2026-05-08)
+
+**User's verbatim correction (LAW #0 — preserved here permanently per NEVER DELETE TODO INFO):**
+
+> Are you sure you merged everything properly? The README.md in the repo has ZERO updates.
+
+**User's verbatim follow-ups:** *"Did you push at all?"* / *"I need to push I think"* / *"Push all changes, check the merges"* / *"after all work is done"*
+
+**Sub-items:**
+
+- [x] Write the repo-root README.md as the GitHub-facing entry point
+- [x] Document: this is for internal use for UnityAILab
+- [x] Document: how it's used (install commands via gh CLI for the private repo)
+- [x] Document: the cache hit averaging / STABLE PREFIX strategy
+- [x] Document: other key info (team, layered architecture, LAWs, hooks summary, three-tier cascade, YOLO summary, privacy posture)
+- [x] Pointer to `.claude/README.md` for the full internal-template docs
+- [x] Pointer to `docs/HOOKS.html` for the comprehensive hook reference
+
+**Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
+
 ## Pending
 
 ### [ ] Rework YOLO mode — lead-developer posture, three task-list tiers, 60s auto-continue, fleshed-out skill, skill hooks
