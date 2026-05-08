@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-05-05T17:38:21.075Z",
+  "project_root": "/home/sponge/Downloads/test",
+  "os": {
+    "platform": "linux",
+    "distro_or_edition": "Ubuntu 26.04 LTS",
+    "version": "26.04",
+    "build_or_kernel": "7.0.0-14-generic"
+  },
+  "shell": "bash",
+  "git": {
+    "installed": true,
+    "is_repo": false
+  },
+  "git_flow_opt_in": {
+    "state": "UNSET",
+    "marker_file_present": false
+  },
+  "todo": {
+    "file_present": false
+  },
+  "finalized": {
+    "file_present": false
+  },
+  "memory": {
+    "templates_present": true,
+    "templates_count": 21,
+    "appdata_synced_count": 21,
+    "drift_count": 20,
+    "drift_files": [
+      "feedback_800_line_read.md",
+      "feedback_atree_scan_engine.md",
+      "feedback_do_the_work.md",
+      "feedback_docs_before_push.md",
+      "feedback_finalized_before_delete.md"
+    ],
+    "appdata_dir": "/home/sponge/.claude/projects/-home-sponge-Downloads-test/memory"
+  },
+  "persona": {
+    "active_persona": "unity (default)"
+  },
+  "yolo_mode": {
+    "enabled": false
+  }
+}
