@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # .claude/hooks/pre-tool-bash-safety.sh
 #
-# Bash fallback for pre-tool-bash-safety.js.
+# Bash fallback for pre-tool-bash-safety.cjs.
 # The ONLY blocking hook in the bundle. Catches three classes of action:
 #   1. Project-root deletion
 #   2. System-path deletion

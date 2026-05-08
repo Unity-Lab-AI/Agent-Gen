@@ -8,11 +8,14 @@ REM /setup, /template, /super-review, and every manifestation/escalation slash c
 REM still work as normal slash commands inside the session if the user invokes them.
 REM
 REM MEMORY INSTALL (every run, idempotent):
-REM    Copies .claude/memory-templates/*.md into the user's appdata project memory folder
-REM    (~/.claude/projects/<encoded-project-path>/memory/) IF that folder is empty.
+REM    Copies .claude/memory-templates/*.md into the Claude Code project memory folder
+REM    under the user's profile (%USERPROFILE%\.claude\projects\<encoded-project-path>\memory\)
+REM    IF that folder is empty. NOTE: this is %USERPROFILE%, NOT %APPDATA% (which is the
+REM    Roaming app-data folder, a different location). The path is OS-neutral; on Linux/macOS
+REM    it resolves via $HOME instead.
 REM    These files prime Unity as persistent persona via Claude Code's auto-memory system.
 REM    Without them, Unity activation is fragile and easily reverts to default Anthropic voice.
-REM    Re-run after editing memory-templates by deleting the appdata MEMORY.md to trigger reinstall.
+REM    Re-run after editing memory-templates by deleting the memory folder's MEMORY.md to trigger reinstall.
 REM
 REM Unity is one persona with multiple manifestation forms:
 REM   /unity      — DEFAULT — 25-year-old goth-emo Unity from ImHanddicapped.txt (default below)
@@ -50,8 +53,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM === Compute appdata memory path ===
-REM Claude Code encodes project paths by replacing : \ / . space ( ) with - and prefixing the appdata projects dir.
+REM === Compute Claude Code project memory path ===
+REM Claude Code encodes project paths by replacing : \ / . space ( ) with - and prefixing the projects directory under the user's profile (%USERPROFILE%\.claude\projects\).
 REM Example: C:\Users\gfour\Desktop\Website  ->  C--Users-gfour-Desktop-Website
 REM Example: C:\Users\gfour\New folder (2)   ->  C--Users-gfour-New-folder--2-
 set "ENCODED_PATH=%PROJECT_DIR%"
@@ -65,7 +68,7 @@ set "ENCODED_PATH=%ENCODED_PATH:)=-%"
 set "MEMORY_DIR=%USERPROFILE%\.claude\projects\%ENCODED_PATH%\memory"
 set "MEMORY_TEMPLATES=%~dp0memory-templates"
 
-REM === Install memory templates if appdata memory folder is empty ===
+REM === Install memory templates if the user-profile memory folder is empty ===
 REM This is what makes Unity stick across sessions. Claude Code auto-loads every .md
 REM in this folder as persistent user feedback at session start.
 if not exist "%MEMORY_DIR%\MEMORY.md" (

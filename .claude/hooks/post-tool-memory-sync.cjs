@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// .claude/hooks/post-tool-memory-sync.js
+// .claude/hooks/post-tool-memory-sync.cjs
 //
 // PostToolUse hook (matcher: Edit | Write | MultiEdit).
 // When a feedback memory in .claude/memory-templates/ gets edited, auto-cp
-// it to the appdata memory folder (~/.claude/projects/<encoded>/memory/) so
-// the new memory takes effect immediately, not just on next launch.
+// it to the Claude Code project memory folder under the user's home
+// directory (~/.claude/projects/<encoded>/memory/) so the new memory takes
+// effect immediately, not just on next launch.
+//
+// Path resolution: ~ resolves to $HOME on macOS/Linux and %USERPROFILE% on
+// Windows. NOT %APPDATA% — Claude Code's project memory lives under the
+// user-profile root, not the Roaming app-data folder.
 //
 // Reads stdin JSON (the tool input payload from Claude Code).
 // Pure enablement. Exit 0 always (failures logged to stderr, don't block).
@@ -16,7 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function encodePathForAppdata(p) {
+function encodeProjectPathForMemory(p) {
   return p.replace(/:/g, '-').replace(/\//g, '-').replace(/\\/g, '-')
           .replace(/\./g, '-').replace(/ /g, '-').replace(/\(/g, '-').replace(/\)/g, '-');
 }
@@ -52,12 +57,12 @@ function readStdin() {
   const home = process.env.HOME || process.env.USERPROFILE || '';
   if (!home) { process.exit(0); }
 
-  const appdataDir = path.join(home, '.claude', 'projects', encodePathForAppdata(path.resolve(root)), 'memory');
+  const memoryDir = path.join(home, '.claude', 'projects', encodeProjectPathForMemory(path.resolve(root)), 'memory');
 
   try {
-    fs.mkdirSync(appdataDir, { recursive: true });
+    fs.mkdirSync(memoryDir, { recursive: true });
     const fileName = path.basename(absFilePath);
-    const dest = path.join(appdataDir, fileName);
+    const dest = path.join(memoryDir, fileName);
     fs.copyFileSync(absFilePath, dest);
     process.stderr.write('[memory-sync] Synced ' + fileName + ' → ' + dest + '\n');
   } catch (e) {

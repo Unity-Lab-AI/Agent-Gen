@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # .claude/hooks/stop-session-writeup.sh
 #
-# Bash fallback for stop-session-writeup.js.
+# Bash fallback for stop-session-writeup.cjs.
 # Updates .claude/.last-session.md with "where we left off" recap on every
 # turn boundary. Read by next session's SessionStart hook.
 # Pure enablement. Exit 0 always.

@@ -1,0 +1,31 @@
+# Machine-local session state — written by .claude/hooks/*
+# These are per-machine artifacts, never team-shared.
+.claude/.session-state.md
+.claude/.session-env.json
+.claude/.last-session.md
+.claude/.session-tidbits.md
+.claude/.session-usage.jsonl
+.claude/.usage-tracking-disabled
+.claude/.yolo-mode
+.claude/.persona-state
+.claude/.setup-complete
+
+# User-private setup data — secrets, identity, assets
+.claude/.env
+.claude/user.json
+.claude/user-context/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Node / build artifacts (harmless if unused)
+node_modules/
+dist/
+build/
+*.log
