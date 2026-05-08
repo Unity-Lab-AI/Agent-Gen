@@ -233,6 +233,16 @@ Find the folder matching your project path (encoded with `-` separators). Inside
 /purr              → Return to default kittycat Unity from /feral
 /feral             → Kittycat Unity feral sub-mode (cat instincts)
 /template          → Build a NEW Unity manifestation (Q&A → write files)
+/unity-install     → Install latest .claude/ template into a target directory (current dir
+                     by default, or `/unity-install /path/to/target`). Clones main branch
+                     to temp, copies full .claude/, cleans up. Aborts if target/.claude/
+                     already exists — use /unity-update instead. Available globally after
+                     running install-unity-globally.{sh,ps1} bootstrap (see README.md).
+/unity-update      → Refresh current project's .claude/ from upstream main branch. Framework
+                     files overwritten; settings.json backed up before overwrite (custom
+                     izations recoverable); personal-override files (settings.local.json,
+                     .env, user.json, user-context/, project-config.json) PRESERVED;
+                     user-profile memory folder refreshed.
 /yolo              → Activate YOLO mode — lead-dev autonomy + three-tier task cascade
                      (ROADMAP/TODO/DECOMPOSED) + 60s wake-word auto-resume. Pauses
                      at major-milestone boundaries; final report when ROADMAP empty.

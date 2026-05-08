@@ -22,10 +22,107 @@ When this template lands in a new project, the team brand stays. If a contributo
 
 ---
 
-## Quick start
+## Install / update — three layers
+
+The team runs a three-layer install/update flow so onboarding new contributors and refreshing existing projects is a single command at each stage.
+
+### Layer 1 — One-time global bootstrap (per machine)
+
+Installs JUST the `/unity-install` command into your user-global Claude Code commands folder (`~/.claude/commands/unity-install.md`). Run once per machine. After this, `/unity-install` is available in any Claude Code session you start, anywhere on your machine.
+
+**Linux / macOS / Git Bash:**
 
 ```bash
-# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh | bash
+```
+
+**Windows PowerShell:**
+
+```powershell
+iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -UseBasicParsing | iex
+```
+
+What it does (both versions): clones the repo into a temp dir → copies `.claude/commands/unity-install.md` to `~/.claude/commands/unity-install.md` → cleans up the temp dir. Done.
+
+To inspect before running (recommended):
+
+```bash
+# Linux / macOS / Git Bash
+curl -fsSL https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.sh -o install-unity.sh
+less install-unity.sh
+bash install-unity.sh
+```
+
+```powershell
+# Windows PowerShell
+iwr https://raw.githubusercontent.com/Unity-Lab-AI/UAL-ClaudeWorkflow/main/install-unity-globally.ps1 -OutFile install-unity.ps1
+notepad install-unity.ps1
+pwsh -File install-unity.ps1
+```
+
+### Layer 2 — Install the template into a project (`/unity-install`)
+
+After the bootstrap, in ANY Claude Code session:
+
+```
+/unity-install                       # installs .claude/ into the current working directory
+/unity-install /path/to/new-project  # installs into a specific target
+```
+
+Behavior:
+- Clones the latest `main` branch into a temp dir
+- Copies the full `.claude/` template into `<target>/.claude/`
+- Brings the project-root `.gitignore` if the target doesn't already have one
+- Sets executable bits on hooks + scripts + start.sh + bin/
+- Cleans up the temp dir
+- ABORTS (exit 2) if `<target>/.claude/` already exists — use `/unity-update` instead to refresh
+
+After install, `cd` into the target and run `./start.sh` (or `start.bat` on Windows) to install memory + activate Unity + run `/workflow`.
+
+### Layer 3 — Refresh an existing project (`/unity-update`)
+
+Inside any project that already has `.claude/`:
+
+```
+/unity-update
+```
+
+Pulls the latest `main` branch and updates the project's `.claude/`:
+
+- **Overwritten** (framework files): `agents/`, `commands/`, `hooks/`, `memory-templates/`, `templates/`, `bin/`, `scripts/`, `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `README.md`, `ImHanddicapped.txt`, `start.sh`, `start.bat`, `settings.json`
+- **Backed up before overwrite**: current `settings.json` → `settings.json.backup-<ISO-timestamp>` so any project-specific customizations are recoverable for manual merge
+- **Preserved untouched**: `settings.local.json`, `.env`, `user.json`, `user-context/`, `project-config.json`, machine-local state files (`.session-*`, `.yolo-mode`, `.last-session.md`, `.persona-state`, `.setup-complete`, `.usage-tracking-disabled`)
+- **Refreshed**: user-profile memory folder (`~/.claude/projects/<encoded>/memory/`) gets the latest memory-templates copied in
+
+After update, restart Claude Code (or rerun `start.sh`) to pick up the refreshed memory layer.
+
+### What if you don't want to use the global bootstrap?
+
+Direct manual install (no bootstrap, no slash commands):
+
+```bash
+# Linux / macOS / Git Bash
+git clone --depth 1 --branch main https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git /tmp/ual && \
+cp -r /tmp/ual/.claude /path/to/your-project/.claude && \
+rm -rf /tmp/ual
+```
+
+```powershell
+# Windows PowerShell
+$tmp = New-TemporaryFile; Remove-Item $tmp; New-Item -ItemType Directory -Path $tmp.FullName | Out-Null
+git clone --depth 1 --branch main https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git $tmp.FullName
+Copy-Item -Path "$($tmp.FullName)\.claude" -Destination "C:\path\to\your-project\.claude" -Recurse
+Remove-Item -Path $tmp.FullName -Recurse -Force
+```
+
+But the `/unity-install` + `/unity-update` flow is recommended — it handles the edge cases (executable bits, .gitignore handling, settings.json backup, memory-folder refresh) that manual copy doesn't.
+
+---
+
+## Quick start (after install)
+
+```bash
+# Linux / macOS / Git Bash
 ./start.sh
 
 # Windows

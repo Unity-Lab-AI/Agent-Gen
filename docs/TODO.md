@@ -79,6 +79,25 @@ Answer: *"Migrate to .claude/settings.json (Anthropic convention)"*
 
 **Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
 
+### [x] Build /unity-update + /unity-install + curl-pipe bootstrap install system — MOVED to FINALIZED.md (Session 2026-05-08)
+
+**User's verbatim ask (LAW #0 — preserved here permanently per NEVER DELETE TODO INFO):**
+
+> Something really really nice we could do, since all team members have access to the github repo, it would be nice if we could download into a temp directory a clone of the main branch, when a command for / unity-update is ran, it clones, fetches, and pulls the latest repo and updates the current project's .claude with the untiy one, updating everything nessiary, then deletes the temporary cloned directory.
+>
+> On top of that, making it so that we can do a / unity-global command in claude code, we could make it so we install a new / unity-install command into the GLOBAL user's .claude (not project level), that when run will instruct claude code to INSTALL into a new or existing directory the .claude from the main repo, to make installation of the latest version a lot easier then having to copy and paste files into the project, follow the same temp directory thing as the / unity-update command, but because its global it can be used anywhere by the user, they might need to at least clone the repo once, and then run the command to do an "install" but it still makes the process easier.
+>
+> Because github allows for raw files to be used, we should make a .ps1 and a .sh file in the main repo that do the same thing as the unity global would do, but auto-install JUST that install command into the user's global .claude, and put in the readme the commands to execute them from powshell or bash, so its a simple one command install process, where we git clone the repo to a temp directory, only copy the .md command file for unity-install, and put it in the user's global .claude folder.
+
+**Sub-items:**
+
+- [x] /unity-update command — clones main branch into temp dir, updates current project's .claude with latest, deletes temp
+- [x] /unity-install command (lives globally in user's .claude/commands/, installable into any project) — same temp-clone-and-copy mechanism but installs to a target directory
+- [x] .ps1 + .sh bootstrap scripts in repo root that auto-install JUST the unity-install command file into user's global .claude/commands
+- [x] README commands for one-line bash + PowerShell install of the bootstrap
+
+**Closed:** 2026-05-08. Full closure summary in `docs/FINALIZED.md`.
+
 ## Pending
 
 ### [ ] Rework YOLO mode — lead-developer posture, three task-list tiers, 60s auto-continue, fleshed-out skill, skill hooks

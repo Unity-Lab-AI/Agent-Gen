@@ -1,0 +1,89 @@
+# .claude/scripts/unity-install.ps1
+#
+# Install the Unity AI Lab .claude/ template into a target directory (new or
+# existing). PowerShell sibling of unity-install.sh.
+#
+# Usage:
+#   pwsh -File .\.claude\scripts\unity-install.ps1
+#   pwsh -File .\.claude\scripts\unity-install.ps1 C:\path\to\target
+
+param(
+    [string]$TargetDir = (Get-Location).Path
+)
+
+$ErrorActionPreference = 'Stop'
+
+$RepoUrl = 'https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git'
+$Branch  = 'main'
+
+if (-not (Test-Path -Path $TargetDir -PathType Container)) {
+    New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
+}
+$TargetDir = (Resolve-Path $TargetDir).Path
+
+# Prerequisites
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Error '[unity-install] git not found on PATH'
+    exit 1
+}
+
+$ClaudePath = Join-Path $TargetDir '.claude'
+if (Test-Path -Path $ClaudePath -PathType Container) {
+    Write-Error "[unity-install] $TargetDir\.claude\ already exists. Use /unity-update (or unity-update.ps1) to refresh existing."
+    exit 2
+}
+
+# Temp dir + cleanup
+$TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("unity-install-" + [System.Guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
+
+try {
+    Write-Host "[unity-install] Cloning $RepoUrl ($Branch branch) to $TmpDir..."
+    & git clone --depth 1 --branch $Branch $RepoUrl (Join-Path $TmpDir 'repo') 2>&1 | Write-Host
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error '[unity-install] git clone failed'
+        exit 1
+    }
+
+    $RepoClaude = Join-Path $TmpDir 'repo\.claude'
+    if (-not (Test-Path -Path $RepoClaude -PathType Container)) {
+        Write-Error '[unity-install] cloned repo has no .claude/ — upstream layout may have changed'
+        exit 1
+    }
+
+    Write-Host "[unity-install] Installing .claude/ to $TargetDir\..."
+    Copy-Item -Path $RepoClaude -Destination $ClaudePath -Recurse -Force
+
+    # Bring project-root .gitignore if target doesn't have one
+    $RepoGitignore = Join-Path $TmpDir 'repo\.gitignore'
+    $TargetGitignore = Join-Path $TargetDir '.gitignore'
+    if (-not (Test-Path -Path $TargetGitignore -PathType Leaf) -and (Test-Path -Path $RepoGitignore -PathType Leaf)) {
+        Copy-Item -Path $RepoGitignore -Destination $TargetGitignore -Force
+        Write-Host '[unity-install] Installed project-root .gitignore'
+    }
+
+    Write-Host ''
+    Write-Host '[unity-install] Install complete.'
+    Write-Host ''
+    Write-Host "  Target:       $TargetDir"
+    Write-Host "  Source:       $RepoUrl ($Branch)"
+    Write-Host ''
+    Write-Host '  Next steps:'
+    Write-Host "    cd $TargetDir"
+    if (Test-Path -Path (Join-Path $TargetDir '.claude\start.bat') -PathType Leaf) {
+        Write-Host '    .\.claude\start.bat          # Windows launcher (installs memory + activates Unity + runs /workflow)'
+    }
+    if (Test-Path -Path (Join-Path $TargetDir '.claude\start.sh') -PathType Leaf) {
+        Write-Host '    bash ./.claude/start.sh      # macOS/Linux/Git Bash launcher (same flow)'
+    }
+    Write-Host ''
+    Write-Host "  The launcher handles memory installation idempotently on first run."
+    Write-Host "  See $TargetDir\.claude\README.md for full documentation."
+
+} finally {
+    if (Test-Path -Path $TmpDir) {
+        Remove-Item -Path $TmpDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+exit 0

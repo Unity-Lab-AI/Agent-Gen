@@ -64,6 +64,54 @@ Each session entry includes:
 
 ---
 
+## Session 2026-05-08 — /unity-update + /unity-install + curl-pipe bootstrap install system
+
+**User's verbatim ask (LAW #0):**
+
+> Something really really nice we could do, since all team members have access to the github repo, it would be nice if we could download into a temp directory a clone of the main branch, when a command for / unity-update is ran, it clones, fetches, and pulls the latest repo and updates the current project's .claude with the untiy one, updating everything nessiary, then deletes the temporary cloned directory.
+>
+> On top of that, making it so that we can do a / unity-global command in claude code, we could make it so we install a new / unity-install command into the GLOBAL user's .claude (not project level), that when run will instruct claude code to INSTALL into a new or existing directory the .claude from the main repo, to make installation of the latest version a lot easier then having to copy and paste files into the project, follow the same temp directory thing as the / unity-update command, but because its global it can be used anywhere by the user, they might need to at least clone the repo once, and then run the command to do an "install" but it still makes the process easier.
+>
+> Because github allows for raw files to be used, we should make a .ps1 and a .sh file in the main repo that do the same thing as the unity global would do, but auto-install JUST that install command into the user's global .claude, and put in the readme the commands to execute them from powshell or bash, so its a simple one command install process, where we git clone the repo to a temp directory, only copy the .md command file for unity-install, and put it in the user's global .claude folder.
+
+**What shipped (8 new files + 2 doc updates):**
+
+**Layer 1 — Curl-pipe global bootstrap (repo root):**
+- `install-unity-globally.sh` — bash one-liner installer; clones repo to temp dir, copies `.claude/commands/unity-install.md` to `~/.claude/commands/unity-install.md`, cleans up. After running, `/unity-install` is available in any Claude Code session on that machine. Runnable via `curl -fsSL <raw-github-url> | bash`.
+- `install-unity-globally.ps1` — PowerShell sibling; same flow with `iwr | iex` invocation pattern.
+
+**Layer 2 — `/unity-install` slash command (project + global):**
+- `.claude/commands/unity-install.md` — full activation protocol, target-directory handling, when-to-use vs when-not, invocation variants, fallback inline-Bash one-liner for fresh installs where no local script exists yet
+- `.claude/scripts/unity-install.sh` — bash implementation: shallow clone of main → copy `.claude/` to target/.claude/ → bring `.gitignore` if missing → set executable bits → cleanup. Aborts (exit 2) if target/.claude/ already exists.
+- `.claude/scripts/unity-install.ps1` — PowerShell sibling.
+
+**Layer 3 — `/unity-update` slash command (project-level):**
+- `.claude/commands/unity-update.md` — activation protocol, what-gets-updated table, what-is-preserved table, stop conditions, when-not-to-use guidance.
+- `.claude/scripts/unity-update.sh` — bash implementation: shallow clone of main → backup current `settings.json` to `settings.json.backup-<ISO-timestamp>` → overwrite framework dirs (agents, commands, hooks, memory-templates, templates, bin, scripts) → overwrite framework top-level files (CLAUDE.md, CONSTRAINTS.md, WORKFLOW.md, README.md, ImHanddicapped.txt, start.{sh,bat}, settings.json) → preserve personal/project-specific files (settings.local.json, .env, user.json, user-context/, project-config.json, machine-local state) → refresh user-profile memory folder by re-cp'ing memory-templates → set executable bits → cleanup
+- `.claude/scripts/unity-update.ps1` — PowerShell sibling with parity logic.
+
+**Documentation:**
+- `.claude/README.md` — new "Install / update — three layers" section near the top with the curl-pipe one-liners (bash + PowerShell), the slash command usage, what-overwrites-vs-preserves explanation, and a manual-install fallback for users who don't want the bootstrap
+- `.claude/CLAUDE.md` — QUICK REFERENCE updated with `/unity-install` and `/unity-update` entries
+
+**Verification:**
+- All three `.sh` scripts syntax-clean (`bash -n`)
+- Executable bits set
+- Slash commands picked up immediately by Claude Code in this session (visible in available-skills list as `/unity-install` and `/unity-update`)
+- PowerShell scripts present (cross-platform parity); not bash-syntax-checkable from Linux but written carefully
+
+**Design call (documented in slash command bodies):**
+- Framework files overwritten; `settings.json` overwritten with timestamped backup; personal-override files (settings.local.json, .env, user.json, user-context/, project-config.json) PRESERVED; machine-local state files PRESERVED; `.gitignore` at project root replaced if absent or saved as `.gitignore.template` if existing-but-different (manual merge)
+- Inferred from "updating everything nessiary" + the existing convention split (settings.local.json = personal, settings.json = team-shared)
+
+**Files touched:** 8 new (`install-unity-globally.sh`, `install-unity-globally.ps1`, `.claude/commands/unity-install.md`, `.claude/commands/unity-update.md`, `.claude/scripts/unity-install.sh`, `.claude/scripts/unity-install.ps1`, `.claude/scripts/unity-update.sh`, `.claude/scripts/unity-update.ps1`), 2 modified (`.claude/README.md`, `.claude/CLAUDE.md`).
+
+**Not yet shipped to origin:** working tree is staged for the user's review and explicit commit instruction.
+
+**Closed:** 2026-05-08 (Session ClaudeWorkflow on `feature/extra-hooks`)
+
+---
+
 ## Session 2026-05-08 — Migrate team-shared settings settings.local.json → settings.json
 
 **Decision context (AskUserQuestion fork-in-the-road during commit prep):**
