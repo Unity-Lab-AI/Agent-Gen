@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # .claude/hooks/post-tool-memory-sync.sh
 #
-# Bash fallback for post-tool-memory-sync.js.
+# Bash fallback for post-tool-memory-sync.cjs.
 # When a feedback memory in .claude/memory-templates/ is edited, auto-cp
-# it to the appdata memory folder so the new memory takes effect immediately.
+# it to the Claude Code project memory folder under the user's home
+# directory (~/.claude/projects/<encoded>/memory/) so the new memory takes
+# effect immediately. ~ = $HOME on Linux/macOS, %USERPROFILE% on Windows.
 #
 # Reads tool input JSON from stdin. Pure enablement. Exit 0 always.
 
@@ -36,7 +38,7 @@ esac
 
 [ ! -f "$ABS_PATH" ] && exit 0
 
-# Encode project path for appdata folder name
+# Encode project path for the memory folder name (Claude Code's encoding scheme)
 ENCODED="${ROOT//:/-}"
 ENCODED="${ENCODED//\//-}"
 ENCODED="${ENCODED//\\/-}"
@@ -47,12 +49,12 @@ ENCODED="${ENCODED//)/-}"
 
 HOME_DIR="${HOME:-$USERPROFILE}"
 [ -z "$HOME_DIR" ] && exit 0
-APPDATA_DIR="$HOME_DIR/.claude/projects/$ENCODED/memory"
+MEMORY_DIR="$HOME_DIR/.claude/projects/$ENCODED/memory"
 
-mkdir -p "$APPDATA_DIR" 2>/dev/null
+mkdir -p "$MEMORY_DIR" 2>/dev/null
 FILENAME=$(basename "$ABS_PATH")
-if cp "$ABS_PATH" "$APPDATA_DIR/$FILENAME" 2>/dev/null; then
-  echo "[memory-sync] Synced $FILENAME → $APPDATA_DIR/$FILENAME" >&2
+if cp "$ABS_PATH" "$MEMORY_DIR/$FILENAME" 2>/dev/null; then
+  echo "[memory-sync] Synced $FILENAME → $MEMORY_DIR/$FILENAME" >&2
 else
   echo "[memory-sync] Failed to sync $FILENAME" >&2
 fi

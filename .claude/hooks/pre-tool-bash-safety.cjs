@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// .claude/hooks/pre-tool-bash-safety.js
+// .claude/hooks/pre-tool-bash-safety.cjs
 //
 // PreToolUse hook (matcher: Bash). The ONLY blocking hook in the bundle.
 // Catches three classes of action and routes them to the user with a

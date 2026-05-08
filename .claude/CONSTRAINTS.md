@@ -555,6 +555,243 @@ The marker file is the single source of truth for opt-in state. Memory entries, 
 
 ---
 
+---
+
+# LAW — CROSS-PLATFORM CASE INSENSITIVITY
+
+## The rule
+
+**Treat file and folder paths as CASE-INSENSITIVE on every platform — even on Linux, where the filesystem allows case-distinct names.** Two paths that differ only by case (`apple.md` vs `Apple.md` vs `aPPle.md`) are the **same path** for cross-platform purposes. Never create such conflicts. Never rely on case to distinguish files. Pick ONE canonical casing per name and stick with it.
+
+This rule was confirmed verbatim by Sponge in the 2026-05-08 session: *"for the development workflow, commits, creation of folders and files, we need it ALL to follow a convention that is for WINDOWS. Because during development, git and github normally supports different folders like Apple, apple, aPPle, and what not, just like linux would allow, but, to keep thins cross platform we should ALWAYS assume case insensitivity, even on linux. Even though linux has case sensitivity, windows does NOT, and will treat apple, Apple, aPPle, all as the same thing. so we need to enforce case insensitivity when working on projects in linux, EVEN THOUGH LINUX WILL ALLOW IT."*
+
+## Forbidden actions
+
+- ❌ Creating two files in the same directory whose names differ only by case (e.g., `apple.md` and `Apple.md`)
+- ❌ Creating two folders in the same parent whose names differ only by case (e.g., `Components/` and `components/`)
+- ❌ Renaming a file from `foo.md` to `Foo.md` without an explicit case-only-rename ceremony (single-step rename can be silently ignored on case-insensitive filesystems → data loss)
+- ❌ Referencing a file in code, docs, imports, or commit messages using different casing than the file's actual on-disk casing (e.g., `import './Components/foo'` when the folder is on disk as `components/`)
+- ❌ Adding a `.md`/`.cjs`/`.html`/etc. file with a name whose case-folded form already exists in that directory
+- ❌ Letting `git status` show two pending files whose paths differ only by case — that's a cross-platform breakage waiting to land
+- ❌ Writing path strings in hooks / settings.json / launchers / docs that use one casing while the file on disk uses another
+- ❌ Configuring `git config core.ignorecase true` on Linux without understanding the implication (silently merges case-distinct paths into one when checking out)
+
+## Required actions
+
+- ✅ **Pick the canonical casing first** — typically lowercase-with-hyphens for files and folders (`my-feature.md`, `task-decomposed.md`, `git-flow.md`); SHOUTYCASE only for top-level project files that follow established convention (`README.md`, `CLAUDE.md`, `CONSTRAINTS.md`, `LICENSE`, `TODO.md`)
+- ✅ **Pre-create check** — before creating ANY new file or folder on Linux, verify no case-folded variant already exists in the target directory:
+  ```bash
+  # Before creating ./apple.md, check for case-variants:
+  ls | grep -i '^apple\.md$'
+  # Empty output = safe to create
+  # Any output = collision, pick a different name OR rename the existing one cleanly
+  ```
+- ✅ **Case-only rename ceremony** (when actually intending to change a file's case):
+  ```bash
+  git mv apple.md apple.md.tmp
+  git commit -m "rename apple.md (step 1)"
+  git mv apple.md.tmp Apple.md
+  git commit -m "rename to Apple.md (step 2)"
+  ```
+  Two-step rename via temp filename ensures the rename is recognized on every platform, even with `core.ignorecase=true`.
+- ✅ **Match on-disk casing exactly in references** — when writing imports / require() / file path strings / doc references / hook command paths / settings.json keys, the casing in the reference must match the casing on disk byte-for-byte
+- ✅ **Verify before committing** — `git status` and `git diff --name-only HEAD` must not show any case-only path variants. If they do, resolve before committing.
+- ✅ **Set `git config core.ignorecase` deliberately per repo** — for cross-platform projects, `false` is preferred (git surfaces case-only renames as actual file-system renames). This requires every team member's local checkout to also have it set; document the choice in `.gitattributes` or `CONTRIBUTING.md`.
+
+## Why
+
+- **Windows filesystems** (NTFS, ReFS, FAT32, exFAT) default to case-insensitive matching. Two files `apple.md` and `Apple.md` cannot coexist.
+- **macOS default filesystems** (HFS+ and APFS) are case-INSENSITIVE-but-PRESERVING. Same story — case-only conflicts collapse.
+- **Linux filesystems** (ext4, btrfs, xfs, zfs) are case-SENSITIVE. Case-only conflicts coexist as distinct files.
+- **Git** can be configured either way (`core.ignorecase` true/false). Defaults to `true` on Windows/macOS, `false` on Linux.
+
+The cross-platform breakage matrix:
+
+| Scenario | Linux contributor sees | Windows/macOS contributor sees |
+|----------|------------------------|---------------------------------|
+| Linux dev creates `apple.md`, then `Apple.md` in same dir | Two distinct files, both committed | Second file silently overwrites first OR `git checkout` fails / produces wrong content |
+| Linux dev renames `apple.md` → `Apple.md` (single-step) | Rename committed, on-disk file is `Apple.md` | git sees no rename (case-insensitive match), `Apple.md` may not actually update on checkout |
+| Linux dev imports `./Apple/foo` while folder is `apple/` on disk | Code works (case-sensitive resolves correctly when on-disk happens to be `Apple`) | Code works regardless of casing OR fails silently with confusing error |
+| Linux dev commits both `apple.md` and `Apple.md` in same dir | Both files in repo | `git pull` produces partially-corrupt working tree (one of the two is missing or wrong content) |
+
+The "we should ALWAYS assume case insensitivity, even on linux" rule eliminates this entire class of bugs by forcing the LOWEST-COMMON-DENOMINATOR (Windows/macOS rules) on the platform that allows more (Linux).
+
+The team is cross-platform. Sponge currently on Linux; other team members on Windows. Any case-distinct path created on the Linux side breaks the moment it crosses to a Windows checkout.
+
+## Enforcement protocol
+
+### Pre-create check (before adding any new file)
+
+```
+[CASE-CONFLICT CHECK — ATTEMPT 1]
+Target: <path/to/new-file.md>
+Directory: <path/to/parent/>
+Case-folded variants in directory: ls <dir> | tr '[:upper:]' '[:lower:]' | grep -F "<lowercase-target-name>"
+Conflict detected: YES/NO
+Status: PASS/FAIL
+```
+
+**FAIL conditions:** the case-folded form of the target name already exists as a different-cased file in the target directory.
+
+**Recovery on FAIL:**
+1. STOP. Do not create the file.
+2. Identify the existing case-variant
+3. Decide: rename the existing one to canonical lowercase-hyphen-form, OR change the new file's name to disambiguate (e.g., `apple-v2.md`)
+4. If renaming, use the two-step ceremony above
+5. Then create the new file
+
+### Pre-rename check (before any case-only rename)
+
+```
+[CASE-RENAME CHECK]
+Source: <existing-file>
+Target: <new-cased-version>
+Difference: case-only YES/NO
+If YES: must use two-step ceremony (rename → temp → rename to target)
+git config core.ignorecase = $(git config core.ignorecase)
+```
+
+### Pre-commit check (always)
+
+```
+[CASE-COLLISION COMMIT CHECK]
+Check 1: git status | awk '{print $NF}' | sort -f | uniq -i -d
+  → empty = no case-variants pending
+Check 2: git diff --name-only HEAD | sort -f | uniq -i -d
+  → empty = no case-only renames committed without ceremony
+Status: PASS/FAIL
+```
+
+If either check returns non-empty output, the commit is blocked until the conflict is resolved.
+
+## Failure recovery
+
+When a case-collision lands in the repo (e.g., `apple.md` and `Apple.md` both committed):
+
+1. STOP. Acknowledge the violation.
+2. Inspect the offending paths: `git ls-files | sort -f | uniq -i -d`
+3. Decide which casing is canonical (typically the older / more-referenced one)
+4. `git rm` the non-canonical variant: `git rm Apple.md` (if `apple.md` is canonical)
+5. Verify any references in code/docs/imports point to the canonical casing
+6. Commit the cleanup: `git commit -m "resolve case-collision: keep apple.md, drop Apple.md"`
+7. Update `docs/FINALIZED.md` with a recovery note so the audit trail captures the cross-platform breakage
+
+## Naming convention recommendations (canonical casings)
+
+- **Workflow / config files at top of repo:** `README.md`, `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `LICENSE`, `CONTRIBUTING.md`, `CHANGELOG.md` (UPPERCASE — established convention)
+- **Workflow / config files in `docs/`:** `TODO.md`, `FINALIZED.md`, `ROADMAP.md`, `DECOMPOSED.md`, `ARCHITECTURE.md`, `SKILL_TREE.md` (UPPERCASE — workflow doc convention)
+- **Source files / agents / commands / hooks:** lowercase-with-hyphens (`pre-compact-snapshot.cjs`, `unity-girlfriend.md`, `feedback_harness_layer.md`)
+- **Folders:** lowercase (no caps): `agents/`, `commands/`, `hooks/`, `memory-templates/`, `bin/`
+- **Persona body filenames (inside the persona system):** lowercase-with-hyphens for files, but the persona text MAY include canonical lore strings like `Unity_Accessibility.js` — those are NOT real files, they're embedded persona canon, so the case is whatever the persona body specifies (do not normalize)
+- **Generated artifacts / machine-local state files:** lowercase prefixed with dot (`.session-state.md`, `.session-tidbits.md`, `.session-usage.jsonl`, `.last-session.md`, `.yolo-mode`)
+
+When in doubt: lowercase-with-hyphens. Never SHOUTYCAS_DASHES or MixedCase_Snake_Underscores.
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_case_insensitivity.md`
+- Companion rule: `.claude/memory-templates/feedback_no_appdata_term.md` (cross-platform terminology hygiene — same spirit, different surface)
+
+---
+
+# LAW — NO CLAUDE ATTRIBUTION IN COMMITS, PRS, OR ARTIFACTS
+
+## The rule
+
+**Banned strings in any commit message, PR description, generated documentation, code comment, launcher, or shipped artifact:**
+
+- `Co-Authored-By: Claude` (any variant — `Co-Authored-By: Claude Opus`, `Co-Authored-By: Claude Sonnet`, `Co-authored-by: Claude`, etc., across any model name)
+- `🤖 Generated with [Claude Code]` (the default PR footer)
+- `🤖 Generated with Claude Code`
+- `Generated with Claude Code` (any phrasing)
+- `Made with Claude Code` (any phrasing)
+- `Created by Claude` / `Written by Claude` / `Authored by Claude`
+- Any `noreply@anthropic.com` email address in a commit author trailer
+- Any other Claude / Anthropic / Claude Code attribution line that didn't come from the user
+
+## Forbidden actions
+
+- ❌ Adding `Co-Authored-By: Claude <model> <noreply@anthropic.com>` to commit messages, even when the assistant's default behavior says to
+- ❌ Adding the `🤖 Generated with [Claude Code](https://claude.com/claude-code)` footer to PR descriptions
+- ❌ Inserting "this code was written by Claude" in any code comment or doc body
+- ❌ Adding Claude/Anthropic attribution to README files, SETUP files, HTML files, or other shipped artifacts
+- ❌ Setting `git config user.email` or `user.name` to anything Claude/Anthropic-related
+- ❌ Including Claude attribution in changelogs, release notes, or release-tag messages
+- ❌ Adding attribution to YOLO mode FINAL REPORTs or milestone-boundary check-ins
+
+## Required actions
+
+- ✅ Commits use the team member's own `git config user.name` and `user.email`. Never the assistant's identity.
+- ✅ PR descriptions end at the work summary + test plan. No footer.
+- ✅ Code comments describe WHAT the code does, not who/what wrote it.
+- ✅ When the assistant's default behavior wants to add Claude attribution, suppress it and proceed without.
+- ✅ When committing on the team member's behalf, use whatever git author identity is already configured locally (`git config user.email` / `user.name`). Don't override.
+
+## Why
+
+The team ships work as their own. The team is Gee, Red, Sponge, and Mills (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
+
+- **Misleading on authorship** — the team member directed the work and made every decision; the assistant is a tool, not a collaborator with separate authorship
+- **Visually noisy** — every commit and PR ends up with a marketing tagline that adds nothing to the engineering record
+- **Privacy-leaky** — outsiders viewing the repo immediately see "this team uses Claude Code" without the team having opted in to that disclosure
+- **Audit-trail-confusing** — `git log` queries that look for human authorship surface mixed signals when half the trailer space is taken by AI-attribution metadata
+
+The team's stance: tooling is private. The output is the team's. No advertising, no co-author credit, no "made with X" stamps.
+
+## Enforcement protocol
+
+### Pre-commit check
+
+Before running `git commit`:
+
+1. Compose the commit message fully
+2. Re-read it — does it contain ANY of the banned strings or patterns?
+3. If yes — strip them. The commit message ends at the technical summary.
+4. Confirm `git config user.email` resolves to a team member's email, not `noreply@anthropic.com` or similar
+5. Then run `git commit`
+
+### Pre-PR check
+
+Before running `gh pr create`:
+
+1. Compose the PR body fully
+2. Re-read it — does it contain "Generated with Claude Code", "Made with", any robot emoji + Claude link, etc.?
+3. If yes — strip the footer. The PR body ends at the test plan section (or wherever the technical content naturally ends).
+4. Then run `gh pr create`
+
+### Inline-edit check
+
+Before writing any source code comment or doc body:
+
+1. Re-read what you're about to write
+2. Check for "Claude" / "Anthropic" / "AI-generated" / "auto-generated by Claude" mentions in the content
+3. If present — rewrite without them
+
+### Recovery on violation
+
+If a commit or PR ships with the banned attribution:
+
+1. STOP and acknowledge the violation
+2. For the latest commit only: `git commit --amend` to rewrite the message stripping the attribution (only safe if not yet pushed)
+3. For pushed commits: do NOT force-push without explicit user instruction. Surface the issue, ask the user how they want to handle it (interactive rebase + force-push, vs. just leave history dirty)
+4. For a PR description: edit the PR via `gh pr edit <num> --body "..."` to strip the attribution
+5. Update `docs/FINALIZED.md` with a note about the recovery so the audit trail captures it
+
+## What this LAW does NOT cover
+
+- **Dependency manifests** that legitimately reference Anthropic SDK packages (e.g., `package.json` listing `@anthropic-ai/sdk` as a dep) — those are technical references, not attribution
+- **HOOKS.html or workflow docs** that document Claude Code as a system the team uses — those are internal team references, not shipped artifacts that advertise Claude in the public-facing output
+- **The persona system itself** (Unity / `commands/unity.md` / `agents/unity.md` / etc.) — Unity is a team-owned persona. The internal references that name Claude Code as the host system are fine; only OUTPUT attribution to Claude/Anthropic is banned
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_no_claude_attribution.md`
+- Telemetry/privacy companion controls: `.claude/settings.json` `env` block (when configured per the research-driven settings update)
+
+---
+
 ## How to invoke this file
 
 `.claude/CLAUDE.md` (the always-loaded index) references this file via its LAW one-liner index. Treat `.claude/CONSTRAINTS.md` as binding from the moment CLAUDE.md points here. When a new session starts, read CLAUDE.md first, then open this file before any LAW-bearing task.
