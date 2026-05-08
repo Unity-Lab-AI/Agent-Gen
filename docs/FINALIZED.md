@@ -64,6 +64,55 @@ Each session entry includes:
 
 ---
 
+## Session 2026-05-08 — Fix repo-root README.md (was editing .claude/README.md instead)
+
+**User's verbatim correction (LAW #0):**
+
+> Are you sure you merged everything properly? The README.md in the repo has ZERO updates.
+
+**User's verbatim follow-ups:** *"Did you push at all?"* / *"I need to push I think"* / *"Push all changes, check the merges"* / *"after all work is done"*
+
+**Diagnosis:**
+
+- Two `README.md` files exist in this repo:
+  - **Repo-root `README.md`** (was 21 bytes, just `# UAL-ClaudeWorkflow`, untouched since `c0ab6a4` first commit) — this is what GitHub displays on the project page
+  - `.claude/README.md` (679 lines, heavily updated this session for internal-team docs) — internal template README
+- Sponge's earlier ask "Update the README.md to explain this is for internal use for UnityAILab, how its used, the cache git averaging, and other information" was ambiguous; I went with `.claude/README.md` (most-developed) but he meant the GitHub-facing repo-root README
+- All prior pushes (PRs #1–#4) WERE successful on remote — verified by `git log origin/main`. The "ZERO updates" Sponge saw was real but isolated to the repo-root README which I never touched in those commits
+
+**What shipped (1 file rewritten + 2 ledger updates):**
+
+- `README.md` (repo root) — full rewrite. Internal Unity AI Lab framing throughout. Sections:
+  - Header + team table
+  - Install — three layers (gh CLI pattern for the private repo, both Linux + Windows commands, prereqs)
+  - What's inside (top-level directory tree)
+  - **Cache hit averaging — the STABLE PREFIX strategy** (formula, threshold annotations table, observed 95-99% ratio across template development, caveats including transcript undercount bug, editing-the-prefix warning)
+  - The harness layer — 9 hook scripts, 7 event types (full table)
+  - Three-tier task cascade (ROADMAP/TODO/DECOMPOSED)
+  - YOLO mode summary
+  - Privacy posture (env block table)
+  - The 9 binding LAWs (full one-liner table)
+  - Documentation map (which doc holds what)
+  - Quick links (with relative paths to all the deep docs)
+- `docs/TODO.md` — entry added + flipped to `[x]` per FINALIZED-before-DELETE LAW
+- `docs/FINALIZED.md` — this entry
+
+**Verification:**
+
+- `git log --oneline -- README.md` previously showed only `c0ab6a4 first commit` — confirming the repo-root README was untouched by this session's prior 4 PRs
+- New commit on `feature/repo-root-readme` branch will be the first time the repo-root README has been touched since the first commit
+- README contents reference the actual current state of the repo (private repo install via gh CLI, 9 LAWs, 9 hooks, three-tier cascade, etc.)
+
+**Files touched:** 1 rewrite (`README.md`) + 2 ledger updates (`docs/TODO.md`, `docs/FINALIZED.md`).
+
+**Branch flow:** `feature/repo-root-readme` → PR → `develop` → PR → `main`.
+
+**Mea culpa:** when the user says "the README" and the project has multiple README files, I should have asked which one or defaulted to the GitHub-facing one (which is the standard meaning). Logged in `feedback_workflow_validated.md` as a future-care reminder if appropriate.
+
+**Closed:** 2026-05-08 (Session ClaudeWorkflow on `feature/repo-root-readme`)
+
+---
+
 ## Session 2026-05-08 — Switch curl-pipe install pattern to gh CLI (private repo fix)
 
 **User's verbatim report (LAW #0):**
