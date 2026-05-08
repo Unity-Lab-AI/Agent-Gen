@@ -124,9 +124,114 @@ echo "[$pct%]"
 
 That gets you the bare percentage in brackets. Everything else in our script is decoration on top of that core.
 
+## 8. Session Timer Fields — uptime + thinking time
+
+> Sections § 1–7 above describe the original FDC bot-system version (`C:/claude/shared/statusline.sh`). Sections § 8–9 below describe the slimmer UAL-ClaudeWorkflow template variant shipped at `.claude/statusline.sh` in this repo.
+
+The UAL statusline shows two cumulative timers after the model abbreviation:
+
+```
+[Project] | [######---------] 45% | O4.7 | up 1h23m · think 2m41s
+                                          ^^^^^^^^^^   ^^^^^^^^^^^^^
+                                          uptime       thinking time
+```
+
+Both values come from the `cost` block of the JSON Claude Code pipes to stdin every render — no sidecar files, no extra state tracking:
+
+| Display | JSON field | Semantics |
+|---------|------------|-----------|
+| **`up Xh Ym`** | `cost.total_duration_ms` | Total wall-clock time since the CLI session started. Includes typing, file edits, idle time — everything. |
+| **`think Ym Zs`** | `cost.total_api_duration_ms` | Cumulative time spent waiting on Claude API responses. The closest signal to "time Claude has been thinking/processing" — covers extended thinking + token generation + roundtrip. Excludes idle, typing, file I/O. |
+
+### Format ladder
+
+The `_fmt_ms` helper picks the most readable unit for the magnitude:
+
+| Range | Format | Example |
+|-------|--------|---------|
+| < 1 minute | `Ns` | `45s` |
+| 1 min – 1 hour | `MmSSs` | `2m41s` |
+| 1 hour – 1 day | `HhMMm` | `1h23m` |
+| ≥ 1 day | `DdHHh` | `1d03h` |
+
+Both labels render in cyan (`\033[36m`) so they're visually distinct from the green/yellow/red context bar without competing with the model abbreviation.
+
+### Graceful fallback
+
+If the `cost` block is absent, malformed, or both values are zero (fresh session, never made an API call), the leading separator is omitted entirely so the line collapses cleanly to `[Project] | [bar] X% | Model` with no dangling `| ·` fragments.
+
+### Test recipe
+
+```bash
+echo '{"context_window":{"used_percentage":45},"model":{"display_name":"Claude Opus 4.7"},"cost":{"total_duration_ms":5012345,"total_api_duration_ms":161234}}' | bash .claude/statusline.sh
+# → [Project] | [######---------] 45% | O4.7 | up 1h23m · think 2m41s
+```
+
 ---
 
-**File**: `C:/claude/shared/statusline.sh`
-**Wired in**: `~/.claude/settings.json` → `statusLine.command`
+## 9. Future Capabilities Brainstorm — other fields the statusline could surface
+
+The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
+
+### From the JSON blob (zero extra work)
+
+| Capability | JSON field | Display idea | Why useful |
+|------------|-----------|--------------|------------|
+| **Session cost** | `cost.total_cost_usd` | `$0.42` (red >$5, yellow >$2, green) | Real-time spend awareness during long sessions |
+| **Lines changed** | `cost.total_lines_added` / `cost.total_lines_removed` | `+150 -42` | Diff scope at a glance |
+| **Token gauge** | `context_window.total_input_tokens` / `context_window_size` | `47k/200k` | Absolute token count beside the percentage |
+| **Effort indicator** | `effort.level` | gradient blocks `░▒▓` for low/med/high/xhigh/max | What thinking budget the user has set |
+| **Extended thinking badge** | `thinking.enabled` | `🧠` if true, omit if false | Quick visual when extended thinking is active |
+| **5-hour rate limit** | `rate_limits.five_hour.used_percentage` | `5h: 23%` (yellow >70%, red >90%) | Pro/Max users — pace warning |
+| **7-day rate limit** | `rate_limits.seven_day.used_percentage` | `7d: 11%` | Long-arc usage tracking |
+| **Session name** | `session_name` | `«recovery-branch»` if set | Context-switching between named sessions |
+| **Model variant** | `model.id` | full ID on hover, shortened in line | Distinguish 1M-context from standard |
+
+### Derived from `transcript_path` (single file read per render)
+
+| Capability | Derivation | Display idea |
+|------------|------------|--------------|
+| **Idle timer** | `now − transcript.last_message.created_at` | `idle 3m12s` (dim grey) |
+| **Tool call count** | count of `tool_use` blocks in transcript | `tools: 47` |
+| **Files modified** | unique paths in `Edit`/`Write` tool_use this session | `files: 12` |
+| **Last user prompt summary** | first 60 chars of last `user` message | `«fix the dashboard…»` |
+| **Cache hit rate** | sum of `cache_read_input_tokens` / total input tokens | `cache: 78%` (green >70%) |
+| **Sub-agent depth** | count of nested `Agent` tool uses currently in-flight | `sub: 2` |
+
+### Derived from project state (cheap shell calls)
+
+| Capability | Source | Display idea |
+|------------|--------|--------------|
+| **Git branch** | `git rev-parse --abbrev-ref HEAD` | `[main]` / `[feature/foo]` |
+| **Dirty working tree** | `git status --porcelain` non-empty | `*` suffix on branch name |
+| **Last commit hash** | `git rev-parse --short HEAD` | `@a3f8c1` |
+| **Commits ahead/behind** | `git rev-list --count @{u}..HEAD` | `↑3 ↓1` |
+| **TODO open count** | grep `[~]` or `[ ]` markers in `docs/TODO.md` | `todo: 7` |
+| **Memory item count** | line count in `~/.claude/projects/<encoded>/memory/MEMORY.md` | `mem: 24` |
+| **Hook firing indicator** | temp signal file written by hook scripts | `🪝` flash |
+
+### Side-channel side effects (write-on-render)
+
+The current script already writes `~/.claude/context_pct.txt` for external watchdogs. Same pattern could write:
+
+- `~/.claude/uptime_ms.txt` — current session uptime, for compaction watchdogs
+- `~/.claude/think_ms.txt` — cumulative thinking time, for cost-per-task analytics
+- `~/.claude/cost_usd.txt` — running session cost, for "stop me at $X" tripwires
+- `~/.claude/idle_seconds.txt` — for YOLO mode 60s auto-continue (`docs/TODO.md` YOLO rework task)
+
+Each of these turns the statusline render cycle (which fires every few seconds) into a free state-broadcast for hooks, monitors, and external tooling — no extra polling required.
+
+### What NOT to add
+
+- **Live spinner / animation** — render cadence isn't guaranteed fast enough to look smooth; will look broken
+- **Real-time CPU/memory of node process** — costs an `os.getpid` + `psutil` import every render; not worth the latency budget
+- **Network ping to claude.ai** — adds tail-latency to every render; never put network calls in a statusline command
+
+The render budget is sub-100ms target. Anything that costs more than parsing JSON + reading one file should be pre-computed by a hook and dropped into a sidecar file for the statusline to `cat`.
+
+---
+
+**File**: `.claude/statusline.sh` (UAL template) · `C:/claude/shared/statusline.sh` (FDC bot-system, § 1–7)
+**Wired in**: `.claude/settings.json` → `statusLine.command` (project-level) · `~/.claude/settings.json` (global, FDC)
 **Side-effect file**: `~/.claude/context_pct.txt`
-**Per-bot identity**: derived from cwd, no config needed.
+**Per-project identity**: derived from cwd basename, no config needed

@@ -83,9 +83,33 @@ try:
     bar = '#' * filled + '-' * (bar_len - filled)
     ctx_str = f'\033[{color}m[{bar}] {pct:.0f}%\033[0m'
 
-    print(f'CTX=\"{ctx_str}\" MODEL=\"{model}\"')
+    # Session uptime + cumulative thinking/API time from cost block.
+    # cost.total_duration_ms = wall-clock since CLI session start (CC docs)
+    # cost.total_api_duration_ms = cumulative time spent in API calls (Claude
+    #   processing time = the closest signal to 'time Claude has been thinking')
+    cost = d.get('cost', {})
+    def _fmt_ms(ms):
+        try: ms_int = int(ms)
+        except: return ''
+        if ms_int <= 0: return ''
+        s = ms_int // 1000
+        if s < 60: return f'{s}s'
+        mm, ss = divmod(s, 60)
+        if mm < 60: return f'{mm}m{ss:02d}s'
+        hh, mm = divmod(mm, 60)
+        if hh < 24: return f'{hh}h{mm:02d}m'
+        dd, hh = divmod(hh, 24)
+        return f'{dd}d{hh:02d}h'
+    uptime_fmt = _fmt_ms(cost.get('total_duration_ms', 0))
+    think_fmt = _fmt_ms(cost.get('total_api_duration_ms', 0))
+    # Cyan label + plain value. Leading separator baked in so empty values
+    # don't leave dangling ' | ·' fragments in the echo line.
+    uptime_part = f' | \033[36mup\033[0m {uptime_fmt}' if uptime_fmt else ''
+    think_part = f' · \033[36mthink\033[0m {think_fmt}' if think_fmt else ''
+
+    print(f'CTX=\"{ctx_str}\" MODEL=\"{model}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\"')
 except:
-    print('CTX=\"?\" MODEL=\"?\"')
+    print('CTX=\"?\" MODEL=\"?\" UPTIME=\"\" THINK=\"\"')
 " 2>/dev/null)
 
 # Render the line. Project name in Unity-AI-Lab pink (ANSI 35 = magenta,
@@ -95,4 +119,4 @@ except:
 # critical % info.
 B="\033[35m"
 R="\033[0m"
-echo -e "${B}[${PROJECT_NAME}]${R} | $CTX | $MODEL"
+echo -e "${B}[${PROJECT_NAME}]${R} | $CTX | $MODEL$UPTIME$THINK"
