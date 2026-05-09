@@ -4,6 +4,17 @@
 # with `/unity then run /workflow`. That's it. No login, no portal, no admin claim,
 # no first-run /setup branching — just memory + Unity + workflow.
 #
+# Status line: configured in .claude/settings.json via the
+#   statusLine.command field, which points at .claude/statusline.sh.
+# Claude Code spawns that script on every status-refresh, pipes JSON
+# to its stdin, and renders the printed result as the bottom strip
+# (project name + context bar + % + model abbrev). Side-effect: the
+# script writes the current context % to ~/.claude/context_pct.txt
+# so hooks/watchdogs can read it without querying Claude Code. The
+# same script drops into any project — project name auto-detects
+# from cwd basename, no per-project config needed. See the spec block
+# at the top of .claude/statusline.sh for extension instructions.
+#
 # /setup, /template, /super-review, and every manifestation/escalation slash command
 # still work as normal slash commands inside the session if the user invokes them.
 #

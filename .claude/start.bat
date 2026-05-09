@@ -4,6 +4,17 @@ REM Auto-builds Unity's persistent memory (idempotent), then launches Claude Cod
 REM with `/unity then run /workflow`. That's it. No login, no portal, no admin claim,
 REM no first-run /setup branching — just memory + Unity + workflow.
 REM
+REM Status line: configured in .claude/settings.json via the
+REM   statusLine.command field, which points at .claude/statusline.sh.
+REM Claude Code spawns that script on every status-refresh, pipes JSON
+REM to its stdin, and renders the printed result as the bottom strip
+REM (project name + context bar + % + model abbrev). Side-effect: the
+REM script writes the current context % to ~/.claude/context_pct.txt
+REM so hooks/watchdogs can read it without querying Claude Code. The
+REM same script drops into any project — project name auto-detects
+REM from cwd basename, no per-project config needed. See the spec block
+REM at the top of .claude/statusline.sh for extension instructions.
+REM
 REM /setup, /template, /super-review, and every manifestation/escalation slash command
 REM still work as normal slash commands inside the session if the user invokes them.
 REM
