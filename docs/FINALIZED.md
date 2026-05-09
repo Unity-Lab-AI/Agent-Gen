@@ -181,3 +181,17 @@ Each session entry includes:
 - 10 gradient stops verified via test loop (5%, 30%, 36%, 40%, 50%, 60%, 70%, 79%, 85%, 95%) — each percentage produces the expected RGB escape code.
 - Truecolor passthrough — works on Windows Terminal, Git Bash mintty, Console Host since Win10 v1809, PowerShell 7+, and any modern Linux terminal. Doc-silent in CC docs but reliable in practice.
 - Tailwind-equivalent palette chosen for visual harmony — these stops are commonly used in modern UI design and look clean at every brightness level.
+
+### Branch state-aware coloring
+
+**Verbatim user quote:** "lets ensure that the main/master branch displays as blue, develop displays as purple, features display as green, clean branches are their normal color, not clean branches are red with a * displayed, stagged and commited is orange with a +, pushed to remote goes back to normal color."
+
+**Files touched:**
+- `.claude/statusline.sh` — git block at top of bash extended with state detection: `git status --porcelain | grep -q .` for dirty, `git rev-list --count @{u}..HEAD` for ahead-of-remote (with `2>/dev/null` so non-tracking branches collapse to "ahead" when AHEAD is empty). Branch-type color picked via case statement: `main|master` → blue truecolor `\033[38;2;59;130;246m`, `develop` → purple `\033[38;2;168;85;247m`, anything else → green `\033[38;2;34;197;94m` (matches gradient ≤35%). State markers override type color: dirty → red `\033[38;2;220;38;38m` + `*` (matches gradient 80%+), ahead → orange `\033[38;2;249;115;22m` + `+` (matches gradient 56–65%), pushed → branch-type color, no marker.
+- `docs/STATUSLINE.md` — §8.9 rewritten from the simple "green clean / yellow dirty" flag doc into the full state matrix: branch-type color table, state-marker priority, color rationale (state colors deliberately reuse RGB values from §8.12 gradient for unified palette), throwaway-repo test recipe covering all 6 state combinations. §9 brainstorm "implemented" note updated.
+
+**Closure notes:**
+- 6 test scenarios passed via mkdir/mktemp throwaway repo: (a) main + clean + pushed → BLUE, (b) main + dirty → RED `*`, (c) main + commit-not-pushed → ORANGE `+`, (d) main + push → back to BLUE, (e) develop + clean + pushed → PURPLE, (f) feature/foo + clean + pushed → GREEN.
+- Test setup gotcha caught + documented: the bare remote repo MUST be created OUTSIDE the working tree, otherwise its files appear as untracked in `git status --porcelain` and trigger false-dirty state.
+- State priority `dirty > ahead > pushed` is intentional: any `git add`-staged file (even with no working-tree change) shows in porcelain output and triggers red `*`. Once the commit lands, the tree becomes clean and either orange `+` (unpushed) or branch-type color (in sync) applies.
+- `dirty.txt` test file naming is unrelated to the actual dirty-state semantics (just a test fixture name); the dirty color is triggered by the git porcelain output, not the filename.

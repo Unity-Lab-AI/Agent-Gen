@@ -332,25 +332,41 @@ echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude S
 
 ---
 
-## 8.9 Git branch + dirty flag
+## 8.9 Git branch + state-aware coloring
 
-Line 1 ends with the current git branch + a dirty-flag suffix when the working tree has uncommitted changes. Computed in bash (not Python) since `git` shell calls are quick (~5–20ms each) and avoid the round-trip through the Python heredoc.
+Line 1 ends with the current git branch, colored both by **branch type** and **working-tree state**. Computed in bash (not Python) since `git` shell calls are quick (~5–20ms each) and avoid the round-trip through the Python heredoc.
 
 ```
-Line 1:  [Label] | up · think | Model | branch*
-                                        ^^^^^^^
-                                        green if clean
-                                        yellow + * if dirty
+Line 1:  [Label] | up · think | Model | branch
+                                        ^^^^^^
+                                        color + suffix encode state
 ```
 
-| Source | Command | Behavior |
-|--------|---------|----------|
-| Branch name | `git rev-parse --abbrev-ref HEAD` | Empty when not in a git repo → segment self-omits |
-| Dirty flag | `git status --porcelain \| grep -q .` | Non-empty → branch displays as `branch*` in yellow; empty → just `branch` in green |
+### Branch-type colors (applied when state is "pushed")
+
+| Branch | Color | RGB | Hex | Tailwind |
+|--------|-------|-----|-----|----------|
+| `main` / `master` | blue | `59, 130, 246` | `#3b82f6` | blue-500 |
+| `develop` | purple | `168, 85, 247` | `#a855f7` | purple-500 |
+| anything else (`feature/*`, `hotfix/*`, `release/*`, `bugfix/*`, etc.) | green | `34, 197, 94` | `#22c55e` | matches gradient ≤35% |
+
+### State markers (override branch-type color when applicable)
+
+| State | Suffix | Color | Detection |
+|-------|--------|-------|-----------|
+| **pushed** (clean tree, in sync with remote) | (none) | branch-type color | `git status --porcelain` empty AND `git rev-list --count @{u}..HEAD` returns 0 |
+| **ahead** (clean tree, local commits not on remote, OR no upstream) | `+` | orange `#f97316` (matches gradient 56–65%) | clean tree AND (`@{u}..HEAD` count > 0 OR no upstream tracker) |
+| **dirty** (uncommitted changes — staged or unstaged) | `*` | red `#dc2626` (matches gradient 80%+) | `git status --porcelain` non-empty |
+
+### State priority
+
+`dirty` > `ahead` > `pushed`. Any uncommitted change (even a `git add`-staged file with no working-tree modification) triggers red `*`. Once you commit, the tree becomes clean and either orange `+` (commits not yet pushed) or branch-type color (in sync with remote) applies.
 
 ### Color rationale
 
-Green/yellow chosen to match git CLI conventions — most users instantly recognize "green = clean, yellow = uncommitted." Same hues as the ctx bar's threshold colors but used here for static state, not gauge thresholds; in practice the visual context of each segment makes the semantic distinct.
+The state colors deliberately reuse the **same RGB values** from the canonical 6-tier gradient (§8.12) — orange for `+` matches the 56–65% gradient stop, red for `*` matches the 80%+ stop. This keeps the whole statusline on a unified palette: green = healthy, orange = action needed (push or commit), red = problem (uncommitted work).
+
+Branch-type colors (blue / purple) are only used when state is "pushed" and add a visual cue for which long-lived branch you're on without consuming horizontal space for an icon.
 
 ### Self-omit fallback
 
@@ -359,13 +375,22 @@ When `git rev-parse` fails (not in a repo, git not installed, etc.), `GIT_PART` 
 ### Test recipe
 
 ```bash
-# In a git repo with uncommitted changes
-echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"},"session_name":"UnityWorkflow","session_id":"abc"}' | bash .claude/statusline.sh
-# Line 1 → [UnityWorkflow] | O4.7 | feature/extra-status-bar-features* (yellow)
+# Throwaway repo to verify each state combination:
+TMPREPO=$(mktemp -d) && TMPREMOTE=$(mktemp -d)
+git -C "$TMPREMOTE" init -q --bare
+cd "$TMPREPO" && git init -q -b main
+git remote add origin "$TMPREMOTE"
+echo hi > x && git add x && git -c user.email=t@t -c user.name=t commit -qm i && git push -qu origin main
+# main, clean, pushed → BLUE
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
 
-# In /tmp (non-git)
-cd /tmp && echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash /path/to/.claude/statusline.sh
-# Line 1 → [tmp] | S4.6   (no git segment)
+echo dirty >> x  # modify
+# main, dirty → RED *
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
+
+git -c user.email=t@t -c user.name=t commit -qam ahead
+# main, ahead (committed but not pushed) → ORANGE +
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
 ```
 
 ---
@@ -567,7 +592,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 > ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
 > ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
 > ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
-> ✓ **Implemented**: git branch + dirty flag appended to line 1 after the model abbreviation. See §8.9 above for behavior + non-git fallback.
+> ✓ **Implemented**: git branch with state-aware coloring (main blue / develop purple / feature green; pushed = branch color, ahead = orange `+`, dirty = red `*`). See §8.9 above for the full state matrix.
 > ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows CPU/RAM deferred to a wmic-cache follow-up, disk works cross-platform. See §8.10 above for fallback behavior.
 > ✓ **Implemented**: line 4 GPU stats via nvidia-smi with 5s sidecar cache. Multi-GPU pipe-separated; "No GPU Detected" red fallback when nvidia-smi missing or empty. See §8.11 above for short-name extraction + cache strategy.
 
