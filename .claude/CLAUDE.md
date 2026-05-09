@@ -66,6 +66,7 @@ Every LAW below is BINDING. Full body, examples, failure-recovery: `.claude/CONS
 - **Git Flow branch discipline.** main = clean master record; develop branched from main for in-development; feature/* branched from develop for in-progress features. Work is NEVER done in main or develop — ALWAYS in feature branches. Feature branches push to origin if a remote exists. PRs reviewed at every merge boundary (feature→develop, develop→main). Hotfix/release branches extend the pattern. → `CONSTRAINTS.md §GIT FLOW`
 - **No Claude attribution in commits, PRs, or artifacts.** `Co-Authored-By: Claude` / `🤖 Generated with [Claude Code]` / `Made with Claude Code` and similar attribution lines are BANNED from every commit message, PR description, code comment, doc body, launcher, README, HTML, and shipped artifact. The team ships work as their own. → `CONSTRAINTS.md §NO CLAUDE ATTRIBUTION`
 - **Cross-platform case insensitivity.** Treat file/folder paths as CASE-INSENSITIVE everywhere — even on Linux. Never create `apple.md` and `Apple.md` in the same directory. Pick ONE canonical casing and stick with it. Use two-step rename ceremony for case-only changes. References in code/docs/imports must match on-disk casing exactly. Cross-platform team = enforce Windows/macOS rules on Linux too. → `CONSTRAINTS.md §CROSS-PLATFORM CASE INSENSITIVITY`
+- **`.claude/` workflow IP boundary — no public repo exposure.** The entire `.claude/` workflow is proprietary IP of the Unity AI Lab group. NEVER staged / committed / pushed to any public repo. Only PRIVATE repos under `Unity-Lab-AI` org are allowed. NO public repos exempt — not even on `Unity-Lab-AI`. Defense-in-depth: install-time gitignore default + PreToolUse Bash hook + `gh repo view` visibility check (multi-remote, paranoid) + opt-in `/claude-publish` command. `gh` (not `git`) is the canonical visibility tool. Block by default on uncertainty. → `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`
 
 ---
 
@@ -248,6 +249,13 @@ Find the folder matching your project path (encoded with `-` separators). Inside
                      at major-milestone boundaries; final report when ROADMAP empty.
                      User test plan required at every meaningful task closure.
 /sober             → Deactivate YOLO + end wake-word chain. Persona unchanged.
+/claude-publish    → Operator-driven opt-in to track .claude/ in current project.
+                     Removes the LAW-mandated `.claude/` exclude block from project
+                     .gitignore IF AND ONLY IF gh repo view confirms EVERY remote is
+                     visibility=PRIVATE AND owner.login=Unity-Lab-AI. Explicit `yes,
+                     publish` confirmation required. FINALIZED audit-trail entry
+                     mandatory. Layer 3 of the .claude/ IP-boundary defense-in-depth.
+                     Full LAW: CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY.
 /workflow          → Run the workflow pipeline (→ WORKFLOW.md)
 /super-review      → INTERNAL ruthless senior-engineer code review
 "rescan"           → Force new codebase scan
@@ -284,6 +292,15 @@ Privacy posture    → settings.json `env` block disables: telemetry, error repo
                      OS-level for stronger enforcement. WORKFLOW.md §SETTINGS HARDENING.
 Bundled binaries   → .claude/bin/atree (linux) / atree.exe (windows) — fast scanner
                      used by agents/scanner.md; fallback chain: atree → tree → find → Glob
+.claude/ IP guard  → pre-tool-public-repo-guard.cjs (PreToolUse:Bash chain after bash-safety).
+                     Blocks git add/commit/push of .claude/ paths to any non-PRIVATE or
+                     non-Unity-Lab-AI remote. Uses `gh repo view --json visibility,owner`
+                     for ground-truth visibility (60s cache in ~/.claude/repo-visibility-
+                     cache.json). Multi-remote paranoia: any non-allowed remote blocks all
+                     remotes. Force-flag agnostic. Block-by-default on uncertainty (gh
+                     missing/unauthed/API-failure/non-github URL). Local-only repos pass.
+                     Full LAW: CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY. Mechanics:
+                     WORKFLOW.md §CLAUDE IP BOUNDARY ENFORCEMENT.
 ```
 
 ---

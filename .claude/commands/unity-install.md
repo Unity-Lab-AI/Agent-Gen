@@ -60,6 +60,46 @@ The script is conservative on purpose: never overwrite an existing `.claude/` wi
 
 ---
 
+## `.GITIGNORE` AUTO-MAINTENANCE — Layer 0 of the IP boundary
+
+After installing `.claude/`, the script ensures the target's project-root `.gitignore` excludes the workflow. This is **Layer 0 of the four-layer `.claude/` IP-boundary defense-in-depth** (full LAW: `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`).
+
+### What the script appends
+
+If the target's `.gitignore` does NOT already contain a blanket `.claude/` exclude line (matched by regex `^\.claude/?\s*$`), the script appends:
+
+```
+# Unity AI Lab .claude/ workflow — proprietary, never commit to public repos.
+# See .claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY for full text.
+# Removal sanctioned only via /claude-publish after gh confirms private + Unity-Lab-AI.
+.claude/
+```
+
+### Idempotency
+
+The append is fully idempotent:
+
+- **Fresh target with no `.gitignore`** → script creates `.gitignore` and writes the block
+- **Existing `.gitignore` without the `.claude/` line** → block appended at the bottom
+- **Existing `.gitignore` with `.claude/` already present** → skipped (`Layer 0 already in place` log line)
+
+Re-running `/unity-install` on a target where the source-template `.gitignore` was copied (which contains specific `.claude/.session-*` excludes but not the blanket `.claude/`) → the script appends the blanket block in addition; the more-specific excludes coexist harmlessly.
+
+### Why this is automatic
+
+The LAW (`CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`) requires defense-in-depth because a single-layer enforcement always fails eventually. Layer 0 catches the most common accidental-leak path: a user runs `git add -A` or `git add .` on a fresh target project before realizing `.claude/` shouldn't be tracked there. Without the gitignore entry, the workflow gets staged silently. With it, git skips the directory by default.
+
+The other three layers handle the cases Layer 0 doesn't:
+- Layer 1: `pre-tool-public-repo-guard.cjs` PreToolUse:Bash hook intercepts explicit `git add .claude/` and `git add -f`
+- Layer 2: `gh repo view --json visibility,owner` ground-truth check inside Layer 1
+- Layer 3: `/claude-publish` opt-in (operator-driven gitignore removal AFTER `gh` confirms private + Unity-Lab-AI)
+
+### Removing the gitignore entry
+
+The ONLY sanctioned path is `/claude-publish`. It runs `gh repo view --json visibility,owner` against `origin`, verifies `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI`, and only then removes the `.claude/` block from the gitignore. Any other removal path (manual edit, force-add, etc.) is a LAW violation per `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`.
+
+---
+
 ## INVOCATION VARIANTS
 
 | Variant | What happens |

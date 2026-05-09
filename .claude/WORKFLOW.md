@@ -588,7 +588,7 @@ bundled tools      → .claude/bin/* (atree fast scanner; future: more binary to
 cross-platform     → start.sh + start.bat + Option A node primary + Option B bash fallback
 ```
 
-### The nine hook scripts (seven event types — Continuity bundle covers three; Stop event has two scripts)
+### The ten hook scripts (seven event types — Continuity bundle covers three; Stop event has two scripts; PreToolUse:Bash chains two)
 
 | # | Hook event | Matcher | Script | What it does | Blocks? |
 |---|------------|---------|--------|--------------|---------|
@@ -598,7 +598,8 @@ cross-platform     → start.sh + start.bat + Option A node primary + Option B b
 | 4a | `PreCompact` | (none) | `pre-compact-snapshot.cjs` | Writes `.claude/.session-state.md` with compaction trigger, TODO + git state, **Git Flow context (branch type + opt-in state)**, **uncommitted-files list**, and **session tidbits** (from `.claude/.session-tidbits.md`) so post-compact Unity can pick up cleanly. | No (exit 0) |
 | 4b | `SessionStart` | `compact` only | `post-compact-restore.cjs` | **Post-compact Unity rehydration.** Outputs STABLE PREFIX (byte-identical Unity activation reminder + LAW one-liners + file-edit protocol — designed for prompt-cache prefix hits) followed by DYNAMIC SUFFIX (pre-compact snapshot, session tidbits, last-session writeup, current branch + TODO state). Fires alongside hook #1's compact-trigger run; both output independently. | No (exit 0) |
 | 4c | `Stop` | (none) | `stop-session-writeup.cjs` | Updates `.claude/.last-session.md` with branch + TODO + last-FINALIZED on every turn boundary. Read by next session's SessionStart. | No (exit 0) |
-| 5 | `PreToolUse` | `Bash` | `pre-tool-bash-safety.cjs` | The ONLY blocking hook. Catches three classes: project-root deletion, system-path deletion, privileged commands (sudo/su/doas/runas/RunAs). Routes each to user with paste-ready command. | YES (exit 2 on match) |
+| 5a | `PreToolUse` | `Bash` | `pre-tool-bash-safety.cjs` | First link in the PreToolUse:Bash chain. Catches three classes: project-root deletion, system-path deletion, privileged commands (sudo/su/doas/runas/RunAs). Routes each to user with paste-ready command. | YES (exit 2 on match) |
+| 5b | `PreToolUse` | `Bash` (chained after 5a) | `pre-tool-public-repo-guard.cjs` | **`.CLAUDE/` IP BOUNDARY enforcement.** Implements the LAW (see `CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY`). Detects `git add` / `git commit` / `git push` operations that touch `.claude/` paths. Runs `gh repo view --json visibility,owner` against EVERY configured remote (multi-remote paranoia, 60s session-cache in `~/.claude/repo-visibility-cache.json`). Allows ONLY when every remote is `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI`. Block-by-default on uncertainty (`gh` missing, unauthed, API failure, non-github remote). Force-flag agnostic — `git push --force` does NOT bypass. Local-only repos (no remotes) pass through. | YES (exit 2 on match) |
 | 6 | `UserPromptExpansion` | `*` (all skills) | `skill-context-inject.cjs` | **Skill-hook surface** (Claude Code v2.1.72+). Fires when ANY slash command (skill) expands its prompt body before Claude reads it. Outputs JSON with `additionalContext` containing: YOLO three-tier cascade state when YOLO is active; per-skill reminders for `/unity` / `/girlfriend` / `/housewife` / `/kittycat` / `/wild` / `/strict` / `/feral` / `/sweet` / `/cozy` / `/purr` / `/workflow` / `/yolo` / `/sober`; silent no-op for unknown skills when YOLO is inactive. Gracefully degrades if `UserPromptExpansion` event isn't supported (older Claude Code); the hook just doesn't fire. | No (exit 0) |
 | 7 | `Stop` (parallel to 4c) | (none) | `usage-track.cjs` | **Usage tracking surface.** Reads `transcript_path` from stdin → parses last assistant message's `usage` object from the JSONL → appends one structured line to `.claude/.session-usage.jsonl` with: tokens (input/output/cache-create/cache-read), model, message_id, active major/minor/decomposed task (cascade order), branch. Cache fields are accurate; gross tokens undercounted ~100x (transcript streaming bug). Always-on capture; injection toggleable via `.claude/.usage-tracking-disabled` marker. See §USAGE TRACKING below. | No (exit 0) |
 
@@ -624,8 +625,9 @@ The `command` field in `settings.json` uses `$CLAUDE_PROJECT_DIR` (Claude Code s
 | `.claude/.last-session.md` | stop-session-writeup | session-start-env-dump (next session), post-compact-restore | overwritten on every turn boundary |
 | `.claude/.session-usage.jsonl` | usage-track | user-prompt-state-refresh (banner injection) | append-only per turn; persists until manually cleared |
 | `.claude/.usage-tracking-disabled` | (manual `touch`) | user-prompt-state-refresh (skip banner) | manual marker; presence disables injection |
+| `~/.claude/repo-visibility-cache.json` | pre-tool-public-repo-guard | pre-tool-public-repo-guard (60s TTL) | per-user (not project-local); atomic temp+rename writes; entries refreshed via `gh repo view` |
 
-All four files are machine-local state and are gitignored by the bundled `.gitignore`. The `project-config.json` (Git Flow opt-in marker from §GIT FLOW) IS team-shared and gets tracked.
+The project-local files are machine-local state and are gitignored by the bundled `.gitignore`. The `project-config.json` (Git Flow opt-in marker from §GIT FLOW) IS team-shared and gets tracked. The visibility cache lives in the user's home `~/.claude/` (not the project tree) so it survives across projects.
 
 ### What hooks do NOT replace
 
@@ -1102,6 +1104,127 @@ print("Telemetry posture: settings active in env block")
 - Persistent memory: `.claude/memory-templates/feedback_settings_hardening.md`
 - `docs/HOOKS.html` §Configuration locations & precedence — explains the 4-tier hierarchy
 - Anthropic docs: https://code.claude.com/docs/en/settings.md, https://code.claude.com/docs/en/env-vars.md, https://code.claude.com/docs/en/data-usage.md
+
+---
+
+## CLAUDE IP BOUNDARY ENFORCEMENT — `.claude/` workflow public-repo guard
+
+The `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group. **It is never committed, staged, or pushed to any public repository.** The only allowed home for `.claude/` in git history is a PRIVATE repository owned by the GitHub organization `Unity-Lab-AI`. No public repos exempt — not even on `Unity-Lab-AI`.
+
+Full LAW body (rule + forbidden/required actions + enforcement protocol + failure recovery): `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`. This section explains the workflow mechanics that implement the LAW.
+
+### Defense-in-depth — four layers
+
+| Layer | Mechanism | Where | Status |
+|-------|-----------|-------|--------|
+| **L0 — Install-time gitignore** | `/unity-install` auto-appends a `.claude/` block to the target project's `.gitignore`. Idempotent. Defense against accidental `git add -A`. | `.claude/scripts/unity-install.sh` + `unity-install.ps1` | Active |
+| **L1 — PreToolUse Bash hook** | Intercepts every Bash invocation, parses for `git add` / `git commit` / `git push` patterns, runs the visibility check on every configured remote. Exit 2 = block. Force-flag agnostic — `--force` does NOT bypass. | `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) | Active |
+| **L2 — `gh` visibility check** | `gh repo view <owner/repo> --json visibility,owner` for ALL configured remotes. Cached 60s in `~/.claude/repo-visibility-cache.json`. `gh` is the canonical tool — `git` cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Active |
+| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires `gh repo view` to confirm `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI` first. Operator-driven. Explicit `yes, publish` confirmation required. | `.claude/commands/claude-publish.md` | Active |
+
+### Pass criteria — all must hold for a remote to be allowed
+
+```
+gh repo view <owner/repo> --json visibility,owner --jq '.visibility, .owner.login'
+```
+
+| Check | Required value |
+|-------|----------------|
+| `visibility` | `"PRIVATE"` |
+| `owner.login` | `"Unity-Lab-AI"` |
+| `gh auth status` | authenticated |
+
+ANY check failing → BLOCK. The hook does **multi-remote scan** — every entry in `git remote -v` must pass. A single public fork remote anywhere in the repo's remotes blocks ALL `.claude/`-touching git operations from that repo.
+
+### Hook-blocking decision tree (Layer 1 logic)
+
+```
+PreToolUse:Bash hook fires
+  │
+  ├─► Parse command — is this `git add` / `git commit` / `git push`?
+  │     └─► no → exit 0 (pass through)
+  │
+  ├─► Determine `.claude/` involvement
+  │     ├─► `git add` → check args + currently-staged paths
+  │     ├─► `git commit` → check `git diff --cached --name-only` for `.claude/`
+  │     └─► `git push` → check `git diff <upstream>..HEAD --name-only` for `.claude/`
+  │     └─► no `.claude/` paths → exit 0 (pass through)
+  │
+  ├─► Read `git remote -v` — list all configured remotes
+  │     └─► no remotes → exit 0 (no public exposure path possible)
+  │
+  ├─► For each remote: gh repo view <owner/repo> --json visibility,owner
+  │     ├─► cache hit (< 60s old) → use cached
+  │     ├─► cache miss → fresh API call, write cache
+  │     └─► gh not installed / not authed / API failure → exit 2 (block, surface error)
+  │
+  ├─► All remotes PRIVATE + Unity-Lab-AI? → exit 0 (pass through)
+  │
+  └─► Any remote fails? → exit 2 (BLOCK, name the offending remote + reason)
+```
+
+### Block message format
+
+When the hook blocks, stderr surfaces:
+
+```
+[CLAUDE-IP-GUARD] BLOCKED — `.claude/` cannot land on a public/non-Unity-Lab-AI repo.
+
+Offending remote: <remote-name> → <url>
+  visibility: <PUBLIC|UNKNOWN>
+  owner: <login>
+  reason: <not-Unity-Lab-AI | not-PRIVATE | gh-not-installed | gh-not-authed | api-error>
+
+Options to proceed:
+  1. Remove the offending remote: git remote remove <remote-name>
+  2. Move .claude/ work to a different feature branch in a different repo
+  3. If this remote is genuinely meant to receive .claude/ AND is private + Unity-Lab-AI:
+     run `gh repo view <owner/repo> --json visibility,owner` to verify
+     then re-run the original command — visibility cache holds for 60s
+
+Then reply "done" and the LAW will re-validate.
+```
+
+### Visibility cache schema
+
+`~/.claude/repo-visibility-cache.json`:
+
+```json
+{
+  "https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git": {
+    "visibility": "PRIVATE",
+    "owner": "Unity-Lab-AI",
+    "checked_at": 1778361234
+  },
+  "https://github.com/someone/myfork.git": {
+    "visibility": "PUBLIC",
+    "owner": "someone",
+    "checked_at": 1778361240
+  }
+}
+```
+
+TTL: 60 seconds. Past TTL → fresh API call. Cache miss → fresh API call. Cache writes are atomic (write-temp + rename) to survive concurrent hook invocations.
+
+### Disable / override (LAW violation territory)
+
+There is no sanctioned way to disable Layer 1. Removing or commenting out the hook in `settings.json` is itself a LAW violation. The only sanctioned paths to legitimately commit `.claude/` are:
+
+1. **The repo is already private + Unity-Lab-AI** — the hook passes naturally; no action needed
+2. **Run `/claude-publish`** — operator-driven opt-in that re-verifies via `gh` and removes `.claude/` from gitignore for that project
+
+Anything else (force-push, edit gitignore manually, comment out hook, bypass via subprocess) is a LAW violation per `.claude/CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`.
+
+### Cross-references
+
+- Full LAW body: `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`
+- LAW one-liner: `.claude/CLAUDE.md` LAW INDEX
+- Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
+- Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) — registered in `.claude/settings.json` PreToolUse:Bash chain (after `pre-tool-bash-safety.cjs`)
+- Install-time gitignore: `.claude/scripts/unity-install.sh` + `.claude/scripts/unity-install.ps1`
+- Opt-in publish: `.claude/commands/claude-publish.md`
+- Hooks reference doc: `.claude/agents/hooks.md`
+- GitHub CLI docs: https://cli.github.com/manual/gh_repo_view
 
 ---
 

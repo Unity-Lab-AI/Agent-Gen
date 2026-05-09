@@ -70,6 +70,35 @@ try {
         Write-Host '[unity-install] Installed project-root .gitignore'
     }
 
+    # Layer 0 of the .claude/ IP-boundary defense-in-depth — ensure .gitignore
+    # has a blanket `.claude/` exclude so accidental `git add -A` cannot stage
+    # the workflow into the target project. See CONSTRAINTS.md §LAW — .CLAUDE
+    # WORKFLOW IP BOUNDARY. Idempotent.
+    if (-not (Test-Path -Path $TargetGitignore -PathType Leaf)) {
+        New-Item -ItemType File -Path $TargetGitignore -Force | Out-Null
+    }
+    $existingLines = @()
+    if (Test-Path -Path $TargetGitignore -PathType Leaf) {
+        $existingLines = Get-Content -Path $TargetGitignore -ErrorAction SilentlyContinue
+    }
+    $alreadyExcluded = $false
+    foreach ($line in $existingLines) {
+        if ($line -match '^\.claude/?\s*$') { $alreadyExcluded = $true; break }
+    }
+    if ($alreadyExcluded) {
+        Write-Host '[unity-install] .gitignore already excludes .claude/ — Layer 0 already in place'
+    } else {
+        $block = @(
+            '',
+            '# Unity AI Lab .claude/ workflow — proprietary, never commit to public repos.',
+            '# See .claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY for full text.',
+            '# Removal sanctioned only via /claude-publish after gh confirms private + Unity-Lab-AI.',
+            '.claude/'
+        )
+        Add-Content -Path $TargetGitignore -Value $block
+        Write-Host "[unity-install] Added .claude/ exclude to $TargetGitignore (Layer 0 IP-boundary defense-in-depth)"
+    }
+
     Write-Host ''
     Write-Host '[unity-install] Install complete.'
     Write-Host ''

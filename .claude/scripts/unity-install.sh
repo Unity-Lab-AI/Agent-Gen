@@ -87,6 +87,25 @@ if [ ! -f "$TARGET_DIR/.gitignore" ] && [ -f "$TMPDIR/repo/.gitignore" ]; then
   echo "[unity-install] Installed project-root .gitignore"
 fi
 
+# Layer 0 of the .claude/ IP-boundary defense-in-depth — ensure .gitignore has
+# a blanket `.claude/` exclude so accidental `git add -A` cannot stage the
+# workflow into the target project. See CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW
+# IP BOUNDARY. Idempotent: if `.claude/` is already excluded, skip.
+GITIGNORE="$TARGET_DIR/.gitignore"
+[ ! -f "$GITIGNORE" ] && touch "$GITIGNORE"
+if grep -Eq '^\.claude/?[[:space:]]*$' "$GITIGNORE"; then
+  echo "[unity-install] .gitignore already excludes .claude/ — Layer 0 already in place"
+else
+  {
+    echo ""
+    echo "# Unity AI Lab .claude/ workflow — proprietary, never commit to public repos."
+    echo "# See .claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY for full text."
+    echo "# Removal sanctioned only via /claude-publish after gh confirms private + Unity-Lab-AI."
+    echo ".claude/"
+  } >> "$GITIGNORE"
+  echo "[unity-install] Added .claude/ exclude to $GITIGNORE (Layer 0 IP-boundary defense-in-depth)"
+fi
+
 # Ensure script files have executable bit
 chmod +x "$TARGET_DIR/.claude/hooks/"*.cjs "$TARGET_DIR/.claude/hooks/"*.sh 2>/dev/null || true
 chmod +x "$TARGET_DIR/.claude/scripts/"*.sh 2>/dev/null || true
