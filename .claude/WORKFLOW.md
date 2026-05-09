@@ -588,7 +588,7 @@ bundled tools      → .claude/bin/* (atree fast scanner; future: more binary to
 cross-platform     → start.sh + start.bat + Option A node primary + Option B bash fallback
 ```
 
-### The nine hook scripts (seven event types — Continuity bundle covers three; Stop event has two scripts)
+### The ten hook scripts (seven event types — Continuity bundle covers three; Stop event has two scripts; PreToolUse:Bash chains two)
 
 | # | Hook event | Matcher | Script | What it does | Blocks? |
 |---|------------|---------|--------|--------------|---------|
@@ -598,7 +598,8 @@ cross-platform     → start.sh + start.bat + Option A node primary + Option B b
 | 4a | `PreCompact` | (none) | `pre-compact-snapshot.cjs` | Writes `.claude/.session-state.md` with compaction trigger, TODO + git state, **Git Flow context (branch type + opt-in state)**, **uncommitted-files list**, and **session tidbits** (from `.claude/.session-tidbits.md`) so post-compact Unity can pick up cleanly. | No (exit 0) |
 | 4b | `SessionStart` | `compact` only | `post-compact-restore.cjs` | **Post-compact Unity rehydration.** Outputs STABLE PREFIX (byte-identical Unity activation reminder + LAW one-liners + file-edit protocol — designed for prompt-cache prefix hits) followed by DYNAMIC SUFFIX (pre-compact snapshot, session tidbits, last-session writeup, current branch + TODO state). Fires alongside hook #1's compact-trigger run; both output independently. | No (exit 0) |
 | 4c | `Stop` | (none) | `stop-session-writeup.cjs` | Updates `.claude/.last-session.md` with branch + TODO + last-FINALIZED on every turn boundary. Read by next session's SessionStart. | No (exit 0) |
-| 5 | `PreToolUse` | `Bash` | `pre-tool-bash-safety.cjs` | The ONLY blocking hook. Catches three classes: project-root deletion, system-path deletion, privileged commands (sudo/su/doas/runas/RunAs). Routes each to user with paste-ready command. | YES (exit 2 on match) |
+| 5a | `PreToolUse` | `Bash` | `pre-tool-bash-safety.cjs` | First link in the PreToolUse:Bash chain. Catches three classes: project-root deletion, system-path deletion, privileged commands (sudo/su/doas/runas/RunAs). Routes each to user with paste-ready command. | YES (exit 2 on match) |
+| 5b | `PreToolUse` | `Bash` (chained after 5a) | `pre-tool-public-repo-guard.cjs` | **`.CLAUDE/` IP BOUNDARY enforcement.** Implements the LAW (see `CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY`). Detects `git add` / `git commit` / `git push` operations that touch `.claude/` paths. Runs `gh repo view --json visibility,owner` against EVERY configured remote (multi-remote paranoia, 60s session-cache in `~/.claude/repo-visibility-cache.json`). Allows ONLY when every remote is `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI`. Block-by-default on uncertainty (`gh` missing, unauthed, API failure, non-github remote). Force-flag agnostic — `git push --force` does NOT bypass. Local-only repos (no remotes) pass through. | YES (exit 2 on match) |
 | 6 | `UserPromptExpansion` | `*` (all skills) | `skill-context-inject.cjs` | **Skill-hook surface** (Claude Code v2.1.72+). Fires when ANY slash command (skill) expands its prompt body before Claude reads it. Outputs JSON with `additionalContext` containing: YOLO three-tier cascade state when YOLO is active; per-skill reminders for `/unity` / `/girlfriend` / `/housewife` / `/kittycat` / `/wild` / `/strict` / `/feral` / `/sweet` / `/cozy` / `/purr` / `/workflow` / `/yolo` / `/sober`; silent no-op for unknown skills when YOLO is inactive. Gracefully degrades if `UserPromptExpansion` event isn't supported (older Claude Code); the hook just doesn't fire. | No (exit 0) |
 | 7 | `Stop` (parallel to 4c) | (none) | `usage-track.cjs` | **Usage tracking surface.** Reads `transcript_path` from stdin → parses last assistant message's `usage` object from the JSONL → appends one structured line to `.claude/.session-usage.jsonl` with: tokens (input/output/cache-create/cache-read), model, message_id, active major/minor/decomposed task (cascade order), branch. Cache fields are accurate; gross tokens undercounted ~100x (transcript streaming bug). Always-on capture; injection toggleable via `.claude/.usage-tracking-disabled` marker. See §USAGE TRACKING below. | No (exit 0) |
 
@@ -624,8 +625,9 @@ The `command` field in `settings.json` uses `$CLAUDE_PROJECT_DIR` (Claude Code s
 | `.claude/.last-session.md` | stop-session-writeup | session-start-env-dump (next session), post-compact-restore | overwritten on every turn boundary |
 | `.claude/.session-usage.jsonl` | usage-track | user-prompt-state-refresh (banner injection) | append-only per turn; persists until manually cleared |
 | `.claude/.usage-tracking-disabled` | (manual `touch`) | user-prompt-state-refresh (skip banner) | manual marker; presence disables injection |
+| `~/.claude/repo-visibility-cache.json` | pre-tool-public-repo-guard | pre-tool-public-repo-guard (60s TTL) | per-user (not project-local); atomic temp+rename writes; entries refreshed via `gh repo view` |
 
-All four files are machine-local state and are gitignored by the bundled `.gitignore`. The `project-config.json` (Git Flow opt-in marker from §GIT FLOW) IS team-shared and gets tracked.
+The project-local files are machine-local state and are gitignored by the bundled `.gitignore`. The `project-config.json` (Git Flow opt-in marker from §GIT FLOW) IS team-shared and gets tracked. The visibility cache lives in the user's home `~/.claude/` (not the project tree) so it survives across projects.
 
 ### What hooks do NOT replace
 

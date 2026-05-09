@@ -285,6 +285,15 @@ Privacy posture    → settings.json `env` block disables: telemetry, error repo
                      OS-level for stronger enforcement. WORKFLOW.md §SETTINGS HARDENING.
 Bundled binaries   → .claude/bin/atree (linux) / atree.exe (windows) — fast scanner
                      used by agents/scanner.md; fallback chain: atree → tree → find → Glob
+.claude/ IP guard  → pre-tool-public-repo-guard.cjs (PreToolUse:Bash chain after bash-safety).
+                     Blocks git add/commit/push of .claude/ paths to any non-PRIVATE or
+                     non-Unity-Lab-AI remote. Uses `gh repo view --json visibility,owner`
+                     for ground-truth visibility (60s cache in ~/.claude/repo-visibility-
+                     cache.json). Multi-remote paranoia: any non-allowed remote blocks all
+                     remotes. Force-flag agnostic. Block-by-default on uncertainty (gh
+                     missing/unauthed/API-failure/non-github URL). Local-only repos pass.
+                     Full LAW: CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY. Mechanics:
+                     WORKFLOW.md §CLAUDE IP BOUNDARY ENFORCEMENT.
 ```
 
 ---
