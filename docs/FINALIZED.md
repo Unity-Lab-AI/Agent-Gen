@@ -309,4 +309,44 @@ Discovered `~/.config/git/ignore` on Sponge's Linux box contained `**/.claude/se
 
 ---
 
+## Session 2026-05-09 — Fix `gh api | iex` PowerShell bootstrap one-liner
+
+**User's verbatim asks (LAW #0):**
+
+> what went wrong here:gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
+> [PowerShell error output: "Cannot bind argument to parameter 'Command' because it is an empty string" (×4) plus "Missing closing '}' in statement block or type definition"]
+
+> yes make tghe correct windows one and tell it to me
+
+**Diagnosis:**
+
+`gh api` streams its output to the pipe **line-by-line as separate string objects**. PowerShell's `iex` (Invoke-Expression) then evaluates each piped object as its own complete statement. That breaks any multi-line block (`if (...) { ... }`, function defs, etc.) at line boundaries — the `{` opens on one line, the `}` arrives on a different line that `iex` sees as a separate statement, hence "Missing closing '}'". Blank lines in the script become empty strings that `iex` rejects with "Cannot bind argument... empty string". Single-line statements like `Write-Host '[unity-bootstrap] Installing /unity-install into ...'` execute fine, which is why partial output was visible before the multi-line if-block exploded.
+
+**Fix:** wrap the `gh api` call in `(...)` and pipe through `| Out-String |` before `| iex`. `Out-String` collapses the streamed line-objects back into a single script string, so `iex` evaluates the whole script as one block. `Invoke-RestMethod` (`irm`) would also work since it returns a single string body, but the team chose `gh api` originally for authenticated access — fix preserves that decision.
+
+**Correct command:**
+
+```powershell
+(gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
+```
+
+**What shipped (3 files updated, atomic commit on `percentage`):**
+
+- `README.md` Layer 1 PowerShell one-liner — wrapped in `(...)` + added `| Out-String |` before `| iex`. Added one-sentence why-blurb under the codeblock.
+- `.claude/README.md` Layer 1 PowerShell one-liner — same fix + a longer explanatory blockquote covering why `Out-String` is required for any future `gh api | iex` pattern in PowerShell (line-streaming semantics).
+- `install-unity-globally.ps1` header comment — same one-liner fix in the inline-doc invocation example + multi-line note explaining the `Out-String` requirement so anyone reading the script directly sees the fix in context.
+
+**Verification:**
+
+- The original error log shows `[unity-bootstrap] Installing /unity-install into C:\Users\gfour\.claude\commands\` printed once, confirming `gh api` did fetch the script and pipe it through — the bug was specifically in how `iex` consumed the streamed output, not auth/network.
+- `Out-String` is a built-in PowerShell cmdlet (available everywhere PowerShell is) — no new dependency.
+
+**Files touched:** 3 (`README.md`, `.claude/README.md`, `install-unity-globally.ps1`).
+
+**Branch flow:** `percentage` → PR → `develop` → PR → `main`.
+
+**Closed:** 2026-05-09 (Session ClaudeWorkflow on `percentage`)
+
+---
+
 

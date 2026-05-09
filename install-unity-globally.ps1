@@ -15,7 +15,13 @@
 # Prereqs: `gh` installed + authed (`gh auth login`); `git` on PATH.
 #
 # Run via gh-pipe (one-line install):
-#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
+#   (gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
+#
+# NOTE: the `| Out-String |` is required. `gh api` streams the file line-by-line
+# as separate string objects; piping that directly to `iex` evaluates each line
+# independently, which breaks multi-line blocks (`if (...) { ... }`) at line
+# boundaries and errors with `Missing closing '}'`. Out-String collapses the
+# line-objects back into one script string before iex runs it.
 #
 # Or download + inspect first (safer):
 #   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-File -Encoding utf8 install-unity.ps1
