@@ -154,7 +154,7 @@ The `_fmt_ms` helper picks the most readable unit for the magnitude:
 | 1 hour – 1 day | `HhMMm` | `1h23m` |
 | ≥ 1 day | `DdHHh` | `1d03h` |
 
-Both labels render in cyan (`\033[36m`) so they're visually distinct from the green/yellow/red context bar without competing with the model abbreviation.
+Both labels render in cyan (`\033[36m`) and the duration values themselves render in bright white (`\033[97m`) — keeps the labels visually distinct from the green/yellow/red context bar while ensuring the durations pop on dark terminals (terminal-default fg often shows as light gray, which got lost next to the cyan).
 
 ### Graceful fallback
 

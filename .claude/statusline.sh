@@ -168,10 +168,13 @@ try:
         return f'{dd}d{hh:02d}h'
     uptime_fmt = _fmt_ms(cost.get('total_duration_ms', 0))
     think_fmt = _fmt_ms(cost.get('total_api_duration_ms', 0))
-    # Cyan label + plain value. Leading separator baked in so empty values
-    # don't leave dangling ' | ·' fragments in the echo line.
-    uptime_part = f' | \033[36mup\033[0m {uptime_fmt}' if uptime_fmt else ''
-    think_part = f' · \033[36mthink\033[0m {think_fmt}' if think_fmt else ''
+    # Cyan label + bright-white value (97). Bright white over plain white
+    # so the timer values pop on dark terminals — terminal-default fg
+    # often renders as light gray, which got lost next to the cyan label.
+    # Leading separator baked in so empty values don't leave dangling
+    # ' | ·' fragments in the echo line.
+    uptime_part = f' | \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
+    think_part = f' · \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
     print(f'CTX=\"{ctx_str}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
 except:
