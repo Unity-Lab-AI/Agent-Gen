@@ -265,7 +265,7 @@ Two additional progress bars render between the context bar and the model abbrev
 ### Visual treatment
 
 - Bar style identical to ctx bar — 15-char `#`/`-` fill.
-- Color thresholds identical to ctx — green `<60%`, yellow `60–80%`, red `>80%`.
+- Color thresholds match the shared 6-tier gradient — see §8.12 for the canonical scheme.
 - Label (`5h`, `7d`) renders in cyan (`\033[36m`) matching the `up`/`think` label convention.
 - Section pipe separators bright green (`\033[92m`) per §8 convention.
 
@@ -487,6 +487,65 @@ echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude S
 ### Cross-platform note
 
 `nvidia-smi` ships with the official NVIDIA driver on Linux + Windows + macOS (Tesla cards). The script's `subprocess.run(['nvidia-smi', ...])` call works on every platform that has the driver installed; on AMD/Intel-only systems or driverless installs, the FileNotFoundError handler triggers and "No GPU Detected" renders.
+
+---
+
+## 8.12 Canonical 6-tier color gradient (used by every gauge)
+
+Every percentage / value gauge in the statusline shares the same 6-tier gradient so the eye learns one color-language and reads every segment instantly. Truecolor RGB only (passthrough), so terminal needs 24-bit color support — universal on Windows Terminal, Git Bash mintty, modern Console Host (Win10 v1809+), PowerShell 7+, and any Linux terminal in the last decade.
+
+| Range | Color name | RGB | Hex | Tailwind equivalent |
+|-------|------------|-----|-----|---------------------|
+| ≤ 35% | green | `34, 197, 94` | `#22c55e` | green-500 |
+| 36–45% | green-yellow / lime | `163, 230, 53` | `#a3e635` | lime-400 |
+| 46–55% | yellow | `234, 179, 8` | `#eab308` | yellow-500 |
+| 56–65% | orange | `249, 115, 22` | `#f97316` | orange-500 |
+| 66–79% | red-orange | `234, 88, 12` | `#ea580c` | orange-600 |
+| 80%+ | red | `220, 38, 38` | `#dc2626` | red-600 |
+| `None` / N/A | dim grey | (terminal default) | `\033[90m` | — |
+
+### Applied to
+
+Every percentage-based segment uses `_grad_color(p)`:
+
+| Gauge | Source % |
+|-------|----------|
+| Context window bar | `context_window.used_percentage` |
+| 5h rate-limit bar | `rate_limits.five_hour.used_percentage` |
+| 7d rate-limit bar | `rate_limits.seven_day.used_percentage` |
+| CPU value (line 3) | load_1m / cpu_count × 100 |
+| RAM value (line 3) | (used / total) × 100 |
+| Drive value (line 3) | (used / total) × 100 (high % = drive nearly full) |
+| GPU VRAM (line 4) | (used / total) × 100 |
+| GPU util (line 4) | reported by nvidia-smi |
+
+### Drive note
+
+The drive segment displays "free GB" but the COLOR axis is "% used" (high = bad), matching every other gauge. So `261G free` showing red-orange means the drive is 66–79% full overall, even though the absolute free figure looks plentiful.
+
+### Helper
+
+```python
+def _grad_color(p):
+    if p is None: return '\033[90m'
+    if p <= 35: return '\033[38;2;34;197;94m'
+    if p <= 45: return '\033[38;2;163;230;53m'
+    if p <= 55: return '\033[38;2;234;179;8m'
+    if p <= 65: return '\033[38;2;249;115;22m'
+    if p < 80:  return '\033[38;2;234;88;12m'
+    return '\033[38;2;220;38;38m'
+```
+
+### Test recipe
+
+```bash
+for p in 5 30 36 50 60 70 79 85; do
+  echo -n "  $p% → "
+  echo "{\"context_window\":{\"used_percentage\":$p},\"model\":{\"display_name\":\"Claude Opus 4.7\"}}" | bash .claude/statusline.sh | sed -n '2p' | head -c 100
+  echo
+done
+# Verifies each percentage hits the expected gradient stop.
+```
 
 ---
 

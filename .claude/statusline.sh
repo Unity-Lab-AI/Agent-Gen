@@ -72,6 +72,26 @@ sys.stdout.reconfigure(encoding='utf-8')
 try:
     d = json.load(sys.stdin)
 
+    # 6-tier color gradient applied to every gauge (ctx, 5h, 7d, cpu, ram,
+    # drive %used, vram, gpu util). Truecolor escapes — passthrough only,
+    # works on every modern terminal that supports 24-bit color (Windows
+    # Terminal, Git Bash mintty, Console Host since Win10 v1809, etc.).
+    #   <=35%  green        (#22c55e — Tailwind green-500)
+    #   36-45  green-yellow (#a3e635 — Tailwind lime-400)
+    #   46-55  yellow       (#eab308 — Tailwind yellow-500)
+    #   56-65  orange       (#f97316 — Tailwind orange-500)
+    #   66-79  red-orange   (#ea580c — Tailwind orange-600 / red-orange)
+    #   80+    red          (#dc2626 — Tailwind red-600)
+    #   None / N/A          dim grey \033[90m
+    def _grad_color(p):
+        if p is None: return '\033[90m'
+        if p <= 35: return '\033[38;2;34;197;94m'
+        if p <= 45: return '\033[38;2;163;230;53m'
+        if p <= 55: return '\033[38;2;234;179;8m'
+        if p <= 65: return '\033[38;2;249;115;22m'
+        if p < 80:  return '\033[38;2;234;88;12m'
+        return '\033[38;2;220;38;38m'
+
     # Label = renamed session_name if present, else cwd basename.
     # session_id drives a stable per-session color hash when renamed.
     session_name = (d.get('session_name') or '').strip()
@@ -149,18 +169,11 @@ try:
     except:
         pass
 
-    # Color the bar by threshold:
-    #   <60%  green  (lots of headroom)
-    #   60-80 yellow (warning zone)
-    #   >80%  red    (compaction imminent)
-    if pct > 80: color = '31'
-    elif pct > 60: color = '33'
-    else: color = '32'
-
+    # Bar color from the shared 6-tier _grad_color gradient.
     bar_len = 15
     filled = int(pct / 100 * bar_len)
     bar = '#' * filled + '-' * (bar_len - filled)
-    ctx_str = f'\033[{color}m[{bar}] {pct:.0f}%\033[0m'
+    ctx_str = f'{_grad_color(pct)}[{bar}] {pct:.0f}%\033[0m'
 
     # Rate limit gauges (Pro/Max only — rate_limits block absent on free
     # plans, so each bar self-omits when its used_percentage is missing).
@@ -175,13 +188,10 @@ try:
         except: p = 0
         if p < 0: p = 0
         if p > 100: p = 100
-        if p > 80: c = '31'
-        elif p > 60: c = '33'
-        else: c = '32'
         bl = 15
         fl = int(p / 100 * bl)
         bar = '#' * fl + '-' * (bl - fl)
-        return f'\033[{c}m[{bar}] {p:.0f}%\033[0m'
+        return f'{_grad_color(p)}[{bar}] {p:.0f}%\033[0m'
 
     rate_limits = d.get('rate_limits', {})
     five_h_pct = rate_limits.get('five_hour', {}).get('used_percentage')
@@ -251,17 +261,12 @@ try:
     except Exception:
         pass
 
-    def _sys_color(p):
-        if p is None: return '90'
-        if p > 80: return '31'
-        if p > 60: return '33'
-        return '32'
-
     def _sys_seg(label, value_str, pct):
-        # value_str is dim-grey '—' on N/A; otherwise threshold-colored.
+        # value_str is dim-grey '—' on N/A; otherwise gradient-colored
+        # via the shared _grad_color helper.
         if value_str is None:
             return f'\033[36m{label}\033[0m \033[90m—\033[0m'
-        return f'\033[36m{label}\033[0m \033[{_sys_color(pct)}m{value_str}\033[0m'
+        return f'\033[36m{label}\033[0m {_grad_color(pct)}{value_str}\033[0m'
 
     cpu_val = f'{cpu_pct:.0f}%' if cpu_pct is not None else None
     ram_val = f'{ram_used_gb:.1f}/{ram_total_gb:.1f}G' if ram_pct is not None else None
@@ -348,10 +353,8 @@ try:
             vram_pct = (mu_mb / mt_mb * 100) if mt_mb > 0 else 0
             used_gb = mu_mb / 1024
             total_gb = mt_mb / 1024
-            vc = _sys_color(vram_pct)
-            uc = _sys_color(ut)
             gpu_segs.append(
-                f'\033[36m{short_n}\033[0m \033[{vc}m{used_gb:.1f}/{total_gb:.0f}gb\033[0m \033[{uc}m{ut:.0f}%\033[0m'
+                f'\033[36m{short_n}\033[0m {_grad_color(vram_pct)}{used_gb:.1f}/{total_gb:.0f}gb\033[0m {_grad_color(ut)}{ut:.0f}%\033[0m'
             )
         gpu_line = ' \033[92m|\033[0m '.join(gpu_segs)
 

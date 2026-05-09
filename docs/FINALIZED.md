@@ -163,3 +163,21 @@ Each session entry includes:
 - Render-time impact: cache hit = +1ms (file read + JSON parse). Cache miss every 5s = +150ms once, then sub-ms for the next ~30 renders. Net average overhead: ~5ms.
 - Color thresholds: VRAM `<60% green / 60–80% yellow / >80% red` (matching ctx, rate bars, system stats); util same scale. The 4070 SUPER at 9.5GB / 12GB shows yellow VRAM (~79%); at 100% util shows red.
 - The script DOES write `~/.claude/gpu-cache.json` even on the FileNotFoundError path (writing `{"gpus": []}`). This intentional — caches the "no GPU" result for 5 seconds so the script doesn't shell-out repeatedly on every render in a no-GPU environment.
+
+### 6-tier color gradient applied to every gauge
+
+**Verbatim user quote:** "All the numbers and percentages and bars should be green <= 35% should be a green-ish yellow between 36% and 45%, yellow at 45% - 55%, orange at 56% - 65% red-orange at 65%-79% and red at 80%+ drive free space, and vram should follow the same scheme of color changing"
+
+**Files touched:**
+- `.claude/statusline.sh` — new `_grad_color(p)` helper at the top of the try block returning truecolor escape codes for the 6-tier gradient (green-500 / lime-400 / yellow-500 / orange-500 / orange-600 / red-600 RGB stops). Every gauge call site updated:
+  - ctx_str: previous inline 3-tier (`>80 red, >60 yellow, else green`) replaced with `_grad_color(pct)`.
+  - `_pct_bar(p)` (5h + 7d bars): same replacement.
+  - `_sys_seg(label, value, pct)`: previous `_sys_color(p)` removed entirely; cyan label + `_grad_color(pct)` value now.
+  - GPU per-card render: `_sys_color(vram_pct)` and `_sys_color(ut)` both replaced with `_grad_color(...)`.
+  - `_sys_color` function deleted (unused after refactor).
+- `docs/STATUSLINE.md` — new §8.12 "Canonical 6-tier color gradient (used by every gauge)" with the full RGB / hex / Tailwind-equivalent table, applied-to gauge list, drive-axis note (color tracks `% used`, label shows `GB free`), helper code, test recipe. §8.7 line "Color thresholds identical to ctx — green `<60%`, yellow `60–80%`, red `>80%`" rewritten to point at §8.12 as canonical source.
+
+**Closure notes:**
+- 10 gradient stops verified via test loop (5%, 30%, 36%, 40%, 50%, 60%, 70%, 79%, 85%, 95%) — each percentage produces the expected RGB escape code.
+- Truecolor passthrough — works on Windows Terminal, Git Bash mintty, Console Host since Win10 v1809, PowerShell 7+, and any modern Linux terminal. Doc-silent in CC docs but reliable in practice.
+- Tailwind-equivalent palette chosen for visual harmony — these stops are commonly used in modern UI design and look clean at every brightness level.
