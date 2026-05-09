@@ -154,7 +154,9 @@ The `_fmt_ms` helper picks the most readable unit for the magnitude:
 | 1 hour – 1 day | `HhMMm` | `1h23m` |
 | ≥ 1 day | `DdHHh` | `1d03h` |
 
-Both labels render in cyan (`\033[36m`) so they're visually distinct from the green/yellow/red context bar without competing with the model abbreviation.
+Both labels render in cyan (`\033[36m`) and the duration values themselves render in bright white (`\033[97m`) — keeps the labels visually distinct from the green/yellow/red context bar while ensuring the durations pop on dark terminals (terminal-default fg often shows as light gray, which got lost next to the cyan).
+
+All separators — the `|` pipes between major sections AND the `·` middle-dot between uptime and thinking — render in bright green (`\033[92m`) so they visually frame each segment without competing with any segment's own color. The third pipe (before `up`) is baked into the `uptime_part` f-string and the middle-dot is baked into `think_part`, so both auto-omit when no cost block is present, keeping the line clean on fresh sessions.
 
 ### Graceful fallback
 
@@ -166,6 +168,461 @@ If the `cost` block is absent, malformed, or both values are zero (fresh session
 echo '{"context_window":{"used_percentage":45},"model":{"display_name":"Claude Opus 4.7"},"cost":{"total_duration_ms":5012345,"total_api_duration_ms":161234}}' | bash .claude/statusline.sh
 # → [Project] | [######---------] 45% | O4.7 | up 1h23m · think 2m41s
 ```
+
+---
+
+## 8.5 Label & color — auto-adapt to `/rename`
+
+The leading `[Label]` segment is no longer hardcoded to `basename(cwd)` — it auto-adapts to Claude Code's `/rename` slash command and gives every session a stable, distinct color.
+
+### Label rules
+
+| State | Label source | JSON field | Example |
+|-------|--------------|------------|---------|
+| Session has been `/rename`d | renamed value | `session_name` (top-level) | `[UnityWorkflow]` |
+| No rename set | cwd basename (original behavior) | derived from `cwd` | `[UAL-ClaudeWorkflow]` |
+
+### Color rules
+
+| State | Color source | Result |
+|-------|--------------|--------|
+| Renamed | hash(`session_id`) → 12-color palette | Stable per session, distinct across concurrent sessions |
+| Un-renamed | hardcoded magenta `\033[35m` | Original Unity-AI-Lab pink (brand `#ff4d9a` 4-bit fallback) |
+
+The 12-color palette is the 6 normal + 6 bright ANSI foreground colors (excluding black/white): `91 92 93 94 95 96 31 32 33 34 35 36`. Hash function is MD5 of `session_id` UTF-8 bytes, indexed by the first byte modulo 12.
+
+### Why hash-based instead of reading `/color`?
+
+Anthropic's `/color <name>` slash command does **NOT** persist anywhere readable to a status line script. Verified empirically by capturing the live statusline JSON stdin (Claude Code 2.1.138), inspecting `~/.claude/sessions/<pid>.json`, `~/.claude.json`, and the project-level `.claude/` directory — no field carries the user-set color through to scripts. Whatever `/color` does (theme accent? in-memory chrome?) stays inside the running CC process.
+
+So the label color you see in *this* statusline won't necessarily match whatever color Claude Code's sidebar shows for the same session — the sidebar's mechanism is opaque. The hash gives an automatic, stable, distinct color per session without any manual configuration. Sister behavior: same `session_id` always picks the same palette slot, so re-attaching to a long-running session preserves visual identity.
+
+### Test recipes for 8.5
+
+```bash
+# Renamed session → hash-derived color (bright green for this id)
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7 (1M context)"},"session_name":"UnityWorkflow","session_id":"123236a1-13b0-4dd2-8c8d-b07585e8c5ee","cost":{"total_duration_ms":554072,"total_api_duration_ms":290840}}' | bash .claude/statusline.sh
+# → [UnityWorkflow] (bright green) | [#--------------] 8% | O4.7 | up 9m14s · think 4m50s
+
+# No rename → cwd basename + magenta (original behavior preserved)
+echo '{"context_window":{"used_percentage":75},"model":{"display_name":"Claude Haiku 4.5"},"session_id":"00000000-0000-0000-0000-000000000000"}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] (magenta) | [###########----] 75% | H4.5
+```
+
+---
+
+## 8.6 Model abbreviation + family color
+
+The model segment is colored by family, with a unified `<Letter><Version>` abbreviation pattern so different model families stay visually distinct at a glance. Detection runs against both `model.display_name` and `model.id` so providers that surface only one of the two (e.g., MiniMax via `ANTHROPIC_BASE_URL` override) still classify correctly.
+
+| Family | Abbrev | Color | ANSI escape | Source |
+|--------|--------|-------|-------------|--------|
+| Opus | `O<ver>` (e.g. `O4.7`) | gold | `\033[38;2;255;215;0m` (truecolor `#FFD700`) | `display_name` contains `Opus` |
+| Sonnet | `S<ver>` (e.g. `S4.6`) | bright red | `\033[91m` | `display_name` contains `Sonnet` |
+| Haiku | `H<ver>` (e.g. `H4.5`) | bright blue | `\033[94m` | `display_name` contains `Haiku` |
+| MiniMax | `M<ver>` (e.g. `M2.7`) | bright magenta (purple-ish) | `\033[95m` | regex `(?i)MiniMax-?M?(\d+(?:\.\d+)?)` against `display_name + id` |
+| Other | full `display_name` unchanged | terminal default | `\033[0m` | fallback |
+
+**Why gold uses truecolor:** Named ANSI has no gold or orange. Closest named is bright yellow (93), which reads more lemon than gold. `#FFD700` (CSS `gold`) renders cleanly on any 24-bit-color terminal — the same passthrough scope the docs warn is silent on but works in practice. If you're on a terminal that doesn't speak truecolor, Opus may degrade to the nearest 256-color or render as terminal default; downgrade gracefully via the existing `\033[0m` reset that wraps every segment.
+
+**MiniMax detection:** the API config at `~/.claude/minimax.json` sets `ANTHROPIC_MODEL=MiniMax-M2.7` (typical naming), so the regex catches `MiniMax-M2.7`, `MiniMax-2.7`, `MiniMaxM2.7`, etc. The version capture group becomes the digits after the optional `M`.
+
+### Test recipes for 8.6
+
+```bash
+# Opus → gold
+echo '{"context_window":{"used_percentage":8},"model":{"id":"claude-opus-4-7","display_name":"Claude Opus 4.7 (1M context)"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] (magenta) | [#--------------] 8% | O4.7 (gold)
+
+# Sonnet → bright red
+echo '{"context_window":{"used_percentage":42},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 42% | S4.6 (bright red)
+
+# Haiku → bright blue
+echo '{"context_window":{"used_percentage":30},"model":{"display_name":"Claude Haiku 4.5"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 30% | H4.5 (bright blue)
+
+# MiniMax → bright magenta
+echo '{"context_window":{"used_percentage":55},"model":{"id":"MiniMax-M2.7","display_name":"MiniMax-M2.7"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 55% | M2.7 (bright magenta)
+```
+
+---
+
+## 8.7 Rate-limit usage bars — 5h session + 7d weekly
+
+Two additional progress bars render between the context bar and the model abbreviation, sourced from the `rate_limits` block of the statusline JSON:
+
+```
+[Label] | [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z% | Model | up · think
+```
+
+| Bar | JSON field | Window | Use case |
+|-----|------------|--------|----------|
+| `5h [bar] Y%` | `rate_limits.five_hour.used_percentage` | rolling 5-hour | "current session" pacing — shows how close you are to the 5h Pro/Max cap |
+| `7d [bar] Z%` | `rate_limits.seven_day.used_percentage` | rolling 7-day | weekly burn — long-arc usage tracking |
+
+### Visual treatment
+
+- Bar style identical to ctx bar — 15-char `#`/`-` fill.
+- Color thresholds match the shared 6-tier gradient — see §8.12 for the canonical scheme.
+- Label (`5h`, `7d`) renders in cyan (`\033[36m`) matching the `up`/`think` label convention.
+- Section pipe separators bright green (`\033[92m`) per §8 convention.
+
+### Self-omitting fallback
+
+The `rate_limits` block is **absent on free plans** and may not be populated immediately on every render. Each bar self-omits independently when its `used_percentage` is missing — if only `five_hour` is present, only the 5h bar renders; if neither, both segments disappear and the line collapses cleanly to the original ctx-bar-then-model layout.
+
+### Test recipes
+
+```bash
+# Both bars present
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"},"rate_limits":{"five_hour":{"used_percentage":56},"seven_day":{"used_percentage":70}}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [#--] 8% | 5h [######-] 56% | 7d [#######-] 70% | O4.7
+
+# Free plan / no rate_limits → both bars auto-omit
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [#######-] 50% | S4.6
+```
+
+### Footgun fixed during implementation
+
+Backticks inside Python comments embedded in the `python3 -c "..."` heredoc trigger bash command substitution before Python ever sees them. A comment like `# rate_limits block absent on free plans` (with backticks around `rate_limits`) caused bash to try to execute `rate_limits` as a shell command. Fix: avoid backticks anywhere in the Python heredoc — use plain text or single quotes for code-like terms in comments.
+
+---
+
+## 8.8 Two-line static layout
+
+As of the multi-line layout commit, the statusline renders across **two terminal rows** instead of one to keep individual lines readable as more sections get added (git branch, system stats, etc. are planned).
+
+```
+Line 1:  [Label] | up Xs · think Ys | Model
+Line 2:  [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z%
+```
+
+### Why two lines
+
+- A single line was ~110–130 chars with everything present, wrapping awkwardly on narrow terminals.
+- Multi-line is officially documented as supported by Claude Code; docs warn it's "more prone to rendering issues than single-line plain text" but in practice it works reliably.
+- Splitting by **semantic group** keeps each line glanceable: line 1 is identity + activity (who/what/how-long), line 2 is gauges (resource usage).
+
+### Layout rules
+
+- **Line 1** — `[Label]` then UPTIME + THINK (auto-omits if no cost block) then `Model`. When timers are absent, falls back to a single bright-green pipe directly between label and model.
+- **Line 2** — context bar + 5h + 7d, in that order. Each rate-limit bar self-omits independently when its `used_percentage` is missing (free-plan friendly). When all are absent, line 2 is just the context bar by itself.
+- **Banner safety** — Claude Code's weekly-limit banner sometimes overlaps the END of the last rendered line. With multi-line, that risk shifts to line 2's tail (currently `7d`), which is less critical than ctx — so layout intentionally puts the most-critical-now gauge (`ctx`) at the start of line 2.
+
+### Implementation note
+
+Both lines composed in bash from the eval'd Python output. The conditional fallback for line 1 (`if [ -n "$UPTIME" ]`) avoids a double-pipe when timers self-omit, since UPTIME has its leading separator baked into the f-string for the original single-line auto-omit semantics.
+
+### Test recipe for 8.8
+
+```bash
+# Full render → two lines
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7 (1M context)"},"session_name":"UnityWorkflow","session_id":"123236a1-13b0-4dd2-8c8d-b07585e8c5ee","cost":{"total_duration_ms":554072,"total_api_duration_ms":290840},"rate_limits":{"five_hour":{"used_percentage":56},"seven_day":{"used_percentage":70}}}' | bash .claude/statusline.sh
+# Line 1 → [UnityWorkflow] | up 9m14s · think 4m50s | O4.7
+# Line 2 → [#--] 8% | 5h [######-] 56% | 7d [#######-] 70%
+
+# Fresh session → both lines collapse to minimal content
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 1 → [UAL-ClaudeWorkflow] | S4.6
+# Line 2 → [#######-] 50%
+```
+
+---
+
+## 8.9 Git branch + state-aware coloring
+
+Line 1 ends with the current git branch, colored both by **branch type** and **working-tree state**. Computed in bash (not Python) since `git` shell calls are quick (~5–20ms each) and avoid the round-trip through the Python heredoc.
+
+```
+Line 1:  [Label] | up · think | Model | branch
+                                        ^^^^^^
+                                        color + suffix encode state
+```
+
+### Branch-type colors (applied when state is "pushed")
+
+| Branch | Color | RGB | Hex | Tailwind |
+|--------|-------|-----|-----|----------|
+| `main` / `master` | blue | `59, 130, 246` | `#3b82f6` | blue-500 |
+| `develop` | purple | `168, 85, 247` | `#a855f7` | purple-500 |
+| anything else (`feature/*`, `hotfix/*`, `release/*`, `bugfix/*`, etc.) | green | `34, 197, 94` | `#22c55e` | matches gradient ≤35% |
+
+### State markers (override branch-type color when applicable)
+
+| State | Suffix | Color | Detection |
+|-------|--------|-------|-----------|
+| **pushed** (clean tree, in sync with remote) | (none) | branch-type color | `git status --porcelain` empty AND `git rev-list --count @{u}..HEAD` returns 0 |
+| **ahead** (clean tree, local commits not on remote, OR no upstream) | `+` | orange `#f97316` (matches gradient 56–65%) | clean tree AND (`@{u}..HEAD` count > 0 OR no upstream tracker) |
+| **dirty** (uncommitted changes — staged or unstaged) | `*` | red `#dc2626` (matches gradient 80%+) | `git status --porcelain` non-empty |
+
+### State priority
+
+`dirty` > `ahead` > `pushed`. Any uncommitted change (even a `git add`-staged file with no working-tree modification) triggers red `*`. Once you commit, the tree becomes clean and either orange `+` (commits not yet pushed) or branch-type color (in sync with remote) applies.
+
+### Color rationale
+
+The state colors deliberately reuse the **same RGB values** from the canonical 6-tier gradient (§8.12) — orange for `+` matches the 56–65% gradient stop, red for `*` matches the 80%+ stop. This keeps the whole statusline on a unified palette: green = healthy, orange = action needed (push or commit), red = problem (uncommitted work).
+
+Branch-type colors (blue / purple) are only used when state is "pushed" and add a visual cue for which long-lived branch you're on without consuming horizontal space for an icon.
+
+### Self-omit fallback
+
+When `git rev-parse` fails (not in a repo, git not installed, etc.), `GIT_PART` stays empty and line 1 falls through cleanly to `[Label] | Model` with no dangling separator. Safe to drop the `.claude/` template into non-git directories.
+
+### Test recipe
+
+```bash
+# Throwaway repo to verify each state combination:
+TMPREPO=$(mktemp -d) && TMPREMOTE=$(mktemp -d)
+git -C "$TMPREMOTE" init -q --bare
+cd "$TMPREPO" && git init -q -b main
+git remote add origin "$TMPREMOTE"
+echo hi > x && git add x && git -c user.email=t@t -c user.name=t commit -qm i && git push -qu origin main
+# main, clean, pushed → BLUE
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
+
+echo dirty >> x  # modify
+# main, dirty → RED *
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
+
+git -c user.email=t@t -c user.name=t commit -qam ahead
+# main, ahead (committed but not pushed) → ORANGE +
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | bash /path/to/.claude/statusline.sh
+```
+
+---
+
+## 8.10 Line 3 — system stats (CPU / RAM / drive)
+
+A new third row surfaces local machine resource usage so you can see at a glance whether your dev box is under stress while you're working:
+
+```
+Line 3:  cpu N% | ram U/TG | drive NG free
+```
+
+| Segment | Source (Linux) | Source (Windows) | Format |
+|---------|----------------|------------------|--------|
+| `cpu N%` | `/proc/loadavg` 1-minute load ÷ `os.cpu_count()` × 100 (clamped to 100%) | wmic + sidecar cache (deferred — see below) | percentage |
+| `ram U/TG` | `/proc/meminfo` `MemTotal` and `MemAvailable` | wmic + sidecar cache (deferred) | used / total in GB |
+| `drive NG free` | `shutil.disk_usage('.')` | `shutil.disk_usage('.')` (cross-platform stdlib) | free space in GB |
+
+### Why this approach
+
+- **Linux uses stdlib only** — `/proc/*` reads + `shutil.disk_usage` are sub-millisecond, fast enough to run every render with no caching infrastructure.
+- **Windows CPU/RAM deferred** — `wmic` shell-outs are ~200–500ms, blowing the sub-100ms render budget per Claude Code docs. Cross-platform parity will land in a follow-up commit using a sidecar JSON cache (`~/.claude/syscache.json`) refreshed in the background. Until then, Windows shows `cpu —` and `ram —` (dim grey) while disk works correctly.
+- **Disk works everywhere** — `shutil.disk_usage` is cross-platform stdlib and reads the filesystem of the script's CWD. Claude Code invokes the statusline with the project root as CWD, so the segment naturally reports the project's drive.
+
+### Color rules
+
+Same green / yellow / red threshold as the ctx and rate-limit bars: `<60%` green, `60–80%` yellow, `>80%` red. Cyan label (`cpu`, `ram`, `drive`) matching the `up` / `think` / `5h` / `7d` label convention.
+
+For disk specifically, the threshold is on **percent used** (matching the other gauges' semantics — high % = bad). `261G free` showing yellow means the drive is 60–80% full overall, even though the absolute free figure looks plentiful.
+
+### Self-omitting fallback
+
+If a stat fails (e.g., `/proc/loadavg` unreadable, no `MemAvailable` in older kernels, disk path inaccessible), that single segment renders as a dim-grey `—` placeholder while the rest of line 3 stays intact. If the entire Python block fails (parse error, etc.), `SYS3` ends up empty and the bash `[ -n "$LINE3" ] && echo` guard skips line 3 entirely — degrades to two-line layout cleanly.
+
+### Test recipes
+
+```bash
+# Linux full render
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"}}' | bash .claude/statusline.sh
+# Line 3 → cpu 13% | ram 11.4/61.6G | drive 261G free
+
+# Broken JSON → line 3 self-omits via SYS3=""
+echo 'garbage' | bash .claude/statusline.sh
+# Lines 1-2 render with ? placeholders, line 3 absent
+```
+
+---
+
+## 8.11 Line 4 — GPU(s) via nvidia-smi (with sidecar cache)
+
+A fourth row surfaces every NVIDIA GPU on the host with VRAM usage + utilization. Falls back to red `No GPU Detected` when nvidia-smi is missing OR returns an empty GPU list.
+
+```
+Line 4:  4070s 0.3/12gb 5% | 2060 0.0/6gb 0%
+         ^^^^^ ^^^^^^^^ ^^   ^^^^ ^^^^^^^ ^^
+         short used/   util  next gpu
+         name  total
+```
+
+### Source command + parsing
+
+```
+nvidia-smi --query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits
+```
+
+Returns one CSV row per GPU: `<name>, <mem_used_mb>, <mem_total_mb>, <util_pct>`. Parsed into a `gpus[]` list of dicts.
+
+### Sidecar cache strategy
+
+`nvidia-smi` takes ~150ms — too slow to call every render (sub-100ms render budget per CC docs). So:
+
+- Cache lives at `~/.claude/gpu-cache.json` with **5-second TTL**.
+- On render: if cache exists AND mtime <5s, read JSON (sub-ms).
+- On cache miss / staleness: shell-out to nvidia-smi (timeout=2s), parse, write fresh cache. Blocks once, then 5s of fast renders.
+- On `FileNotFoundError` (nvidia-smi not on PATH), `TimeoutExpired`, or `returncode != 0`: write empty `{"gpus": []}` to cache so subsequent renders don't re-attempt for 5s.
+
+### Short-name extraction
+
+NVIDIA's full names are long (`NVIDIA GeForce RTX 4070 SUPER`) — the script extracts the model digits + suffix:
+
+| Full name | Regex match | Short |
+|-----------|-------------|-------|
+| `NVIDIA GeForce RTX 4070 SUPER` | `RTX 4070 SUPER` | `4070s` |
+| `NVIDIA GeForce RTX 3090 Ti` | `RTX 3090 Ti` | `3090ti` |
+| `NVIDIA GeForce RTX 2060` | `RTX 2060` | `2060` |
+| (no match) | n/a | first 12 chars |
+
+Pattern: `(?:RTX|GTX|GT|Tesla|Quadro)\s*(\w+)\s*(SUPER|Ti)?` (case-insensitive). Suffix maps `SUPER→s`, `Ti→ti`.
+
+### Color rules
+
+- **Short name** in cyan (matching label convention).
+- **VRAM** color-coded by `% used` of total — green/yellow/red threshold.
+- **Util %** color-coded — green/yellow/red threshold (same as ctx + system bars).
+- **No-GPU fallback** in red (`\033[31m`) so it stands out as a not-normal state.
+
+### Self-omitting fallback
+
+When the entire Python block fails (parse error etc.), `GPU=""` and bash's `[ -n "$LINE4" ] && echo` guard skips line 4 entirely — degrades to three-line layout.
+
+### Test recipes
+
+```bash
+# With NVIDIA card present → cache populates, GPU(s) render
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"}}' | bash .claude/statusline.sh
+# Line 4 → 4070s 9.5/12gb 100% | 2060 0.0/6gb 0%
+
+# Force empty-cache path → 'No GPU Detected'
+echo '{"gpus": []}' > ~/.claude/gpu-cache.json
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 4 → No GPU Detected (red)
+
+# Cache regeneration after deletion → next render shells out + repopulates
+rm -f ~/.claude/gpu-cache.json
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 4 → 4070s 9.5/12gb 94% | 2060 0.0/6gb 0%
+```
+
+### Cross-platform note
+
+`nvidia-smi` ships with the official NVIDIA driver on Linux + Windows + macOS (Tesla cards). The script's `subprocess.run(['nvidia-smi', ...])` call works on every platform that has the driver installed; on AMD/Intel-only systems or driverless installs, the FileNotFoundError handler triggers and "No GPU Detected" renders.
+
+---
+
+## 8.12 Canonical 6-tier color gradient (used by every gauge)
+
+Every percentage / value gauge in the statusline shares the same 6-tier gradient so the eye learns one color-language and reads every segment instantly. Truecolor RGB only (passthrough), so terminal needs 24-bit color support — universal on Windows Terminal, Git Bash mintty, modern Console Host (Win10 v1809+), PowerShell 7+, and any Linux terminal in the last decade.
+
+| Range | Color name | RGB | Hex | Tailwind equivalent |
+|-------|------------|-----|-----|---------------------|
+| ≤ 35% | green | `34, 197, 94` | `#22c55e` | green-500 |
+| 36–45% | green-yellow / lime | `163, 230, 53` | `#a3e635` | lime-400 |
+| 46–55% | yellow | `234, 179, 8` | `#eab308` | yellow-500 |
+| 56–65% | orange | `249, 115, 22` | `#f97316` | orange-500 |
+| 66–79% | red-orange | `234, 88, 12` | `#ea580c` | orange-600 |
+| 80%+ | red | `220, 38, 38` | `#dc2626` | red-600 |
+| `None` / N/A | dim grey | (terminal default) | `\033[90m` | — |
+
+### Applied to
+
+Every percentage-based segment uses `_grad_color(p)`:
+
+| Gauge | Source % |
+|-------|----------|
+| Context window bar | `context_window.used_percentage` |
+| 5h rate-limit bar | `rate_limits.five_hour.used_percentage` |
+| 7d rate-limit bar | `rate_limits.seven_day.used_percentage` |
+| CPU value (line 3) | load_1m / cpu_count × 100 |
+| RAM value (line 3) | (used / total) × 100 |
+| Drive value (line 3) | (used / total) × 100 (high % = drive nearly full) |
+| GPU VRAM (line 4) | (used / total) × 100 |
+| GPU util (line 4) | reported by nvidia-smi |
+
+### Drive note
+
+The drive segment displays "free GB" but the COLOR axis is "% used" (high = bad), matching every other gauge. So `261G free` showing red-orange means the drive is 66–79% full overall, even though the absolute free figure looks plentiful.
+
+### Helper
+
+```python
+def _grad_color(p):
+    if p is None: return '\033[90m'
+    if p <= 35: return '\033[38;2;34;197;94m'
+    if p <= 45: return '\033[38;2;163;230;53m'
+    if p <= 55: return '\033[38;2;234;179;8m'
+    if p <= 65: return '\033[38;2;249;115;22m'
+    if p < 80:  return '\033[38;2;234;88;12m'
+    return '\033[38;2;220;38;38m'
+```
+
+### Test recipe
+
+```bash
+for p in 5 30 36 50 60 70 79 85; do
+  echo -n "  $p% → "
+  echo "{\"context_window\":{\"used_percentage\":$p},\"model\":{\"display_name\":\"Claude Opus 4.7\"}}" | bash .claude/statusline.sh | sed -n '2p' | head -c 100
+  echo
+done
+# Verifies each percentage hits the expected gradient stop.
+```
+
+---
+
+## 8.13 Canonical bar geometry — Unicode block-fill cells
+
+Every progress bar (ctx, 5h, 7d) renders as a **16-cell × 8-sub-level** Unicode block bar — total resolution 128 sub-cells, **~0.78% per sub-step** vs. the previous 6.67% per cell with `#`/`-`.
+
+```
+0%    [                ] 0%      empty (16 spaces)
+25%   [████            ] 25%     4 full + 12 empty
+50%   [████████        ] 50%     8 full + 8 empty
+79%   [████████████▋   ] 79%     12 full + ▋ + 3 empty
+100%  [████████████████] 100%    16 full
+```
+
+### Glyph ladder (8 sub-levels per cell)
+
+| Fraction | Char | Code |
+|----------|------|------|
+| 0/8 | ` ` (space) | `U+0020` |
+| 1/8 | `▏` | `U+258F` |
+| 2/8 | `▎` | `U+258E` |
+| 3/8 | `▍` | `U+258D` |
+| 4/8 | `▌` | `U+258C` |
+| 5/8 | `▋` | `U+258B` |
+| 6/8 | `▊` | `U+258A` |
+| 7/8 | `▉` | `U+2589` |
+| 8/8 | `█` | `U+2588` |
+
+### Helper
+
+```python
+def _make_bar(p, cells=16):
+    LEVELS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉']
+    sub_total = cells * 8
+    filled_sub = max(0, min(sub_total, int(round(p / 100 * sub_total))))
+    full = filled_sub // 8
+    rem = filled_sub % 8
+    if full >= cells:
+        return '█' * cells
+    return '█' * full + LEVELS[rem] + ' ' * (cells - full - 1)
+```
+
+### Why 16 × 8
+
+- 16 cells × 8 sub-levels = 128 total sub-cells, **100/128 = 0.78125% granularity**.
+- 16 cells fits comfortably under the model + git segments on line 1 alongside two more 16-cell bars on line 2.
+- 8 sub-levels matches the standard Unicode block-fill range (`U+2588` through `U+258F`) — every modern terminal renders them correctly.
+
+### Bash eval-quoting footgun (caught + fixed)
+
+When implementing the multi-space padding (`[████            ]`), the bars rendered as `[████ ]` — 11 trailing spaces collapsed into 1. Root cause: the script's `eval $(echo "$input" | python3 -c "...")` had **unquoted** command substitution. Bash word-splits `$(...)` output, replacing whitespace runs with single field separators before `eval` sees it. Fix: change to `eval "$(...)"` — the outer double quotes treat the substitution result as a single string, preserving whitespace inside the quoted variable assignments. This was a latent bug that didn't manifest with the old `#`/`-` bars (no consecutive spaces) but broke immediately with the new space-padded layout.
 
 ---
 
@@ -182,10 +639,14 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 | **Token gauge** | `context_window.total_input_tokens` / `context_window_size` | `47k/200k` | Absolute token count beside the percentage |
 | **Effort indicator** | `effort.level` | gradient blocks `░▒▓` for low/med/high/xhigh/max | What thinking budget the user has set |
 | **Extended thinking badge** | `thinking.enabled` | `🧠` if true, omit if false | Quick visual when extended thinking is active |
-| **5-hour rate limit** | `rate_limits.five_hour.used_percentage` | `5h: 23%` (yellow >70%, red >90%) | Pro/Max users — pace warning |
-| **7-day rate limit** | `rate_limits.seven_day.used_percentage` | `7d: 11%` | Long-arc usage tracking |
-| **Session name** | `session_name` | `«recovery-branch»` if set | Context-switching between named sessions |
 | **Model variant** | `model.id` | full ID on hover, shortened in line | Distinguish 1M-context from standard |
+
+> ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
+> ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
+> ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
+> ✓ **Implemented**: git branch with state-aware coloring (main blue / develop purple / feature green; pushed = branch color, ahead = orange `+`, dirty = red `*`). See §8.9 above for the full state matrix.
+> ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows CPU/RAM deferred to a wmic-cache follow-up, disk works cross-platform. See §8.10 above for fallback behavior.
+> ✓ **Implemented**: line 4 GPU stats via nvidia-smi with 5s sidecar cache. Multi-GPU pipe-separated; "No GPU Detected" red fallback when nvidia-smi missing or empty. See §8.11 above for short-name extraction + cache strategy.
 
 ### Derived from `transcript_path` (single file read per render)
 
@@ -202,8 +663,6 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 
 | Capability | Source | Display idea |
 |------------|--------|--------------|
-| **Git branch** | `git rev-parse --abbrev-ref HEAD` | `[main]` / `[feature/foo]` |
-| **Dirty working tree** | `git status --porcelain` non-empty | `*` suffix on branch name |
 | **Last commit hash** | `git rev-parse --short HEAD` | `@a3f8c1` |
 | **Commits ahead/behind** | `git rev-list --count @{u}..HEAD` | `↑3 ↓1` |
 | **TODO open count** | grep `[~]` or `[ ]` markers in `docs/TODO.md` | `todo: 7` |
