@@ -67,7 +67,7 @@ if [ -n "$GIT_BRANCH" ]; then
 fi
 
 eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
-import sys, json, os, hashlib
+import sys, json, os, hashlib, re, shutil, platform
 sys.stdout.reconfigure(encoding='utf-8')
 try:
     d = json.load(sys.stdin)
@@ -102,7 +102,6 @@ try:
     # Detection checks both display_name AND id so providers that surface
     # only one or the other (e.g., minimax via ANTHROPIC_BASE_URL override
     # naming the model 'MiniMax-M2.7') still classify correctly.
-    import re
     model_block = d.get('model', {})
     model_disp = model_block.get('display_name', '?')
     model_id = model_block.get('id', '')
@@ -217,11 +216,70 @@ try:
     uptime_part = f' \033[92m|\033[0m \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
     think_part = f' \033[92m·\033[0m \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
-    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
+    # Line 3: cpu | ram | drive free space.
+    # Linux uses /proc + shutil stdlib for sub-millisecond reads. Windows
+    # CPU/RAM deferred to a follow-up commit (wmic + sidecar cache);
+    # disk works cross-platform via shutil.disk_usage.
+    cpu_pct = None
+    if platform.system() == 'Linux':
+        try:
+            with open('/proc/loadavg') as f_la:
+                load_1m = float(f_la.read().split()[0])
+            ncpu = os.cpu_count() or 1
+            cpu_pct = min(100.0, (load_1m / ncpu) * 100.0)
+        except Exception:
+            pass
+
+    ram_used_gb = ram_total_gb = ram_pct = None
+    if platform.system() == 'Linux':
+        try:
+            with open('/proc/meminfo') as f_mi:
+                mi = f_mi.read()
+            total_kb = int(re.search(r'MemTotal:\s+(\d+)', mi).group(1))
+            avail_kb = int(re.search(r'MemAvailable:\s+(\d+)', mi).group(1))
+            ram_total_gb = (total_kb * 1024) / (1024**3)
+            ram_used_gb = ((total_kb - avail_kb) * 1024) / (1024**3)
+            ram_pct = (ram_used_gb / ram_total_gb) * 100 if ram_total_gb > 0 else 0
+        except Exception:
+            pass
+
+    disk_free_gb = disk_pct = None
+    try:
+        du = shutil.disk_usage('.')
+        disk_free_gb = du.free / (1024**3)
+        disk_pct = (du.used / du.total) * 100 if du.total > 0 else 0
+    except Exception:
+        pass
+
+    def _sys_color(p):
+        if p is None: return '90'
+        if p > 80: return '31'
+        if p > 60: return '33'
+        return '32'
+
+    def _sys_seg(label, value_str, pct):
+        # value_str is dim-grey '—' on N/A; otherwise threshold-colored.
+        if value_str is None:
+            return f'\033[36m{label}\033[0m \033[90m—\033[0m'
+        return f'\033[36m{label}\033[0m \033[{_sys_color(pct)}m{value_str}\033[0m'
+
+    cpu_val = f'{cpu_pct:.0f}%' if cpu_pct is not None else None
+    ram_val = f'{ram_used_gb:.1f}/{ram_total_gb:.1f}G' if ram_pct is not None else None
+    disk_val = f'{disk_free_gb:.0f}G free' if disk_free_gb is not None else None
+
+    sys_line = (
+        f'{_sys_seg(\"cpu\", cpu_val, cpu_pct)}'
+        f' \033[92m|\033[0m '
+        f'{_sys_seg(\"ram\", ram_val, ram_pct)}'
+        f' \033[92m|\033[0m '
+        f'{_sys_seg(\"drive\", disk_val, disk_pct)}'
+    )
+
+    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\" SYS3=\"{sys_line}\"')
 except:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
-    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\"')
+    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\" SYS3=\"\"')
 " 2>/dev/null)
 
 # Render TWO lines so the segment list can keep growing (git branch,
@@ -245,5 +303,7 @@ else
     LINE1="$LABEL $PIPE $MODEL$GIT_PART"
 fi
 LINE2="$CTX$RATE5H$RATE7D"
+LINE3="$SYS3"
 echo -e "$LINE1"
 echo -e "$LINE2"
+[ -n "$LINE3" ] && echo -e "$LINE3"

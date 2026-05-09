@@ -370,6 +370,50 @@ cd /tmp && echo '{"context_window":{"used_percentage":50},"model":{"display_name
 
 ---
 
+## 8.10 Line 3 — system stats (CPU / RAM / drive)
+
+A new third row surfaces local machine resource usage so you can see at a glance whether your dev box is under stress while you're working:
+
+```
+Line 3:  cpu N% | ram U/TG | drive NG free
+```
+
+| Segment | Source (Linux) | Source (Windows) | Format |
+|---------|----------------|------------------|--------|
+| `cpu N%` | `/proc/loadavg` 1-minute load ÷ `os.cpu_count()` × 100 (clamped to 100%) | wmic + sidecar cache (deferred — see below) | percentage |
+| `ram U/TG` | `/proc/meminfo` `MemTotal` and `MemAvailable` | wmic + sidecar cache (deferred) | used / total in GB |
+| `drive NG free` | `shutil.disk_usage('.')` | `shutil.disk_usage('.')` (cross-platform stdlib) | free space in GB |
+
+### Why this approach
+
+- **Linux uses stdlib only** — `/proc/*` reads + `shutil.disk_usage` are sub-millisecond, fast enough to run every render with no caching infrastructure.
+- **Windows CPU/RAM deferred** — `wmic` shell-outs are ~200–500ms, blowing the sub-100ms render budget per Claude Code docs. Cross-platform parity will land in a follow-up commit using a sidecar JSON cache (`~/.claude/syscache.json`) refreshed in the background. Until then, Windows shows `cpu —` and `ram —` (dim grey) while disk works correctly.
+- **Disk works everywhere** — `shutil.disk_usage` is cross-platform stdlib and reads the filesystem of the script's CWD. Claude Code invokes the statusline with the project root as CWD, so the segment naturally reports the project's drive.
+
+### Color rules
+
+Same green / yellow / red threshold as the ctx and rate-limit bars: `<60%` green, `60–80%` yellow, `>80%` red. Cyan label (`cpu`, `ram`, `drive`) matching the `up` / `think` / `5h` / `7d` label convention.
+
+For disk specifically, the threshold is on **percent used** (matching the other gauges' semantics — high % = bad). `261G free` showing yellow means the drive is 60–80% full overall, even though the absolute free figure looks plentiful.
+
+### Self-omitting fallback
+
+If a stat fails (e.g., `/proc/loadavg` unreadable, no `MemAvailable` in older kernels, disk path inaccessible), that single segment renders as a dim-grey `—` placeholder while the rest of line 3 stays intact. If the entire Python block fails (parse error, etc.), `SYS3` ends up empty and the bash `[ -n "$LINE3" ] && echo` guard skips line 3 entirely — degrades to two-line layout cleanly.
+
+### Test recipes
+
+```bash
+# Linux full render
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"}}' | bash .claude/statusline.sh
+# Line 3 → cpu 13% | ram 11.4/61.6G | drive 261G free
+
+# Broken JSON → line 3 self-omits via SYS3=""
+echo 'garbage' | bash .claude/statusline.sh
+# Lines 1-2 render with ? placeholders, line 3 absent
+```
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -389,6 +433,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 > ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
 > ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
 > ✓ **Implemented**: git branch + dirty flag appended to line 1 after the model abbreviation. See §8.9 above for behavior + non-git fallback.
+> ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows CPU/RAM deferred to a wmic-cache follow-up, disk works cross-platform. See §8.10 above for fallback behavior.
 
 ### Derived from `transcript_path` (single file read per render)
 

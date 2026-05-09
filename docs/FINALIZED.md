@@ -126,3 +126,20 @@ Each session entry includes:
 - Bash-side computation chosen over Python because `git` calls are quick (~5–20ms) and avoid round-tripping through the Python heredoc — render time stays well under the sub-100ms budget.
 - 2 test scenarios passed: (a) in this repo with uncommitted changes → `feature/extra-status-bar-features*` in yellow appended after model on line 1; (b) in `/tmp` (non-git) → segment self-omits, line 1 collapses to `[tmp] | Model` cleanly.
 - Color choice (green clean / yellow dirty) intentionally matches git CLI conventions for instant recognition; same hues as ctx bar threshold colors but distinct semantic context (static state vs gauge threshold).
+
+### Line 3 — CPU / RAM / drive free space
+
+(Continuation of the multi-step "git, gpu, cpu, ram, ext" ask above.)
+
+**User scope decisions (via AskUserQuestion):**
+- Windows CPU/RAM: ship Linux now, Windows wmic-cache later.
+- Drive segment label correction: "free space" not "free same" (user's typo correction).
+
+**Files touched:**
+- `.claude/statusline.sh` — Python imports extended to include `re, shutil, platform` (re moved to top imports from inline lazy-import). New stats block before the print statement: CPU via `/proc/loadavg ÷ os.cpu_count() × 100` (Linux only, clamped to 100%); RAM via `/proc/meminfo` parsing `MemTotal` + `MemAvailable` (Linux only); disk via `shutil.disk_usage('.')` (cross-platform stdlib). Helper `_sys_color(p)` returns the `<60% green / 60–80% yellow / >80% red` ANSI code, `_sys_seg(label, value_str, pct)` composes the cyan-labeled colored segment with `—` dim-grey N/A fallback. `sys_line` joins the three segments with bright-green pipes. Print statement extended with `SYS3="..."`. Bash echo block adds `LINE3="$SYS3"` and `[ -n "$LINE3" ] && echo -e "$LINE3"` so empty SYS3 cleanly degrades to two-line layout.
+- `docs/STATUSLINE.md` — new §8.10 "Line 3 — system stats (CPU / RAM / drive)" with source-by-platform table, rationale (stdlib speed on Linux vs wmic latency on Windows = deferred to cache infra), color rules, self-omit fallback explanation, test recipes. §9 brainstorm updated with ✓ implemented note.
+
+**Closure notes:**
+- Drive threshold is `% used` (matching the other gauges' semantic — high = bad). `261G free` showing yellow means the drive is 60–80% full overall, regardless of how plentiful the absolute free figure looks.
+- 3 test scenarios passed: (a) full Linux render — three lines clean, all sections colored correctly; (b) broken JSON → line 3 omits cleanly via SYS3="" guard; (c) non-git dir → git segment self-omits, line 3 still renders correctly using CWD's filesystem.
+- Architecture explicitly leaves room for the Windows wmic-cache follow-up (will refresh `~/.claude/syscache.json` periodically in the background; statusline reads cache for sub-ms latency).
