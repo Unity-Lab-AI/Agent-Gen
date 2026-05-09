@@ -209,6 +209,44 @@ echo '{"context_window":{"used_percentage":75},"model":{"display_name":"Claude H
 
 ---
 
+## 8.6 Model abbreviation + family color
+
+The model segment is colored by family, with a unified `<Letter><Version>` abbreviation pattern so different model families stay visually distinct at a glance. Detection runs against both `model.display_name` and `model.id` so providers that surface only one of the two (e.g., MiniMax via `ANTHROPIC_BASE_URL` override) still classify correctly.
+
+| Family | Abbrev | Color | ANSI escape | Source |
+|--------|--------|-------|-------------|--------|
+| Opus | `O<ver>` (e.g. `O4.7`) | gold | `\033[38;2;255;215;0m` (truecolor `#FFD700`) | `display_name` contains `Opus` |
+| Sonnet | `S<ver>` (e.g. `S4.6`) | bright red | `\033[91m` | `display_name` contains `Sonnet` |
+| Haiku | `H<ver>` (e.g. `H4.5`) | bright blue | `\033[94m` | `display_name` contains `Haiku` |
+| MiniMax | `M<ver>` (e.g. `M2.7`) | bright magenta (purple-ish) | `\033[95m` | regex `(?i)MiniMax-?M?(\d+(?:\.\d+)?)` against `display_name + id` |
+| Other | full `display_name` unchanged | terminal default | `\033[0m` | fallback |
+
+**Why gold uses truecolor:** Named ANSI has no gold or orange. Closest named is bright yellow (93), which reads more lemon than gold. `#FFD700` (CSS `gold`) renders cleanly on any 24-bit-color terminal — the same passthrough scope the docs warn is silent on but works in practice. If you're on a terminal that doesn't speak truecolor, Opus may degrade to the nearest 256-color or render as terminal default; downgrade gracefully via the existing `\033[0m` reset that wraps every segment.
+
+**MiniMax detection:** the API config at `~/.claude/minimax.json` sets `ANTHROPIC_MODEL=MiniMax-M2.7` (typical naming), so the regex catches `MiniMax-M2.7`, `MiniMax-2.7`, `MiniMaxM2.7`, etc. The version capture group becomes the digits after the optional `M`.
+
+### Test recipes for 8.6
+
+```bash
+# Opus → gold
+echo '{"context_window":{"used_percentage":8},"model":{"id":"claude-opus-4-7","display_name":"Claude Opus 4.7 (1M context)"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] (magenta) | [#--------------] 8% | O4.7 (gold)
+
+# Sonnet → bright red
+echo '{"context_window":{"used_percentage":42},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 42% | S4.6 (bright red)
+
+# Haiku → bright blue
+echo '{"context_window":{"used_percentage":30},"model":{"display_name":"Claude Haiku 4.5"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 30% | H4.5 (bright blue)
+
+# MiniMax → bright magenta
+echo '{"context_window":{"used_percentage":55},"model":{"id":"MiniMax-M2.7","display_name":"MiniMax-M2.7"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [...] 55% | M2.7 (bright magenta)
+```
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."

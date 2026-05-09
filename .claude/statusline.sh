@@ -78,18 +78,43 @@ try:
 
     cw = d.get('context_window', {})
     pct = cw.get('used_percentage', 0)
-    model = d.get('model', {}).get('display_name', '?')
 
-    # Shorten model name (Claude Opus 4.7 -> O4.7)
-    if 'Opus' in model:
-        ver = model.split('Opus')[1].strip().split()[0]
+    # Model abbreviation + family-specific color.
+    #   Opus    -> O#.#  in gold (truecolor #FFD700 — closest to gold,
+    #                    no named ANSI equivalent; passthrough only)
+    #   Sonnet  -> S#.#  in bright red (91)
+    #   Haiku   -> H#.#  in bright blue (94)
+    #   MiniMax -> M#.#  in bright magenta (95) — purple-ish
+    # Detection checks both display_name AND id so providers that surface
+    # only one or the other (e.g., minimax via ANTHROPIC_BASE_URL override
+    # naming the model 'MiniMax-M2.7') still classify correctly.
+    import re
+    model_block = d.get('model', {})
+    model_disp = model_block.get('display_name', '?')
+    model_id = model_block.get('id', '')
+    model_search = f'{model_disp} {model_id}'
+
+    minimax_m = re.search(r'(?i)MiniMax-?M?(\d+(?:\.\d+)?)', model_search)
+    if minimax_m:
+        model = f'M{minimax_m.group(1)}'
+        model_color = '95'
+    elif 'Opus' in model_disp:
+        ver = model_disp.split('Opus')[1].strip().split()[0]
         model = f'O{ver}'
-    elif 'Sonnet' in model:
-        ver = model.split('Sonnet')[1].strip().split()[0]
+        model_color = '38;2;255;215;0'
+    elif 'Sonnet' in model_disp:
+        ver = model_disp.split('Sonnet')[1].strip().split()[0]
         model = f'S{ver}'
-    elif 'Haiku' in model:
-        ver = model.split('Haiku')[1].strip().split()[0]
+        model_color = '91'
+    elif 'Haiku' in model_disp:
+        ver = model_disp.split('Haiku')[1].strip().split()[0]
         model = f'H{ver}'
+        model_color = '94'
+    else:
+        model = model_disp
+        model_color = '0'
+
+    model_str = f'\033[{model_color}m{model}\033[0m'
 
     # Defensive clamp — Claude Code has emitted negative or >100 values.
     try:
@@ -148,7 +173,7 @@ try:
     uptime_part = f' | \033[36mup\033[0m {uptime_fmt}' if uptime_fmt else ''
     think_part = f' · \033[36mthink\033[0m {think_fmt}' if think_fmt else ''
 
-    print(f'CTX=\"{ctx_str}\" MODEL=\"{model}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
+    print(f'CTX=\"{ctx_str}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
 except:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
