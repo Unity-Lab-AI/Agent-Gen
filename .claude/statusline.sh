@@ -67,7 +67,7 @@ if [ -n "$GIT_BRANCH" ]; then
 fi
 
 eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
-import sys, json, os, hashlib, re, shutil, platform
+import sys, json, os, hashlib, re, shutil, platform, subprocess, time
 sys.stdout.reconfigure(encoding='utf-8')
 try:
     d = json.load(sys.stdin)
@@ -275,11 +275,91 @@ try:
         f'{_sys_seg(\"drive\", disk_val, disk_pct)}'
     )
 
-    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\" SYS3=\"{sys_line}\"')
+    # Line 4: GPU(s) via nvidia-smi. Cached in ~/.claude/gpu-cache.json
+    # with a 5-second TTL so the ~150ms nvidia-smi shell-out doesn't
+    # block every render. On cache miss the script blocks once to refresh.
+    # When nvidia-smi is missing OR returns no GPUs, line 4 renders as
+    # red 'No GPU Detected' so the user knows the card wasn't found.
+    home_dir = os.environ.get('USERPROFILE') or os.path.expanduser('~')
+    gpu_cache_file = os.path.join(home_dir, '.claude', 'gpu-cache.json')
+    gpu_data = {'gpus': []}
+    cache_fresh = False
+    try:
+        if os.path.exists(gpu_cache_file):
+            if (time.time() - os.path.getmtime(gpu_cache_file)) < 5.0:
+                with open(gpu_cache_file) as f_gc:
+                    gpu_data = json.load(f_gc)
+                cache_fresh = True
+    except Exception:
+        pass
+
+    if not cache_fresh:
+        try:
+            sm = subprocess.run(
+                ['nvidia-smi',
+                 '--query-gpu=name,memory.used,memory.total,utilization.gpu',
+                 '--format=csv,noheader,nounits'],
+                capture_output=True, text=True, timeout=2.0
+            )
+            gpus = []
+            if sm.returncode == 0 and sm.stdout.strip():
+                for line_g in sm.stdout.strip().split('\n'):
+                    parts = [p.strip() for p in line_g.split(',')]
+                    if len(parts) >= 4:
+                        try:
+                            gpus.append({
+                                'name': parts[0],
+                                'mem_used_mb': float(parts[1]),
+                                'mem_total_mb': float(parts[2]),
+                                'util_pct': float(parts[3]),
+                            })
+                        except ValueError:
+                            pass
+            gpu_data = {'gpus': gpus}
+        except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+            gpu_data = {'gpus': []}
+        try:
+            os.makedirs(os.path.dirname(gpu_cache_file), exist_ok=True)
+            with open(gpu_cache_file, 'w') as f_gc:
+                json.dump(gpu_data, f_gc)
+        except Exception:
+            pass
+
+    def _short_gpu(name):
+        # Match common NVIDIA naming: RTX/GTX/GT prefix + digits + optional Ti/SUPER.
+        # Falls through to first 12 chars on no match.
+        mm = re.search(r'(?:RTX|GTX|GT|Tesla|Quadro)\s*([A-Za-z0-9]+)\s*(SUPER|Ti)?', name, re.IGNORECASE)
+        if mm:
+            base = mm.group(1)
+            sfx = (mm.group(2) or '').lower()
+            return base + ('s' if sfx == 'super' else 'ti' if sfx == 'ti' else '')
+        return name[:12]
+
+    gpus_list = gpu_data.get('gpus', [])
+    if not gpus_list:
+        gpu_line = '\033[31mNo GPU Detected\033[0m'
+    else:
+        gpu_segs = []
+        for g in gpus_list:
+            short_n = _short_gpu(g.get('name', '?'))
+            mu_mb = g.get('mem_used_mb', 0)
+            mt_mb = g.get('mem_total_mb', 0)
+            ut = g.get('util_pct', 0)
+            vram_pct = (mu_mb / mt_mb * 100) if mt_mb > 0 else 0
+            used_gb = mu_mb / 1024
+            total_gb = mt_mb / 1024
+            vc = _sys_color(vram_pct)
+            uc = _sys_color(ut)
+            gpu_segs.append(
+                f'\033[36m{short_n}\033[0m \033[{vc}m{used_gb:.1f}/{total_gb:.0f}gb\033[0m \033[{uc}m{ut:.0f}%\033[0m'
+            )
+        gpu_line = ' \033[92m|\033[0m '.join(gpu_segs)
+
+    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\" SYS3=\"{sys_line}\" GPU=\"{gpu_line}\"')
 except:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
-    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\" SYS3=\"\"')
+    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\" SYS3=\"\" GPU=\"\"')
 " 2>/dev/null)
 
 # Render TWO lines so the segment list can keep growing (git branch,
@@ -304,6 +384,8 @@ else
 fi
 LINE2="$CTX$RATE5H$RATE7D"
 LINE3="$SYS3"
+LINE4="$GPU"
 echo -e "$LINE1"
 echo -e "$LINE2"
 [ -n "$LINE3" ] && echo -e "$LINE3"
+[ -n "$LINE4" ] && echo -e "$LINE4"

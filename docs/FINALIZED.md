@@ -143,3 +143,23 @@ Each session entry includes:
 - Drive threshold is `% used` (matching the other gauges' semantic — high = bad). `261G free` showing yellow means the drive is 60–80% full overall, regardless of how plentiful the absolute free figure looks.
 - 3 test scenarios passed: (a) full Linux render — three lines clean, all sections colored correctly; (b) broken JSON → line 3 omits cleanly via SYS3="" guard; (c) non-git dir → git segment self-omits, line 3 still renders correctly using CWD's filesystem.
 - Architecture explicitly leaves room for the Windows wmic-cache follow-up (will refresh `~/.claude/syscache.json` periodically in the background; statusline reads cache for sub-ms latency).
+
+### Line 4 — GPU(s) via nvidia-smi (with 5s sidecar cache)
+
+(Final piece of the multi-step "git, gpu, cpu, ram, ext" ask above.)
+
+**User format decision (via AskUserQuestion):** `4070s 0.3/12gb 5%` — short model name + used/total VRAM in GB + utilization %.
+
+**User no-GPU spec:** Red "No GPU Detected" exactly.
+
+**Cross-platform spec:** Linux + Windows; `nvidia-smi` ships with the official NVIDIA driver on every platform that supports CUDA cards.
+
+**Files touched:**
+- `.claude/statusline.sh` — Python imports extended with `subprocess, time`. New GPU block before the print: reads `~/.claude/gpu-cache.json` if mtime <5s old (sub-ms hit path); otherwise shell-out to `nvidia-smi --query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits` with 2s timeout, parse CSV per-GPU into a dicts list, write fresh cache. `FileNotFoundError` / `TimeoutExpired` / non-zero returncode all collapse to empty `{"gpus": []}` so the next 5 seconds of renders don't re-attempt. `_short_gpu(name)` regex extracts model digits + suffix (`SUPER→s`, `Ti→ti`); fallback truncates to 12 chars. Each GPU rendered as `<short> <used>/<total>gb <util>%` with cyan name + threshold-colored VRAM and util. Multi-GPU pipe-separated. When `gpus_list` is empty (driver missing OR no cards): red `\033[31mNo GPU Detected\033[0m`. Print statement extended with `GPU="..."`. Bash echo block adds `LINE4="$GPU"` and `[ -n "$LINE4" ] && echo -e "$LINE4"` so empty GPU on broken-JSON degrades to three-line layout.
+- `docs/STATUSLINE.md` — new §8.11 "Line 4 — GPU(s) via nvidia-smi (with sidecar cache)" with: source command, cache TTL strategy, short-name regex table, color rules, self-omit fallback, multi-GPU + no-GPU test recipes, cross-platform note. §9 brainstorm updated with ✓ implemented note.
+
+**Closure notes:**
+- 4 test scenarios passed: (a) full render with two physical GPUs (4070 SUPER + 2060) → both render with correct short-names, VRAM, util; (b) empty cache file `{"gpus": []}` → "No GPU Detected" red; (c) cache deleted → nvidia-smi shells out, cache repopulates, line renders; (d) broken JSON → line 4 self-omits cleanly.
+- Render-time impact: cache hit = +1ms (file read + JSON parse). Cache miss every 5s = +150ms once, then sub-ms for the next ~30 renders. Net average overhead: ~5ms.
+- Color thresholds: VRAM `<60% green / 60–80% yellow / >80% red` (matching ctx, rate bars, system stats); util same scale. The 4070 SUPER at 9.5GB / 12GB shows yellow VRAM (~79%); at 100% util shows red.
+- The script DOES write `~/.claude/gpu-cache.json` even on the FileNotFoundError path (writing `{"gpus": []}`). This intentional — caches the "no GPU" result for 5 seconds so the script doesn't shell-out repeatedly on every render in a no-GPU environment.

@@ -414,6 +414,82 @@ echo 'garbage' | bash .claude/statusline.sh
 
 ---
 
+## 8.11 Line 4 — GPU(s) via nvidia-smi (with sidecar cache)
+
+A fourth row surfaces every NVIDIA GPU on the host with VRAM usage + utilization. Falls back to red `No GPU Detected` when nvidia-smi is missing OR returns an empty GPU list.
+
+```
+Line 4:  4070s 0.3/12gb 5% | 2060 0.0/6gb 0%
+         ^^^^^ ^^^^^^^^ ^^   ^^^^ ^^^^^^^ ^^
+         short used/   util  next gpu
+         name  total
+```
+
+### Source command + parsing
+
+```
+nvidia-smi --query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits
+```
+
+Returns one CSV row per GPU: `<name>, <mem_used_mb>, <mem_total_mb>, <util_pct>`. Parsed into a `gpus[]` list of dicts.
+
+### Sidecar cache strategy
+
+`nvidia-smi` takes ~150ms — too slow to call every render (sub-100ms render budget per CC docs). So:
+
+- Cache lives at `~/.claude/gpu-cache.json` with **5-second TTL**.
+- On render: if cache exists AND mtime <5s, read JSON (sub-ms).
+- On cache miss / staleness: shell-out to nvidia-smi (timeout=2s), parse, write fresh cache. Blocks once, then 5s of fast renders.
+- On `FileNotFoundError` (nvidia-smi not on PATH), `TimeoutExpired`, or `returncode != 0`: write empty `{"gpus": []}` to cache so subsequent renders don't re-attempt for 5s.
+
+### Short-name extraction
+
+NVIDIA's full names are long (`NVIDIA GeForce RTX 4070 SUPER`) — the script extracts the model digits + suffix:
+
+| Full name | Regex match | Short |
+|-----------|-------------|-------|
+| `NVIDIA GeForce RTX 4070 SUPER` | `RTX 4070 SUPER` | `4070s` |
+| `NVIDIA GeForce RTX 3090 Ti` | `RTX 3090 Ti` | `3090ti` |
+| `NVIDIA GeForce RTX 2060` | `RTX 2060` | `2060` |
+| (no match) | n/a | first 12 chars |
+
+Pattern: `(?:RTX|GTX|GT|Tesla|Quadro)\s*(\w+)\s*(SUPER|Ti)?` (case-insensitive). Suffix maps `SUPER→s`, `Ti→ti`.
+
+### Color rules
+
+- **Short name** in cyan (matching label convention).
+- **VRAM** color-coded by `% used` of total — green/yellow/red threshold.
+- **Util %** color-coded — green/yellow/red threshold (same as ctx + system bars).
+- **No-GPU fallback** in red (`\033[31m`) so it stands out as a not-normal state.
+
+### Self-omitting fallback
+
+When the entire Python block fails (parse error etc.), `GPU=""` and bash's `[ -n "$LINE4" ] && echo` guard skips line 4 entirely — degrades to three-line layout.
+
+### Test recipes
+
+```bash
+# With NVIDIA card present → cache populates, GPU(s) render
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"}}' | bash .claude/statusline.sh
+# Line 4 → 4070s 9.5/12gb 100% | 2060 0.0/6gb 0%
+
+# Force empty-cache path → 'No GPU Detected'
+echo '{"gpus": []}' > ~/.claude/gpu-cache.json
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 4 → No GPU Detected (red)
+
+# Cache regeneration after deletion → next render shells out + repopulates
+rm -f ~/.claude/gpu-cache.json
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 4 → 4070s 9.5/12gb 94% | 2060 0.0/6gb 0%
+```
+
+### Cross-platform note
+
+`nvidia-smi` ships with the official NVIDIA driver on Linux + Windows + macOS (Tesla cards). The script's `subprocess.run(['nvidia-smi', ...])` call works on every platform that has the driver installed; on AMD/Intel-only systems or driverless installs, the FileNotFoundError handler triggers and "No GPU Detected" renders.
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -434,6 +510,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 > ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
 > ✓ **Implemented**: git branch + dirty flag appended to line 1 after the model abbreviation. See §8.9 above for behavior + non-git fallback.
 > ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows CPU/RAM deferred to a wmic-cache follow-up, disk works cross-platform. See §8.10 above for fallback behavior.
+> ✓ **Implemented**: line 4 GPU stats via nvidia-smi with 5s sidecar cache. Multi-GPU pipe-separated; "No GPU Detected" red fallback when nvidia-smi missing or empty. See §8.11 above for short-name extraction + cache strategy.
 
 ### Derived from `transcript_path` (single file read per render)
 
