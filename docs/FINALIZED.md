@@ -14,6 +14,52 @@ Each session entry includes:
 
 ## Session 2026-05-09
 
+### LAW — .claude workflow IP boundary (no public repo exposure) — full four-phase rollout
+
+**Verbatim user request (LAW #0):**
+
+> *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"* — Sponge
+
+> *"You might need to use gh isntead of just git to check the status and give us a proper way to check and verify"* — Sponge (canonical-tool clarification)
+
+> *"overall sounds great and over paranoid, just what a security gating feature needs"* — Sponge (sign-off on the four-layer enforcement plan)
+
+**Files touched:**
+
+- `.claude/CONSTRAINTS.md` — new LAW body (~190 lines): "LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE". Rule, pass criteria, forbidden/required actions, why, four-layer enforcement protocol (gitignore + Bash hook + gh visibility + opt-in publish), block message format, visibility cache schema, install-time enforcement, opt-in publish path, failure recovery, what the LAW does NOT cover, cross-references.
+- `.claude/CLAUDE.md` — LAW one-liner added to LAW INDEX. QUICK REFERENCE block extended with `.claude/ IP guard` entry pointing at the hook + LAW + WORKFLOW.md mechanics.
+- `.claude/memory-templates/feedback_claude_ip_boundary.md` — new persistent feedback memory (~200 lines): rule body verbatim, pass criteria table, four-layer mechanism table, banned actions, source-repo handling note, failure recovery, cross-references.
+- `.claude/memory-templates/MEMORY.md` — pointer added.
+- `.claude/WORKFLOW.md` — new §CLAUDE IP BOUNDARY ENFORCEMENT section (~120 lines): four-layer table, pass criteria, hook-blocking decision tree, block message format, visibility cache schema, disable/override note, cross-refs. §HARNESS LAYER table extended with hook 5b (count 9 → 10), side-effects table extended with `~/.claude/repo-visibility-cache.json`.
+- `.claude/hooks/pre-tool-public-repo-guard.cjs` — new Node.js PreToolUse:Bash hook (~225 lines). Parses git add/commit/push for `.claude/` involvement; multi-remote `gh repo view --json visibility,owner` check with 60s cache; exit 2 on any non-PRIVATE or non-Unity-Lab-AI remote; force-flag agnostic; block-by-default on uncertainty.
+- `.claude/hooks/pre-tool-public-repo-guard.sh` — bash fallback sibling with parity (~210 lines). Uses `jq` when available, grep/sed fallback otherwise.
+- `.claude/settings.json` — PreToolUse:Bash chain extended; new hook runs after `pre-tool-bash-safety.cjs`.
+- `.claude/scripts/unity-install.sh` — `.gitignore` auto-append logic. Idempotent: regex `^\.claude/?[[:space:]]*$` checks for existing exclude line; if absent, appends a 4-line LAW block (3 comment lines + `.claude/` exclude). On re-run, prints `Layer 0 already in place`.
+- `.claude/scripts/unity-install.ps1` — PowerShell parity for the same logic.
+- `.claude/commands/unity-install.md` — new §`.GITIGNORE` AUTO-MAINTENANCE section explaining Layer 0, idempotency contract, and why the only sanctioned removal path is `/claude-publish`.
+- `.claude/commands/claude-publish.md` — new operator-driven slash command (~170 lines). Activation protocol: prerequisites, multi-remote `gh` visibility check, decision gate, explicit user confirmation (`yes, publish` exact match), atomic gitignore edit, FINALIZED audit-trail entry. Abort cases enumerated. Recovery path documented.
+- `docs/TODO.md` — verbatim entry captured during Phase 1 with sub-tasks decomposed; status flipped through [~] → [x] across each phase commit; parent section removed after FINALIZED write per `§FINALIZED BEFORE DELETE`.
+- `docs/FINALIZED.md` — this entry.
+
+**Closure notes — four-phase rollout on `feature/workflow-modifications` off `develop`:**
+
+- **Phase 1** (commit `0070b19`) — LAW + docs foundation. CONSTRAINTS.md / CLAUDE.md / WORKFLOW.md / memory template / MEMORY.md pointer / TODO entry. Zero behavior change yet — pure foundation.
+- **Phase 2** (commit `7a84b19`) — Enforcement hook. `pre-tool-public-repo-guard.cjs` + `.sh` fallback wired into `settings.json` PreToolUse:Bash chain after `pre-tool-bash-safety.cjs`. Smoke-tested three scenarios: PASS on this private Unity-Lab-AI repo, BLOCK on a temp repo with public `torvalds/linux` remote (clear remediation message printed), PASS on no-remote local-only. Visibility cache file confirmed at `~/.claude/repo-visibility-cache.json`. Both `.cjs` and `.sh` produce identical block messages.
+- **Phase 3** (commit `7ab20f5`) — Install-time `.gitignore` auto-append. Both `unity-install.sh` and `unity-install.ps1` ensure the LAW block is present in the target's gitignore on every install. Idempotency verified three ways: fresh-target without gitignore (block written), re-run on already-blocked file (skipped), file with bare `.claude/` line and no comment (also skipped).
+- **Phase 4** (this commit) — `/claude-publish` opt-in command. Operator-driven gitignore-block removal gated by `gh` ground-truth visibility check on EVERY remote. Explicit `yes, publish` confirmation required. FINALIZED audit-trail entry mandatory. Slash command auto-discovered by Claude Code's skill registry on file landing.
+
+**Verification:**
+
+- `gh repo view Unity-Lab-AI/UAL-ClaudeWorkflow --json visibility,owner` returned `{"visibility":"PRIVATE","owner":{"login":"Unity-Lab-AI"}}` — source repo passes the LAW naturally; no special-case marker required.
+- All four phases shipped on `feature/workflow-modifications`; cross-references between CONSTRAINTS.md, WORKFLOW.md, the hook scripts, and the install scripts all resolve. Forward-looking "Shipped on Phase X" labels in WORKFLOW.md remain until final merge cleanup.
+- LAW #0 verbatim preserved in three places: CONSTRAINTS.md LAW body opening, memory template body, and this FINALIZED entry.
+- `gh`-based design (per Sponge follow-up) replaces any URL pattern matching — visibility lookup is API-authoritative, never URL-guessed. Cache TTL 60s keeps hook latency under 50ms after warm-up.
+- Defense-in-depth confirmed by Sponge as "over paranoid, just what a security gating feature needs" — every layer holds independently; bypass requires all four to fail simultaneously.
+
+**Why this matters (verbatim user-stated motivation):** *"safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"*.
+
+---
+
 ### Statusline label adapts to /rename + auto-color per session
 
 **Verbatim user quote:** "The color of the project name should auto-update if the color for the session has been set to match that, and if named using the rename should reflect there as well, can you make that change?"

@@ -1117,10 +1117,10 @@ Full LAW body (rule + forbidden/required actions + enforcement protocol + failur
 
 | Layer | Mechanism | Where | Status |
 |-------|-----------|-------|--------|
-| **L0 — Install-time gitignore** | `/unity-install` (and `/unity-update`) auto-append a `.claude/` block to the target project's `.gitignore`. Idempotent. Defense against accidental `git add -A`. | `.claude/scripts/unity-install.sh` + `unity-install.ps1` | Shipped on `feature/workflow-modifications` Phase 3 |
-| **L1 — PreToolUse Bash hook** | Intercepts every Bash invocation, parses for `git add` / `git commit` / `git push` patterns, runs the visibility check on every configured remote. Exit 2 = block. Force-flag agnostic — `--force` does NOT bypass. | `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) | Shipped on `feature/workflow-modifications` Phase 2 |
-| **L2 — `gh` visibility check** | `gh repo view <owner/repo> --json visibility,owner` for ALL configured remotes. Cached 60s in `~/.claude/repo-visibility-cache.json`. `gh` is the canonical tool — `git` cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Shipped on `feature/workflow-modifications` Phase 2 |
-| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires `gh repo view` to confirm `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI` first. Operator-driven. | `.claude/commands/claude-publish.md` | Shipped on `feature/workflow-modifications` Phase 4 |
+| **L0 — Install-time gitignore** | `/unity-install` auto-appends a `.claude/` block to the target project's `.gitignore`. Idempotent. Defense against accidental `git add -A`. | `.claude/scripts/unity-install.sh` + `unity-install.ps1` | Active |
+| **L1 — PreToolUse Bash hook** | Intercepts every Bash invocation, parses for `git add` / `git commit` / `git push` patterns, runs the visibility check on every configured remote. Exit 2 = block. Force-flag agnostic — `--force` does NOT bypass. | `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) | Active |
+| **L2 — `gh` visibility check** | `gh repo view <owner/repo> --json visibility,owner` for ALL configured remotes. Cached 60s in `~/.claude/repo-visibility-cache.json`. `gh` is the canonical tool — `git` cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Active |
+| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires `gh repo view` to confirm `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI` first. Operator-driven. Explicit `yes, publish` confirmation required. | `.claude/commands/claude-publish.md` | Active |
 
 ### Pass criteria — all must hold for a remote to be allowed
 

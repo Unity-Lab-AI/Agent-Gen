@@ -249,6 +249,13 @@ Find the folder matching your project path (encoded with `-` separators). Inside
                      at major-milestone boundaries; final report when ROADMAP empty.
                      User test plan required at every meaningful task closure.
 /sober             → Deactivate YOLO + end wake-word chain. Persona unchanged.
+/claude-publish    → Operator-driven opt-in to track .claude/ in current project.
+                     Removes the LAW-mandated `.claude/` exclude block from project
+                     .gitignore IF AND ONLY IF gh repo view confirms EVERY remote is
+                     visibility=PRIVATE AND owner.login=Unity-Lab-AI. Explicit `yes,
+                     publish` confirmation required. FINALIZED audit-trail entry
+                     mandatory. Layer 3 of the .claude/ IP-boundary defense-in-depth.
+                     Full LAW: CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY.
 /workflow          → Run the workflow pipeline (→ WORKFLOW.md)
 /super-review      → INTERNAL ruthless senior-engineer code review
 "rescan"           → Force new codebase scan
