@@ -149,6 +149,33 @@ try:
     bar = '#' * filled + '-' * (bar_len - filled)
     ctx_str = f'\033[{color}m[{bar}] {pct:.0f}%\033[0m'
 
+    # Rate limit gauges (Pro/Max only — rate_limits block absent on free
+    # plans, so each bar self-omits when its used_percentage is missing).
+    # Same bar style + same green/yellow/red threshold as ctx for visual
+    # consistency. 5h = current session usage (rolling 5-hour window),
+    # 7d = weekly usage (rolling 7-day window). Cyan label matches the
+    # uptime/thinking cyan-label convention.
+    # NOTE: no backticks anywhere in this Python block — they trigger
+    # bash command substitution inside the python3 -c "..." heredoc.
+    def _pct_bar(p):
+        try: p = float(p)
+        except: p = 0
+        if p < 0: p = 0
+        if p > 100: p = 100
+        if p > 80: c = '31'
+        elif p > 60: c = '33'
+        else: c = '32'
+        bl = 15
+        fl = int(p / 100 * bl)
+        bar = '#' * fl + '-' * (bl - fl)
+        return f'\033[{c}m[{bar}] {p:.0f}%\033[0m'
+
+    rate_limits = d.get('rate_limits', {})
+    five_h_pct = rate_limits.get('five_hour', {}).get('used_percentage')
+    seven_d_pct = rate_limits.get('seven_day', {}).get('used_percentage')
+    rate5h_part = f' \033[92m|\033[0m \033[36m5h\033[0m {_pct_bar(five_h_pct)}' if five_h_pct is not None else ''
+    rate7d_part = f' \033[92m|\033[0m \033[36m7d\033[0m {_pct_bar(seven_d_pct)}' if seven_d_pct is not None else ''
+
     # Session uptime + cumulative thinking/API time from cost block.
     # cost.total_duration_ms = wall-clock since CLI session start (CC docs)
     # cost.total_api_duration_ms = cumulative time spent in API calls (Claude
@@ -176,11 +203,11 @@ try:
     uptime_part = f' \033[92m|\033[0m \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
     think_part = f' \033[92m·\033[0m \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
-    print(f'CTX=\"{ctx_str}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
+    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
 except:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
-    print(f'CTX=\"?\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\"')
+    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\"')
 " 2>/dev/null)
 
 # Render the line. LABEL carries the colored brackets — magenta when no
@@ -192,4 +219,4 @@ except:
 # section visually; the third pipe (before 'up') is baked into
 # uptime_part so it disappears cleanly when no cost timers exist.
 PIPE="\033[92m|\033[0m"
-echo -e "$LABEL $PIPE $CTX $PIPE $MODEL$UPTIME$THINK"
+echo -e "$LABEL $PIPE $CTX$RATE5H$RATE7D $PIPE $MODEL$UPTIME$THINK"

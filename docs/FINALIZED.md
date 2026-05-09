@@ -76,3 +76,19 @@ Each session entry includes:
 **Closure notes:**
 - Verified output: `[92m[UnityWorkflow][0m [92m|[0m [bar] [92m|[0m [model] [92m|[0m [36mup[0m [97m9m14s[0m [92m·[0m [36mthink[0m [97m4m50s[0m` — every separator green, segments untouched.
 - Fresh-session render (no cost block) collapses cleanly to two pipes between LABEL/CTX/MODEL with no dangling separators.
+
+### Rate-limit usage bars — 5h session + 7d weekly
+
+**Verbatim user quote:** "Now can we add another section that will display like the context window bar, two actually, one for current session usage and another for weekly usage?"
+
+**Files touched:**
+- `.claude/statusline.sh` — Python block adds local `_pct_bar(p)` helper that returns the colored `[####---] N%` string for any 0–100 percentage. Uses the same 15-char width and same green/yellow/red threshold as the existing ctx bar. Two new f-string parts (`rate5h_part`, `rate7d_part`) wrap the helper output with cyan `5h`/`7d` labels and a leading bright-green pipe separator. Both parts self-omit when their respective `rate_limits.{five_hour,seven_day}.used_percentage` is missing. Print statement extended to emit `RATE5H="..."` and `RATE7D="..."` for bash to eval. Bash echo line places `$RATE5H$RATE7D` immediately after `$CTX` so the gauges group together visually before the model and timer sections.
+- `docs/STATUSLINE.md` — new §8.7 "Rate-limit usage bars — 5h session + 7d weekly" with the full table, threshold rules, self-omit behavior, test recipes, and a "footgun fixed" note about backticks. §9 brainstorm rows for 5h/7d removed (now shipped) + new ✓ implemented note added pointing to §8.7.
+
+**Footgun caught + documented:**
+- Backticks inside Python comments embedded in the `python3 -c "..."` bash heredoc trigger BASH command substitution before Python ever parses the script. Original comment used `\`rate_limits\``, `\`up\``, `\`think\`` around code-like terms — bash tried to execute them as shell commands and threw `command not found` errors on every render. Fix: NO backticks anywhere in the Python heredoc. Documented in §8.7 + an inline NOTE comment in the script so future edits don't reintroduce.
+- A second bug landed first attempt: f-string with `\"#\"` and `\"-\"` inside an expression — Python f-string expressions don't allow backslash-escaped quotes (PEP 701 lifted some restrictions in 3.12 but not all). Fix: precompute the bar string outside the f-string (matches the pattern the existing ctx block already uses).
+
+**Closure notes:**
+- 5 test scenarios passed: (a) both bars with mixed colors, (b) all three bars hitting different thresholds (red/green/yellow), (c) only 5h present (7d auto-omits cleanly), (d) no rate_limits block at all (both auto-omit, free-plan friendly), (e) broken JSON falls through to fallback label + `?` for ctx/model.
+- All four prior commits' behavior preserved — label color rotation, model family colors, bright-white timer values, bright-green separators all still render correctly.

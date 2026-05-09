@@ -249,6 +249,48 @@ echo '{"context_window":{"used_percentage":55},"model":{"id":"MiniMax-M2.7","dis
 
 ---
 
+## 8.7 Rate-limit usage bars — 5h session + 7d weekly
+
+Two additional progress bars render between the context bar and the model abbreviation, sourced from the `rate_limits` block of the statusline JSON:
+
+```
+[Label] | [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z% | Model | up · think
+```
+
+| Bar | JSON field | Window | Use case |
+|-----|------------|--------|----------|
+| `5h [bar] Y%` | `rate_limits.five_hour.used_percentage` | rolling 5-hour | "current session" pacing — shows how close you are to the 5h Pro/Max cap |
+| `7d [bar] Z%` | `rate_limits.seven_day.used_percentage` | rolling 7-day | weekly burn — long-arc usage tracking |
+
+### Visual treatment
+
+- Bar style identical to ctx bar — 15-char `#`/`-` fill.
+- Color thresholds identical to ctx — green `<60%`, yellow `60–80%`, red `>80%`.
+- Label (`5h`, `7d`) renders in cyan (`\033[36m`) matching the `up`/`think` label convention.
+- Section pipe separators bright green (`\033[92m`) per §8 convention.
+
+### Self-omitting fallback
+
+The `rate_limits` block is **absent on free plans** and may not be populated immediately on every render. Each bar self-omits independently when its `used_percentage` is missing — if only `five_hour` is present, only the 5h bar renders; if neither, both segments disappear and the line collapses cleanly to the original ctx-bar-then-model layout.
+
+### Test recipes
+
+```bash
+# Both bars present
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"},"rate_limits":{"five_hour":{"used_percentage":56},"seven_day":{"used_percentage":70}}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [#--] 8% | 5h [######-] 56% | 7d [#######-] 70% | O4.7
+
+# Free plan / no rate_limits → both bars auto-omit
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] | [#######-] 50% | S4.6
+```
+
+### Footgun fixed during implementation
+
+Backticks inside Python comments embedded in the `python3 -c "..."` heredoc trigger bash command substitution before Python ever sees them. A comment like `# rate_limits block absent on free plans` (with backticks around `rate_limits`) caused bash to try to execute `rate_limits` as a shell command. Fix: avoid backticks anywhere in the Python heredoc — use plain text or single quotes for code-like terms in comments.
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -262,11 +304,10 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 | **Token gauge** | `context_window.total_input_tokens` / `context_window_size` | `47k/200k` | Absolute token count beside the percentage |
 | **Effort indicator** | `effort.level` | gradient blocks `░▒▓` for low/med/high/xhigh/max | What thinking budget the user has set |
 | **Extended thinking badge** | `thinking.enabled` | `🧠` if true, omit if false | Quick visual when extended thinking is active |
-| **5-hour rate limit** | `rate_limits.five_hour.used_percentage` | `5h: 23%` (yellow >70%, red >90%) | Pro/Max users — pace warning |
-| **7-day rate limit** | `rate_limits.seven_day.used_percentage` | `7d: 11%` | Long-arc usage tracking |
 | **Model variant** | `model.id` | full ID on hover, shortened in line | Distinguish 1M-context from standard |
 
 > ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
+> ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
 
 ### Derived from `transcript_path` (single file read per render)
 
