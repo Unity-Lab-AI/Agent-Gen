@@ -195,3 +195,23 @@ Each session entry includes:
 - Test setup gotcha caught + documented: the bare remote repo MUST be created OUTSIDE the working tree, otherwise its files appear as untracked in `git status --porcelain` and trigger false-dirty state.
 - State priority `dirty > ahead > pushed` is intentional: any `git add`-staged file (even with no working-tree change) shows in porcelain output and triggers red `*`. Once the commit lands, the tree becomes clean and either orange `+` (unpushed) or branch-type color (in sync) applies.
 - `dirty.txt` test file naming is unrelated to the actual dirty-state semantics (just a test fixture name); the dirty color is triggered by the git porcelain output, not the filename.
+
+### Unicode block-fill bars — 16 cells × 8 sub-levels
+
+**Verbatim user quote:** "I think we only have 16 spaces in the bars if I am correct, which 16/100 is 6.25, so each bar is 6.25% of 100%, if we swap the bars to something like this: '', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█' we could make the bars look a bit better overall, and give us more ganular look at the usage, so instead of each bar being 6.25% we can have another ~0.78% granularity to the progress, and we can fill out the additional space so it looks blank between [ and ] with 0%, but also pad it out between those bars so we can make it spaced basically the same, just would look like [#########        ] ##% but instead of # it would be those other characters."
+
+**Verbatim user follow-up (bug catch):** "I dont see it padding out to the 16 spaces per bar (18 characters including [])"
+
+**Files touched:**
+- `.claude/statusline.sh` —
+  - Added `_make_bar(p, cells=16)` helper. `LEVELS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉']` (0/8 through 7/8). Computes `filled_sub = round(p / 100 * 128)`, splits into `full = filled_sub // 8` and `rem = filled_sub % 8`, returns `'█' * full + LEVELS[rem] + ' ' * (16 - full - 1)`. Special-cases 100% to avoid index-out-of-bounds.
+  - `ctx_str` now calls `_make_bar(pct)` instead of inline `'#' * filled + '-' * (bar_len - filled)`.
+  - `_pct_bar(p)` (5h + 7d bars) refactored to call `_make_bar(p)`; old 15-cell `#`/`-` logic removed.
+  - **Critical bug fix**: `eval $(echo "$input" | python3 -c "...")` changed to `eval "$(echo "$input" | python3 -c "...")"`. Without the outer double quotes, bash word-splits the command substitution output, collapsing the new bars' multi-space padding (`[████            ]` → `[████ ]`). Latent footgun that didn't manifest with `#`/`-` bars (no consecutive spaces) but broke immediately with space-padded Unicode bars. Closing `)` now has trailing `"` to match the opening `"$(`.
+- `docs/STATUSLINE.md` — new §8.13 "Canonical bar geometry — Unicode block-fill cells" with: visual ladder showing 0% / 25% / 50% / 79% / 100% renders, glyph table mapping fractions to U+2588 family code points, the `_make_bar` helper code, "Why 16 × 8" rationale (128 total sub-cells = 0.78% granularity, fits under model + git segments, matches standard Unicode block-fill range), and a section on the eval-quoting footgun for future reference.
+
+**Closure notes:**
+- 5 test sweeps verified each gradient stop from 0% → 100% renders the correct number of full blocks + correct partial glyph + correct trailing space count = 16 cells total.
+- 0.78125% granularity confirmed mathematically: 16 cells × 8 sub-levels = 128 sub-cells, 100/128 = 0.78125%.
+- Color gradient (§8.12) layered on top of the bar geometry — the helper returns plain text; `_grad_color(p)` wraps the bracket-and-bar string in the truecolor escape.
+- Render width: 16-char bar interior + 2 brackets + space + percent + percent sign ≈ 22–23 chars per bar. Three bars on line 2 = ~70 chars. Well within terminal width on every modern setup.

@@ -95,7 +95,7 @@ if [ -n "$GIT_BRANCH" ]; then
     esac
 fi
 
-eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
+eval "$(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
 import sys, json, os, hashlib, re, shutil, platform, subprocess, time
 sys.stdout.reconfigure(encoding='utf-8')
 try:
@@ -198,11 +198,21 @@ try:
     except:
         pass
 
-    # Bar color from the shared 6-tier _grad_color gradient.
-    bar_len = 15
-    filled = int(pct / 100 * bar_len)
-    bar = '#' * filled + '-' * (bar_len - filled)
-    ctx_str = f'{_grad_color(pct)}[{bar}] {pct:.0f}%\033[0m'
+    # Unicode block-fill bar — 16 cells wide × 8 sub-levels per cell = 128
+    # total sub-cells, ~0.78% granularity. Cell glyphs walk from empty to
+    # full: ' ' '▏' '▎' '▍' '▌' '▋' '▊' '▉' '█'. Bar color from the shared
+    # 6-tier _grad_color gradient.
+    def _make_bar(p, cells=16):
+        LEVELS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉']
+        sub_total = cells * 8
+        filled_sub = max(0, min(sub_total, int(round(p / 100 * sub_total))))
+        full = filled_sub // 8
+        rem = filled_sub % 8
+        if full >= cells:
+            return '█' * cells
+        return '█' * full + LEVELS[rem] + ' ' * (cells - full - 1)
+
+    ctx_str = f'{_grad_color(pct)}[{_make_bar(pct)}] {pct:.0f}%\033[0m'
 
     # Rate limit gauges (Pro/Max only — rate_limits block absent on free
     # plans, so each bar self-omits when its used_percentage is missing).
@@ -217,10 +227,7 @@ try:
         except: p = 0
         if p < 0: p = 0
         if p > 100: p = 100
-        bl = 15
-        fl = int(p / 100 * bl)
-        bar = '#' * fl + '-' * (bl - fl)
-        return f'{_grad_color(p)}[{bar}] {p:.0f}%\033[0m'
+        return f'{_grad_color(p)}[{_make_bar(p)}] {p:.0f}%\033[0m'
 
     rate_limits = d.get('rate_limits', {})
     five_h_pct = rate_limits.get('five_hour', {}).get('used_percentage')
@@ -392,7 +399,7 @@ except:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
     print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\" SYS3=\"\" GPU=\"\"')
-" 2>/dev/null)
+" 2>/dev/null)"
 
 # Render TWO lines so the segment list can keep growing (git branch,
 # system stats, etc.) without busting terminal width:

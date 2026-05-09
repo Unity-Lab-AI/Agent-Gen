@@ -574,6 +574,58 @@ done
 
 ---
 
+## 8.13 Canonical bar geometry — Unicode block-fill cells
+
+Every progress bar (ctx, 5h, 7d) renders as a **16-cell × 8-sub-level** Unicode block bar — total resolution 128 sub-cells, **~0.78% per sub-step** vs. the previous 6.67% per cell with `#`/`-`.
+
+```
+0%    [                ] 0%      empty (16 spaces)
+25%   [████            ] 25%     4 full + 12 empty
+50%   [████████        ] 50%     8 full + 8 empty
+79%   [████████████▋   ] 79%     12 full + ▋ + 3 empty
+100%  [████████████████] 100%    16 full
+```
+
+### Glyph ladder (8 sub-levels per cell)
+
+| Fraction | Char | Code |
+|----------|------|------|
+| 0/8 | ` ` (space) | `U+0020` |
+| 1/8 | `▏` | `U+258F` |
+| 2/8 | `▎` | `U+258E` |
+| 3/8 | `▍` | `U+258D` |
+| 4/8 | `▌` | `U+258C` |
+| 5/8 | `▋` | `U+258B` |
+| 6/8 | `▊` | `U+258A` |
+| 7/8 | `▉` | `U+2589` |
+| 8/8 | `█` | `U+2588` |
+
+### Helper
+
+```python
+def _make_bar(p, cells=16):
+    LEVELS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉']
+    sub_total = cells * 8
+    filled_sub = max(0, min(sub_total, int(round(p / 100 * sub_total))))
+    full = filled_sub // 8
+    rem = filled_sub % 8
+    if full >= cells:
+        return '█' * cells
+    return '█' * full + LEVELS[rem] + ' ' * (cells - full - 1)
+```
+
+### Why 16 × 8
+
+- 16 cells × 8 sub-levels = 128 total sub-cells, **100/128 = 0.78125% granularity**.
+- 16 cells fits comfortably under the model + git segments on line 1 alongside two more 16-cell bars on line 2.
+- 8 sub-levels matches the standard Unicode block-fill range (`U+2588` through `U+258F`) — every modern terminal renders them correctly.
+
+### Bash eval-quoting footgun (caught + fixed)
+
+When implementing the multi-space padding (`[████            ]`), the bars rendered as `[████ ]` — 11 trailing spaces collapsed into 1. Root cause: the script's `eval $(echo "$input" | python3 -c "...")` had **unquoted** command substitution. Bash word-splits `$(...)` output, replacing whitespace runs with single field separators before `eval` sees it. Fix: change to `eval "$(...)"` — the outer double quotes treat the substitution result as a single string, preserving whitespace inside the quoted variable assignments. This was a latent bug that didn't manifest with the old `#`/`-` bars (no consecutive spaces) but broke immediately with the new space-padded layout.
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
