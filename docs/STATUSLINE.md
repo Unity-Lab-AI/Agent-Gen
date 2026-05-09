@@ -332,6 +332,44 @@ echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude S
 
 ---
 
+## 8.9 Git branch + dirty flag
+
+Line 1 ends with the current git branch + a dirty-flag suffix when the working tree has uncommitted changes. Computed in bash (not Python) since `git` shell calls are quick (~5–20ms each) and avoid the round-trip through the Python heredoc.
+
+```
+Line 1:  [Label] | up · think | Model | branch*
+                                        ^^^^^^^
+                                        green if clean
+                                        yellow + * if dirty
+```
+
+| Source | Command | Behavior |
+|--------|---------|----------|
+| Branch name | `git rev-parse --abbrev-ref HEAD` | Empty when not in a git repo → segment self-omits |
+| Dirty flag | `git status --porcelain \| grep -q .` | Non-empty → branch displays as `branch*` in yellow; empty → just `branch` in green |
+
+### Color rationale
+
+Green/yellow chosen to match git CLI conventions — most users instantly recognize "green = clean, yellow = uncommitted." Same hues as the ctx bar's threshold colors but used here for static state, not gauge thresholds; in practice the visual context of each segment makes the semantic distinct.
+
+### Self-omit fallback
+
+When `git rev-parse` fails (not in a repo, git not installed, etc.), `GIT_PART` stays empty and line 1 falls through cleanly to `[Label] | Model` with no dangling separator. Safe to drop the `.claude/` template into non-git directories.
+
+### Test recipe
+
+```bash
+# In a git repo with uncommitted changes
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"},"session_name":"UnityWorkflow","session_id":"abc"}' | bash .claude/statusline.sh
+# Line 1 → [UnityWorkflow] | O4.7 | feature/extra-status-bar-features* (yellow)
+
+# In /tmp (non-git)
+cd /tmp && echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash /path/to/.claude/statusline.sh
+# Line 1 → [tmp] | S4.6   (no git segment)
+```
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -350,6 +388,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 > ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
 > ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
 > ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
+> ✓ **Implemented**: git branch + dirty flag appended to line 1 after the model abbreviation. See §8.9 above for behavior + non-git fallback.
 
 ### Derived from `transcript_path` (single file read per render)
 
@@ -366,8 +405,6 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 
 | Capability | Source | Display idea |
 |------------|--------|--------------|
-| **Git branch** | `git rev-parse --abbrev-ref HEAD` | `[main]` / `[feature/foo]` |
-| **Dirty working tree** | `git status --porcelain` non-empty | `*` suffix on branch name |
 | **Last commit hash** | `git rev-parse --short HEAD` | `@a3f8c1` |
 | **Commits ahead/behind** | `git rev-list --count @{u}..HEAD` | `↑3 ↓1` |
 | **TODO open count** | grep `[~]` or `[ ]` markers in `docs/TODO.md` | `todo: 7` |

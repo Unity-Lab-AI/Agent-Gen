@@ -111,3 +111,18 @@ Each session entry includes:
 - 4 test scenarios passed: (a) full render with timers + both rate bars → two clean lines; (b) fresh session no cost no rate_limits → line 1 collapses to `[Label] | Model`, line 2 to `[ctx]` only; (c) timers present, no rate_limits → line 1 with timers, line 2 with ctx only; (d) broken JSON → both lines render with `?` placeholders.
 - Multi-line rendering risk acknowledged in §8.8 ("more prone to rendering issues than single-line plain text" per Claude Code docs) — no observed garbling in local tests but documented for future reference.
 - Architecture explicitly leaves room for future sections (git branch + system stats per user's roadmap) to be appended to either line or to spawn a third line.
+
+### Git branch + dirty flag (line 1)
+
+**Verbatim user quote:** "And how are we going about the git, gpu, cpu, ram, ext? I would like two more lines I think for this, and the git stuff I think can be on the first line after model, but the cpu, ram, and current project's drive's free same should be on a new line, and the GPU stuff should have it's own line. nvidia-smi, and if no GPU detected we just put in red 'No GPU Detected', should work for linux + windows."
+
+(Multi-step ask — this entry covers the git branch+dirty piece. CPU/RAM/disk → next entry. GPU/nvidia-smi → entry after that.)
+
+**Files touched:**
+- `.claude/statusline.sh` — bash block before the eval computes `GIT_BRANCH` via `git rev-parse --abbrev-ref HEAD` and dirty state via `git status --porcelain | grep -q .`. Composes `GIT_PART` with leading bright-green pipe + green-clean / yellow-dirty branch name. Both line-1 composition branches (`if [ -n "$UPTIME" ]` and the no-cost fallback) append `$GIT_PART` after `$MODEL`. Self-omits cleanly in non-git directories.
+- `docs/STATUSLINE.md` — new §8.9 "Git branch + dirty flag" with the source table, color rationale (matching git CLI conventions), self-omit fallback explanation, test recipes for both git-repo and non-git scenarios. §9 brainstorm rows for git branch + dirty working tree removed (now shipped); ✓ implemented note added pointing to §8.9.
+
+**Closure notes:**
+- Bash-side computation chosen over Python because `git` calls are quick (~5–20ms) and avoid round-tripping through the Python heredoc — render time stays well under the sub-100ms budget.
+- 2 test scenarios passed: (a) in this repo with uncommitted changes → `feature/extra-status-bar-features*` in yellow appended after model on line 1; (b) in `/tmp` (non-git) → segment self-omits, line 1 collapses to `[tmp] | Model` cleanly.
+- Color choice (green clean / yellow dirty) intentionally matches git CLI conventions for instant recognition; same hues as ctx bar threshold colors but distinct semantic context (static state vs gauge threshold).

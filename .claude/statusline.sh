@@ -52,6 +52,20 @@ PROJECT_NAME=$(basename "$(pwd -W 2>/dev/null || pwd)")
 # not on Windows. python3 is the POSIX-standard name; py -3 is the Windows path.
 PYBIN=$(command -v python3 >/dev/null 2>&1 && echo python3 || echo "py -3")
 
+# Git branch + dirty flag (line 1, after model). Computed in bash because
+# `git` shell calls are quick (~5-20ms each) and avoid round-tripping through
+# Python. GIT_PART stays empty in non-git directories so the segment self-
+# omits cleanly. Color: green clean, yellow dirty — matching git CLI vibe.
+GIT_PART=""
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ -n "$GIT_BRANCH" ]; then
+    if git status --porcelain 2>/dev/null | grep -q .; then
+        GIT_PART=" \033[92m|\033[0m \033[33m${GIT_BRANCH}*\033[0m"
+    else
+        GIT_PART=" \033[92m|\033[0m \033[32m${GIT_BRANCH}\033[0m"
+    fi
+fi
+
 eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
 import sys, json, os, hashlib
 sys.stdout.reconfigure(encoding='utf-8')
@@ -226,9 +240,9 @@ except:
 # also have leading pipes baked in so they self-omit independently.
 PIPE="\033[92m|\033[0m"
 if [ -n "$UPTIME" ]; then
-    LINE1="$LABEL$UPTIME$THINK $PIPE $MODEL"
+    LINE1="$LABEL$UPTIME$THINK $PIPE $MODEL$GIT_PART"
 else
-    LINE1="$LABEL $PIPE $MODEL"
+    LINE1="$LABEL $PIPE $MODEL$GIT_PART"
 fi
 LINE2="$CTX$RATE5H$RATE7D"
 echo -e "$LINE1"
