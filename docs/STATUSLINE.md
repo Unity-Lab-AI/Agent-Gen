@@ -169,6 +169,46 @@ echo '{"context_window":{"used_percentage":45},"model":{"display_name":"Claude O
 
 ---
 
+## 8.5 Label & color — auto-adapt to `/rename`
+
+The leading `[Label]` segment is no longer hardcoded to `basename(cwd)` — it auto-adapts to Claude Code's `/rename` slash command and gives every session a stable, distinct color.
+
+### Label rules
+
+| State | Label source | JSON field | Example |
+|-------|--------------|------------|---------|
+| Session has been `/rename`d | renamed value | `session_name` (top-level) | `[UnityWorkflow]` |
+| No rename set | cwd basename (original behavior) | derived from `cwd` | `[UAL-ClaudeWorkflow]` |
+
+### Color rules
+
+| State | Color source | Result |
+|-------|--------------|--------|
+| Renamed | hash(`session_id`) → 12-color palette | Stable per session, distinct across concurrent sessions |
+| Un-renamed | hardcoded magenta `\033[35m` | Original Unity-AI-Lab pink (brand `#ff4d9a` 4-bit fallback) |
+
+The 12-color palette is the 6 normal + 6 bright ANSI foreground colors (excluding black/white): `91 92 93 94 95 96 31 32 33 34 35 36`. Hash function is MD5 of `session_id` UTF-8 bytes, indexed by the first byte modulo 12.
+
+### Why hash-based instead of reading `/color`?
+
+Anthropic's `/color <name>` slash command does **NOT** persist anywhere readable to a status line script. Verified empirically by capturing the live statusline JSON stdin (Claude Code 2.1.138), inspecting `~/.claude/sessions/<pid>.json`, `~/.claude.json`, and the project-level `.claude/` directory — no field carries the user-set color through to scripts. Whatever `/color` does (theme accent? in-memory chrome?) stays inside the running CC process.
+
+So the label color you see in *this* statusline won't necessarily match whatever color Claude Code's sidebar shows for the same session — the sidebar's mechanism is opaque. The hash gives an automatic, stable, distinct color per session without any manual configuration. Sister behavior: same `session_id` always picks the same palette slot, so re-attaching to a long-running session preserves visual identity.
+
+### Test recipes for 8.5
+
+```bash
+# Renamed session → hash-derived color (bright green for this id)
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7 (1M context)"},"session_name":"UnityWorkflow","session_id":"123236a1-13b0-4dd2-8c8d-b07585e8c5ee","cost":{"total_duration_ms":554072,"total_api_duration_ms":290840}}' | bash .claude/statusline.sh
+# → [UnityWorkflow] (bright green) | [#--------------] 8% | O4.7 | up 9m14s · think 4m50s
+
+# No rename → cwd basename + magenta (original behavior preserved)
+echo '{"context_window":{"used_percentage":75},"model":{"display_name":"Claude Haiku 4.5"},"session_id":"00000000-0000-0000-0000-000000000000"}' | bash .claude/statusline.sh
+# → [UAL-ClaudeWorkflow] (magenta) | [###########----] 75% | H4.5
+```
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -184,8 +224,9 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 | **Extended thinking badge** | `thinking.enabled` | `🧠` if true, omit if false | Quick visual when extended thinking is active |
 | **5-hour rate limit** | `rate_limits.five_hour.used_percentage` | `5h: 23%` (yellow >70%, red >90%) | Pro/Max users — pace warning |
 | **7-day rate limit** | `rate_limits.seven_day.used_percentage` | `7d: 11%` | Long-arc usage tracking |
-| **Session name** | `session_name` | `«recovery-branch»` if set | Context-switching between named sessions |
 | **Model variant** | `model.id` | full ID on hover, shortened in line | Distinguish 1M-context from standard |
+
+> ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
 
 ### Derived from `transcript_path` (single file read per render)
 

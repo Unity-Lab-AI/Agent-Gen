@@ -2,13 +2,29 @@
 # Unity AI Lab — Claude Code Status Line
 #
 # Renders a strip at the bottom of the Claude Code CLI showing:
-#   [PROJECT_NAME] | [######-------] 57% | O4.7
+#   [LABEL] | [######-------] 57% | O4.7 | up 1h23m · think 2m41s
+#
+# Label rules (auto-adapt to /rename):
+#   - If `session_name` is present in the statusline JSON (set via Claude
+#     Code's /rename slash command), display that as the label.
+#   - Otherwise fall back to `basename(cwd)` so unnamed sessions keep the
+#     classic project-folder identity.
+#
+# Label color rules (auto-vary per session):
+#   - When a rename has been applied, the bracket color is picked by
+#     hashing `session_id` against a 12-color ANSI palette. Stable for
+#     the lifetime of one session, distinct across concurrent sessions.
+#   - When no rename is set, color stays brand magenta (35) — the
+#     original look. Anthropic's /color slash command does NOT persist
+#     anywhere readable to the statusline (verified against live JSON +
+#     ~/.claude.json + ~/.claude/sessions/*.json), so we can't sync to
+#     it directly; the hash gives an auto-distinct alternative.
 #
 # How it works (per docs/STATUSLINE.md):
 #   1. Claude Code spawns this script as a subprocess each time the
 #      status line refreshes.
 #   2. Pipes a JSON blob to stdin: { context_window: { used_percentage },
-#      model: { display_name }, ... }
+#      model: { display_name }, session_name, session_id, ... }
 #   3. We parse, format, and print the result to stdout. Claude Code
 #      renders it as the status line text. ANSI color escapes honored.
 #
@@ -18,10 +34,10 @@
 # Claude Code directly. This is the bridge for auto-compaction warnings
 # or memory-backlog routines.
 #
-# Wired in: .claude/settings.local.json → statusLine.command
-# Project-agnostic: auto-detects project name from cwd basename, so the
-# same script drops into any Unity AI Lab project without per-project
-# configuration.
+# Wired in: .claude/settings.json → statusLine.command
+# Project-agnostic: auto-detects fallback label from cwd basename, so
+# the same script drops into any Unity AI Lab project without per-
+# project configuration.
 
 input=$(cat)
 
@@ -37,10 +53,29 @@ PROJECT_NAME=$(basename "$(pwd -W 2>/dev/null || pwd)")
 PYBIN=$(command -v python3 >/dev/null 2>&1 && echo python3 || echo "py -3")
 
 eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
-import sys, json, os
+import sys, json, os, hashlib
 sys.stdout.reconfigure(encoding='utf-8')
 try:
     d = json.load(sys.stdin)
+
+    # Label = renamed session_name if present, else cwd basename.
+    # session_id drives a stable per-session color hash when renamed.
+    session_name = (d.get('session_name') or '').strip()
+    session_id = (d.get('session_id') or '').strip()
+    project_resolved = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
+    label_text = session_name if session_name else project_resolved
+
+    # 12-color ANSI palette: 6 normal + 6 bright. Skips black/white to
+    # avoid invisibility on either light or dark terminals. Magenta (35)
+    # stays the un-renamed default to preserve the original brand look.
+    PALETTE = ['91','92','93','94','95','96','31','32','33','34','35','36']
+    if session_name and session_id:
+        h = hashlib.md5(session_id.encode('utf-8')).digest()[0]
+        name_color = PALETTE[h % len(PALETTE)]
+    else:
+        name_color = '35'
+    label = f'\033[{name_color}m[{label_text}]\033[0m'
+
     cw = d.get('context_window', {})
     pct = cw.get('used_percentage', 0)
     model = d.get('model', {}).get('display_name', '?')
@@ -113,16 +148,17 @@ try:
     uptime_part = f' | \033[36mup\033[0m {uptime_fmt}' if uptime_fmt else ''
     think_part = f' · \033[36mthink\033[0m {think_fmt}' if think_fmt else ''
 
-    print(f'CTX=\"{ctx_str}\" MODEL=\"{model}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\"')
+    print(f'CTX=\"{ctx_str}\" MODEL=\"{model}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
 except:
-    print('CTX=\"?\" MODEL=\"?\" UPTIME=\"\" THINK=\"\"')
+    fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
+    fallback_label = f'\033[35m[{fallback_name}]\033[0m'
+    print(f'CTX=\"?\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\"')
 " 2>/dev/null)
 
-# Render the line. Project name in Unity-AI-Lab pink (ANSI 35 = magenta,
-# closest 4-bit-palette match to the brand pink #ff4d9a). CTX placed
-# right after the project name so Claude Code's weekly-limit banner
+# Render the line. LABEL carries the colored brackets — magenta when no
+# rename is set (Unity-AI-Lab pink, closest 4-bit match to brand pink
+# #ff4d9a), or a hash-derived bright color when /rename has been used.
+# CTX placed right after the label so Claude Code's weekly-limit banner
 # (which sometimes overlaps the END of the status line) can't eat the
 # critical % info.
-B="\033[35m"
-R="\033[0m"
-echo -e "${B}[${PROJECT_NAME}]${R} | $CTX | $MODEL$UPTIME$THINK"
+echo -e "$LABEL | $CTX | $MODEL$UPTIME$THINK"
