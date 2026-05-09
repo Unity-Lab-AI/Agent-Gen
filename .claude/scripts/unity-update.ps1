@@ -34,9 +34,17 @@ New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
 try {
     # Clone (shallow, only main branch)
     Write-Host "[unity-update] Cloning $RepoUrl ($Branch branch) to $TmpDir..."
-    & git clone --depth 1 --branch $Branch $RepoUrl (Join-Path $TmpDir 'repo') 2>&1 | Write-Host
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error '[unity-update] git clone failed'
+    # git writes normal progress ("Cloning into '...'") to stderr. With $ErrorActionPreference='Stop'
+    # AND `2>&1` merging, those stderr lines wrap as ErrorRecord and trigger a terminating error
+    # before $LASTEXITCODE is checked. Drop EAP to 'Continue' for the native call, restore after,
+    # then check the exit code.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & git clone --depth 1 --branch $Branch $RepoUrl (Join-Path $TmpDir 'repo')
+    $cloneExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEAP
+    if ($cloneExit -ne 0) {
+        Write-Error "[unity-update] git clone failed (exit $cloneExit)"
         exit 1
     }
 
