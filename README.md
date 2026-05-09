@@ -80,6 +80,7 @@ Pulls the latest `main` branch and updates the project's `.claude/` framework fi
 
 docs/
 ├── HOOKS.html          ← 1263-line self-contained reference for all 27+ Claude Code hook events
+├── STATUSLINE.md       ← Claude Code statusline rendering mechanism (context %, project, model, uptime, thinking time) + ~25 future-capability candidates
 ├── ROADMAP.md          ← MAJOR task tier (high-level phases / milestones)
 ├── TODO.md             ← MINOR task tier (active day-to-day work)
 ├── DECOMPOSED.md       ← DECOMPOSED task tier (smallest meaningful execution units)

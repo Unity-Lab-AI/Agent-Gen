@@ -56,9 +56,18 @@ New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
 
 try {
     Write-Host "[unity-bootstrap] Cloning $RepoUrl ($Branch) to $TmpDir..."
-    & git clone --depth 1 --branch $Branch $RepoUrl (Join-Path $TmpDir 'repo') 2>&1 | Write-Host
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error '[unity-bootstrap] git clone failed'
+    # Native commands like `git` write normal progress (e.g. "Cloning into '...'") to stderr.
+    # With $ErrorActionPreference='Stop' AND `2>&1` merging, those stderr lines get wrapped as
+    # ErrorRecord objects and trigger a terminating error before $LASTEXITCODE is even checked.
+    # Drop the EAP to 'Continue' just for the native call, then restore — and let stderr flow
+    # to the console directly instead of merging it into the pipeline.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & git clone --depth 1 --branch $Branch $RepoUrl (Join-Path $TmpDir 'repo')
+    $cloneExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEAP
+    if ($cloneExit -ne 0) {
+        Write-Error "[unity-bootstrap] git clone failed (exit $cloneExit)"
         exit 1
     }
 
