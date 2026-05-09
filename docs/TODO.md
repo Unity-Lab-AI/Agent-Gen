@@ -17,6 +17,40 @@ LAW #0 reminder: every task description preserves the user's verbatim words.
 
 ## In progress
 
+### [~] Add CLI uptime + Claude thinking-time timer to statusline (UAL template + Dream local) — plus capability brainstorm
+
+**User's verbatim ask (LAW #0 — preserved exactly as typed, including typos):**
+
+> can we add a timer that teracks the combined total of time the cli has been open and the combined total of time that claude has "thought, thunk, or thinked" in that session? for both .claudes local and the templete. make the task list and todo write up and add to the docs if any this feature and list some other capabilitys for it in the templete .claude and remember we are in the branch percentage only and for Dream projects .clsude we have only done locally
+
+**Sub-items (one per item per LAW #0, verbatim from the quote above):**
+
+- [x] can we add a timer that teracks the combined total of time the cli has been open
+- [x] and the combined total of time that claude has "thought, thunk, or thinked" in that session
+- [x] for both .claudes local and the templete
+- [x] make the task list
+- [x] and todo write up
+- [x] and add to the docs if any this feature
+- [x] and list some other capabilitys for it in the templete .claude
+- [x] and remember we are in the branch percentage only
+- [x] and for Dream projects .clsude we have only done locally
+
+**Branch context (verbatim from the quote):** "we are in the branch percentage only and for Dream projects .clsude we have only done locally" — UAL-ClaudeWorkflow on `percentage` (committed + pushed); Dream's `.claude/statusline.sh` patched local-only, no commit, no push.
+
+**Implementation:**
+
+1. `.claude/statusline.sh` (both repos) — Python helper `_fmt_ms` formats `cost.total_duration_ms` (CLI uptime wall-clock since session start) + `cost.total_api_duration_ms` (cumulative Claude API/thinking time) as `Ns` / `MmSSs` / `HhMMm` / `DdHHh` ladder; cyan label (`\033[36m`) + plain value; leading separator (` | ` for uptime, ` · ` for think) baked into the Python part-strings so empty values collapse cleanly with no dangling fragments
+2. Bash echo line appends `$UPTIME$THINK` after `$MODEL` — separators live in the Python output, not the bash template
+3. 5-test smoke pass: full cost block (`1h23m · think 2m41s`), no cost block (graceful empty), short session (`45s · think 2s`), long session (`1d03h · think 1h45m`), zero values (treated as empty) — all render correctly
+4. `docs/STATUSLINE.md` § 8 NEW — Session Timer Fields documents the JSON fields, format ladder, fallback behavior, test recipe
+5. `docs/STATUSLINE.md` § 9 NEW — Future Capabilities Brainstorm catalogs ~25 other statusLine fields/derivations: from-JSON (cost.total_cost_usd, lines added/removed, token gauge, effort.level blocks, thinking.enabled badge, rate_limits.five_hour/seven_day, session_name, model.id), from-transcript (idle timer, tool call count, files modified, last user prompt summary, cache hit rate, sub-agent depth), from-project-state (git branch + dirty indicator, last commit hash, commits ahead/behind, TODO open count, memory item count, hook flash), plus side-channel write-on-render pattern for `~/.claude/uptime_ms.txt` / `think_ms.txt` / `cost_usd.txt` / `idle_seconds.txt` so hooks + watchdogs get free state-broadcast every render
+6. UAL `.claude/statusline.sh` + `docs/STATUSLINE.md` + `docs/TODO.md` shipped in one atomic commit on `percentage` branch — pushed to `origin/percentage` (per Gee: percentage branch only, NEVER main/develop/other)
+7. Dream `.claude/statusline.sh` working-tree edit ONLY — no `git add`, no commit, no push, per Gee directive
+
+**STATUS:** [~] CODED 2026-05-08 — pending Gee localhost verification that `up Xh Ym · think Mm Ss` renders in his real CLI session. Move to FINALIZED on confirmation.
+
+---
+
 ### [~] Implement explicit pre and post compact hooks (not just session start) — tidbits + cache hits + post-compact Unity re-anchor
 
 **User's verbatim ask (LAW #0 — preserved exactly as typed, including typos):**
