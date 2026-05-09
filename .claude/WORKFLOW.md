@@ -1105,6 +1105,127 @@ print("Telemetry posture: settings active in env block")
 
 ---
 
+## CLAUDE IP BOUNDARY ENFORCEMENT — `.claude/` workflow public-repo guard
+
+The `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group. **It is never committed, staged, or pushed to any public repository.** The only allowed home for `.claude/` in git history is a PRIVATE repository owned by the GitHub organization `Unity-Lab-AI`. No public repos exempt — not even on `Unity-Lab-AI`.
+
+Full LAW body (rule + forbidden/required actions + enforcement protocol + failure recovery): `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`. This section explains the workflow mechanics that implement the LAW.
+
+### Defense-in-depth — four layers
+
+| Layer | Mechanism | Where | Status |
+|-------|-----------|-------|--------|
+| **L0 — Install-time gitignore** | `/unity-install` (and `/unity-update`) auto-append a `.claude/` block to the target project's `.gitignore`. Idempotent. Defense against accidental `git add -A`. | `.claude/scripts/unity-install.sh` + `unity-install.ps1` | Shipped on `feature/workflow-modifications` Phase 3 |
+| **L1 — PreToolUse Bash hook** | Intercepts every Bash invocation, parses for `git add` / `git commit` / `git push` patterns, runs the visibility check on every configured remote. Exit 2 = block. Force-flag agnostic — `--force` does NOT bypass. | `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) | Shipped on `feature/workflow-modifications` Phase 2 |
+| **L2 — `gh` visibility check** | `gh repo view <owner/repo> --json visibility,owner` for ALL configured remotes. Cached 60s in `~/.claude/repo-visibility-cache.json`. `gh` is the canonical tool — `git` cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Shipped on `feature/workflow-modifications` Phase 2 |
+| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires `gh repo view` to confirm `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI` first. Operator-driven. | `.claude/commands/claude-publish.md` | Shipped on `feature/workflow-modifications` Phase 4 |
+
+### Pass criteria — all must hold for a remote to be allowed
+
+```
+gh repo view <owner/repo> --json visibility,owner --jq '.visibility, .owner.login'
+```
+
+| Check | Required value |
+|-------|----------------|
+| `visibility` | `"PRIVATE"` |
+| `owner.login` | `"Unity-Lab-AI"` |
+| `gh auth status` | authenticated |
+
+ANY check failing → BLOCK. The hook does **multi-remote scan** — every entry in `git remote -v` must pass. A single public fork remote anywhere in the repo's remotes blocks ALL `.claude/`-touching git operations from that repo.
+
+### Hook-blocking decision tree (Layer 1 logic)
+
+```
+PreToolUse:Bash hook fires
+  │
+  ├─► Parse command — is this `git add` / `git commit` / `git push`?
+  │     └─► no → exit 0 (pass through)
+  │
+  ├─► Determine `.claude/` involvement
+  │     ├─► `git add` → check args + currently-staged paths
+  │     ├─► `git commit` → check `git diff --cached --name-only` for `.claude/`
+  │     └─► `git push` → check `git diff <upstream>..HEAD --name-only` for `.claude/`
+  │     └─► no `.claude/` paths → exit 0 (pass through)
+  │
+  ├─► Read `git remote -v` — list all configured remotes
+  │     └─► no remotes → exit 0 (no public exposure path possible)
+  │
+  ├─► For each remote: gh repo view <owner/repo> --json visibility,owner
+  │     ├─► cache hit (< 60s old) → use cached
+  │     ├─► cache miss → fresh API call, write cache
+  │     └─► gh not installed / not authed / API failure → exit 2 (block, surface error)
+  │
+  ├─► All remotes PRIVATE + Unity-Lab-AI? → exit 0 (pass through)
+  │
+  └─► Any remote fails? → exit 2 (BLOCK, name the offending remote + reason)
+```
+
+### Block message format
+
+When the hook blocks, stderr surfaces:
+
+```
+[CLAUDE-IP-GUARD] BLOCKED — `.claude/` cannot land on a public/non-Unity-Lab-AI repo.
+
+Offending remote: <remote-name> → <url>
+  visibility: <PUBLIC|UNKNOWN>
+  owner: <login>
+  reason: <not-Unity-Lab-AI | not-PRIVATE | gh-not-installed | gh-not-authed | api-error>
+
+Options to proceed:
+  1. Remove the offending remote: git remote remove <remote-name>
+  2. Move .claude/ work to a different feature branch in a different repo
+  3. If this remote is genuinely meant to receive .claude/ AND is private + Unity-Lab-AI:
+     run `gh repo view <owner/repo> --json visibility,owner` to verify
+     then re-run the original command — visibility cache holds for 60s
+
+Then reply "done" and the LAW will re-validate.
+```
+
+### Visibility cache schema
+
+`~/.claude/repo-visibility-cache.json`:
+
+```json
+{
+  "https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git": {
+    "visibility": "PRIVATE",
+    "owner": "Unity-Lab-AI",
+    "checked_at": 1778361234
+  },
+  "https://github.com/someone/myfork.git": {
+    "visibility": "PUBLIC",
+    "owner": "someone",
+    "checked_at": 1778361240
+  }
+}
+```
+
+TTL: 60 seconds. Past TTL → fresh API call. Cache miss → fresh API call. Cache writes are atomic (write-temp + rename) to survive concurrent hook invocations.
+
+### Disable / override (LAW violation territory)
+
+There is no sanctioned way to disable Layer 1. Removing or commenting out the hook in `settings.json` is itself a LAW violation. The only sanctioned paths to legitimately commit `.claude/` are:
+
+1. **The repo is already private + Unity-Lab-AI** — the hook passes naturally; no action needed
+2. **Run `/claude-publish`** — operator-driven opt-in that re-verifies via `gh` and removes `.claude/` from gitignore for that project
+
+Anything else (force-push, edit gitignore manually, comment out hook, bypass via subprocess) is a LAW violation per `.claude/CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`.
+
+### Cross-references
+
+- Full LAW body: `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`
+- LAW one-liner: `.claude/CLAUDE.md` LAW INDEX
+- Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
+- Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) — registered in `.claude/settings.json` PreToolUse:Bash chain (after `pre-tool-bash-safety.cjs`)
+- Install-time gitignore: `.claude/scripts/unity-install.sh` + `.claude/scripts/unity-install.ps1`
+- Opt-in publish: `.claude/commands/claude-publish.md`
+- Hooks reference doc: `.claude/agents/hooks.md`
+- GitHub CLI docs: https://cli.github.com/manual/gh_repo_view
+
+---
+
 ## BUNDLED TOOLS — `.claude/bin/`
 
 Native binaries that ship with the `.claude/` template so every team member has the same fast tooling without a per-machine install step. Tools live in `.claude/bin/`. Each tool has a documented fallback ladder so a missing/broken binary degrades cleanly to system equivalents — never a hard failure.
