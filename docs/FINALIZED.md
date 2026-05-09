@@ -92,3 +92,22 @@ Each session entry includes:
 **Closure notes:**
 - 5 test scenarios passed: (a) both bars with mixed colors, (b) all three bars hitting different thresholds (red/green/yellow), (c) only 5h present (7d auto-omits cleanly), (d) no rate_limits block at all (both auto-omit, free-plan friendly), (e) broken JSON falls through to fallback label + `?` for ctx/model.
 - All four prior commits' behavior preserved — label color rotation, model family colors, bright-white timer values, bright-green separators all still render correctly.
+
+### Two-line static layout
+
+**Verbatim user quote:** "Does it support multi-line for the status line? Cause we are getting really long on the status line currently."
+
+**Verbatim user follow-up:** "well, we have the project name, the context, the 5h, the 7d, the model, the up and think, and theres still more I want to add that I think would be useful... I was thinking of putting it so the unity workflow + up and think, and the model are on the top line, the context, 5h, and 7d could be on the second line, and we just display that? -- or actually, lets think about this, cant we do a 'rolling' display where we display some info, then other info, then other info, in a loop, so we can have one thing show for 10 seconds, another thing for 10 seconds, and what not? We could limit 3 sections per thing right?"
+
+**User layout decision (via AskUserQuestion):** Two-line static (their first idea). Future sections to plan for: Git branch + dirty flag, CPU / GPU / RAM utilization (GPU as its own with model + VRAM + utilization %, e.g., `4070s v0.3gb 5%`).
+
+**User decision against rolling:** Discussed but ruled out — rolling display is technically possible (script reads time.time() and picks frame), but only "ticks" when CC actively refreshes. During idle the line freezes on whatever frame happened to render last; user loses glance-ability ("what's my 7d burn right now?"); changing/animated info is attention-stealing where status lines should be passive-awareness. Static multi-line wins on reliability + glance-ability.
+
+**Files touched:**
+- `.claude/statusline.sh` — bash render block at the bottom rewritten to compose two lines. Line 1 = `[Label] | UPTIME · THINK | Model`, Line 2 = `[ctx-bar] | 5h | 7d`. Conditional fallback `if [ -n "$UPTIME" ]` avoids a double-pipe on line 1 when timers self-omit, since UPTIME's leading separator is baked into its f-string for the prior single-line auto-omit semantics. Final `echo -e "$LINE1"` + `echo -e "$LINE2"` pipes both to Claude Code's stdout.
+- `docs/STATUSLINE.md` — new §8.8 "Two-line static layout" with: layout diagram, rationale (line length, rendering risks, semantic grouping), layout rules (line 1 / line 2 composition + banner-safety placement of ctx at start of line 2), implementation note about the conditional fallback, test recipes covering full + fresh-session renders. §9 brainstorm "implemented" notes extended with §8.8 entry.
+
+**Closure notes:**
+- 4 test scenarios passed: (a) full render with timers + both rate bars → two clean lines; (b) fresh session no cost no rate_limits → line 1 collapses to `[Label] | Model`, line 2 to `[ctx]` only; (c) timers present, no rate_limits → line 1 with timers, line 2 with ctx only; (d) broken JSON → both lines render with `?` placeholders.
+- Multi-line rendering risk acknowledged in §8.8 ("more prone to rendering issues than single-line plain text" per Claude Code docs) — no observed garbling in local tests but documented for future reference.
+- Architecture explicitly leaves room for future sections (git branch + system stats per user's roadmap) to be appended to either line or to spawn a third line.

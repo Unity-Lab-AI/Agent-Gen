@@ -291,6 +291,47 @@ Backticks inside Python comments embedded in the `python3 -c "..."` heredoc trig
 
 ---
 
+## 8.8 Two-line static layout
+
+As of the multi-line layout commit, the statusline renders across **two terminal rows** instead of one to keep individual lines readable as more sections get added (git branch, system stats, etc. are planned).
+
+```
+Line 1:  [Label] | up Xs · think Ys | Model
+Line 2:  [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z%
+```
+
+### Why two lines
+
+- A single line was ~110–130 chars with everything present, wrapping awkwardly on narrow terminals.
+- Multi-line is officially documented as supported by Claude Code; docs warn it's "more prone to rendering issues than single-line plain text" but in practice it works reliably.
+- Splitting by **semantic group** keeps each line glanceable: line 1 is identity + activity (who/what/how-long), line 2 is gauges (resource usage).
+
+### Layout rules
+
+- **Line 1** — `[Label]` then UPTIME + THINK (auto-omits if no cost block) then `Model`. When timers are absent, falls back to a single bright-green pipe directly between label and model.
+- **Line 2** — context bar + 5h + 7d, in that order. Each rate-limit bar self-omits independently when its `used_percentage` is missing (free-plan friendly). When all are absent, line 2 is just the context bar by itself.
+- **Banner safety** — Claude Code's weekly-limit banner sometimes overlaps the END of the last rendered line. With multi-line, that risk shifts to line 2's tail (currently `7d`), which is less critical than ctx — so layout intentionally puts the most-critical-now gauge (`ctx`) at the start of line 2.
+
+### Implementation note
+
+Both lines composed in bash from the eval'd Python output. The conditional fallback for line 1 (`if [ -n "$UPTIME" ]`) avoids a double-pipe when timers self-omit, since UPTIME has its leading separator baked into the f-string for the original single-line auto-omit semantics.
+
+### Test recipe for 8.8
+
+```bash
+# Full render → two lines
+echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7 (1M context)"},"session_name":"UnityWorkflow","session_id":"123236a1-13b0-4dd2-8c8d-b07585e8c5ee","cost":{"total_duration_ms":554072,"total_api_duration_ms":290840},"rate_limits":{"five_hour":{"used_percentage":56},"seven_day":{"used_percentage":70}}}' | bash .claude/statusline.sh
+# Line 1 → [UnityWorkflow] | up 9m14s · think 4m50s | O4.7
+# Line 2 → [#--] 8% | 5h [######-] 56% | 7d [#######-] 70%
+
+# Fresh session → both lines collapse to minimal content
+echo '{"context_window":{"used_percentage":50},"model":{"display_name":"Claude Sonnet 4.6"}}' | bash .claude/statusline.sh
+# Line 1 → [UAL-ClaudeWorkflow] | S4.6
+# Line 2 → [#######-] 50%
+```
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -308,6 +349,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 
 > ✓ **Implemented**: `session_name` is now wired into the leading `[Label]` segment with hash-of-`session_id` color rotation. See §8.5 above for behavior + JSON field reference.
 > ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
+> ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
 
 ### Derived from `transcript_path` (single file read per render)
 

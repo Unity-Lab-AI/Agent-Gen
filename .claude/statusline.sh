@@ -210,13 +210,26 @@ except:
     print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\"')
 " 2>/dev/null)
 
-# Render the line. LABEL carries the colored brackets — magenta when no
-# rename is set (Unity-AI-Lab pink, closest 4-bit match to brand pink
-# #ff4d9a), or a hash-derived bright color when /rename has been used.
-# CTX placed right after the label so Claude Code's weekly-limit banner
-# (which sometimes overlaps the END of the status line) can't eat the
-# critical % info. Pipe separators in bright green (92) frame each
-# section visually; the third pipe (before 'up') is baked into
-# uptime_part so it disappears cleanly when no cost timers exist.
+# Render TWO lines so the segment list can keep growing (git branch,
+# system stats, etc.) without busting terminal width:
+#   Line 1: [Label] | up · think | Model     (identity + activity)
+#   Line 2: [ctx-bar] | 5h | 7d              (gauges)
+#
+# LABEL carries the colored brackets — magenta when no rename is set
+# (Unity-AI-Lab pink, closest 4-bit match to brand pink #ff4d9a), or a
+# hash-derived bright color when /rename has been used. Pipe separators
+# in bright green (92) frame each section visually.
+#
+# UPTIME has its leading pipe baked in so it self-omits cleanly on
+# fresh sessions; when absent, line 1 falls back to a single pipe
+# directly between label and model. Line 2's RATE5H / RATE7D segments
+# also have leading pipes baked in so they self-omit independently.
 PIPE="\033[92m|\033[0m"
-echo -e "$LABEL $PIPE $CTX$RATE5H$RATE7D $PIPE $MODEL$UPTIME$THINK"
+if [ -n "$UPTIME" ]; then
+    LINE1="$LABEL$UPTIME$THINK $PIPE $MODEL"
+else
+    LINE1="$LABEL $PIPE $MODEL"
+fi
+LINE2="$CTX$RATE5H$RATE7D"
+echo -e "$LINE1"
+echo -e "$LINE2"
