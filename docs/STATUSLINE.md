@@ -156,6 +156,8 @@ The `_fmt_ms` helper picks the most readable unit for the magnitude:
 
 Both labels render in cyan (`\033[36m`) and the duration values themselves render in bright white (`\033[97m`) — keeps the labels visually distinct from the green/yellow/red context bar while ensuring the durations pop on dark terminals (terminal-default fg often shows as light gray, which got lost next to the cyan).
 
+All separators — the `|` pipes between major sections AND the `·` middle-dot between uptime and thinking — render in bright green (`\033[92m`) so they visually frame each segment without competing with any segment's own color. The third pipe (before `up`) is baked into the `uptime_part` f-string and the middle-dot is baked into `think_part`, so both auto-omit when no cost block is present, keeping the line clean on fresh sessions.
+
 ### Graceful fallback
 
 If the `cost` block is absent, malformed, or both values are zero (fresh session, never made an API call), the leading separator is omitted entirely so the line collapses cleanly to `[Project] | [bar] X% | Model` with no dangling `| ·` fragments.

@@ -62,3 +62,17 @@ Each session entry includes:
 **Closure notes:**
 - Bright white (97) chosen over plain white (37) because terminal-default white often renders as light gray on dark themes, which was the original problem. 97 forces the value to pop next to the cyan label.
 - Verified output via test recipe → `[36mup[0m [97m9m14s[0m · [36mthink[0m [97m4m50s[0m`.
+
+### Separators render bright green
+
+**Verbatim user quote:** "The pipes in between the sections, can we render those as bright green?"
+
+**Verbatim user follow-up:** "And the dot inbetween up and think, make that green too"
+
+**Files touched:**
+- `.claude/statusline.sh` — `PIPE="\033[92m|\033[0m"` defined in the bash render block; the two main pipes in the echo line now use `$PIPE`. The third pipe (inside `uptime_part`) and the `·` middle-dot (inside `think_part`) both wrapped in `\033[92m...\033[0m` so they pick up the same bright-green when present and stay auto-omitted when no cost block exists.
+- `docs/STATUSLINE.md` §8 — extended copy: ALL separators (pipes + middle-dot) render bright green now; auto-omit behavior on fresh sessions explained.
+
+**Closure notes:**
+- Verified output: `[92m[UnityWorkflow][0m [92m|[0m [bar] [92m|[0m [model] [92m|[0m [36mup[0m [97m9m14s[0m [92m·[0m [36mthink[0m [97m4m50s[0m` — every separator green, segments untouched.
+- Fresh-session render (no cost block) collapses cleanly to two pipes between LABEL/CTX/MODEL with no dangling separators.

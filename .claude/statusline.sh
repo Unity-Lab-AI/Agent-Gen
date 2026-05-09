@@ -173,8 +173,8 @@ try:
     # often renders as light gray, which got lost next to the cyan label.
     # Leading separator baked in so empty values don't leave dangling
     # ' | ·' fragments in the echo line.
-    uptime_part = f' | \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
-    think_part = f' · \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
+    uptime_part = f' \033[92m|\033[0m \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
+    think_part = f' \033[92m·\033[0m \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
     print(f'CTX=\"{ctx_str}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\"')
 except:
@@ -188,5 +188,8 @@ except:
 # #ff4d9a), or a hash-derived bright color when /rename has been used.
 # CTX placed right after the label so Claude Code's weekly-limit banner
 # (which sometimes overlaps the END of the status line) can't eat the
-# critical % info.
-echo -e "$LABEL | $CTX | $MODEL$UPTIME$THINK"
+# critical % info. Pipe separators in bright green (92) frame each
+# section visually; the third pipe (before 'up') is baked into
+# uptime_part so it disappears cleanly when no cost timers exist.
+PIPE="\033[92m|\033[0m"
+echo -e "$LABEL $PIPE $CTX $PIPE $MODEL$UPTIME$THINK"
