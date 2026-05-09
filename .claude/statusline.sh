@@ -30,7 +30,13 @@ input=$(cat)
 # Fallback through pwd -W (Git Bash on Windows reports W-style path).
 PROJECT_NAME=$(basename "$(pwd -W 2>/dev/null || pwd)")
 
-eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" py -3 -c "
+# Pick python launcher: prefer python3 (Linux/macOS), fall back to py -3 (Windows).
+# `py` is the Windows Python launcher and doesn't exist on Linux/macOS, so the
+# previous hardcoded `py -3` silently broke the statusline for any team member
+# not on Windows. python3 is the POSIX-standard name; py -3 is the Windows path.
+PYBIN=$(command -v python3 >/dev/null 2>&1 && echo python3 || echo "py -3")
+
+eval $(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
 import sys, json, os
 sys.stdout.reconfigure(encoding='utf-8')
 try:
