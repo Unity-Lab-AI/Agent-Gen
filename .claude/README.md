@@ -41,8 +41,10 @@ gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWork
 **Windows PowerShell:**
 
 ```powershell
-gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
+(gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
 ```
+
+> **Why `Out-String` matters:** `gh api` streams the file line-by-line as separate string objects. Piping that directly to `iex` evaluates each line as its own statement, which chops up multi-line blocks (`if (...) { ... }`) at line boundaries and errors with `Missing closing '}'` plus empty-string `Cannot bind argument to parameter 'Command'` warnings for blank lines. `Out-String` collapses the line-objects back into a single script string before `iex` runs it. Same pattern is required whenever piping `gh api` (or any line-streaming source) to `iex` in PowerShell.
 
 What it does (both versions): fetches the bootstrap script via your authenticated `gh` session → pipes raw content to bash / iex → script clones the repo into a temp dir → copies `.claude/commands/unity-install.md` to `~/.claude/commands/unity-install.md` → cleans up the temp dir. Done.
 

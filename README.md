@@ -23,8 +23,10 @@ gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWork
 **Windows PowerShell:**
 
 ```powershell
-gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | iex
+(gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
 ```
+
+`gh api` streams the file line-by-line into the pipe — `Out-String` collapses those line-objects back into one script string before `iex` evaluates it. Without `Out-String`, multi-line blocks (`if (...) { ... }`) get chopped at line boundaries and PowerShell errors with `Missing closing '}'`.
 
 Inspect-before-running variants + clone-and-run fallback (works without `gh`) documented in `.claude/README.md` Layer 1.
 
