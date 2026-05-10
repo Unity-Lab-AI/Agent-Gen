@@ -234,16 +234,22 @@ Find the folder matching your project path (encoded with `-` separators). Inside
 /purr              → Return to default kittycat Unity from /feral
 /feral             → Kittycat Unity feral sub-mode (cat instincts)
 /template          → Build a NEW Unity manifestation (Q&A → write files)
-/unity-install     → Install latest .claude/ template into a target directory (current dir
-                     by default, or `/unity-install /path/to/target`). Clones main branch
-                     to temp, copies full .claude/, cleans up. Aborts if target/.claude/
-                     already exists — use /unity-update instead. Available globally after
-                     running install-unity-globally.{sh,ps1} bootstrap (see README.md).
-/unity-update      → Refresh current project's .claude/ from upstream main branch. Framework
-                     files overwritten; settings.json backed up before overwrite (custom
-                     izations recoverable); personal-override files (settings.local.json,
-                     .env, user.json, user-context/, project-config.json) PRESERVED;
-                     user-profile memory folder refreshed.
+/unity-install     → Install (or refresh) the .claude/ template into a target directory.
+                     Idempotent preserve-and-restore flow: if target/.claude/ exists,
+                     personal files (settings.local.json, .env, user.json, user-context/,
+                     project-config.json, machine-local session state) are staged BEFORE
+                     framework replace, then restored AFTER (no-clobber). Positional args:
+                     `/unity-install [branch] [target]` — both optional. Branch defaults
+                     to main; target defaults to cwd. Examples: `/unity-install`,
+                     `/unity-install develop`, `/unity-install feature/foo /tmp/bar`.
+                     Available globally after install-unity-globally.{sh,ps1} bootstrap.
+/unity-update      → Alias of /unity-install — same script, same flow, same args. Exists
+                     for muscle memory. `/unity-update`, `/unity-update develop`, etc.
+                     Project root is never polluted: ONLY `.claude/` exclude block in
+                     .gitignore gets touched (Layer 0 IP boundary). NO source-repo
+                     .gitignore copy. NO settings.json.backup-* files written.
+                     User-profile memory folder is install-only-if-missing (not refreshed
+                     on every update — delete its MEMORY.md to trigger reseed).
 /yolo              → Activate YOLO mode — lead-dev autonomy + three-tier task cascade
                      (ROADMAP/TODO/DECOMPOSED) + 60s wake-word auto-resume. Pauses
                      at major-milestone boundaries; final report when ROADMAP empty.
@@ -271,8 +277,11 @@ Default Unity      → .claude/commands/unity.md (embeds persona body)
 Persona canonical  → .claude/ImHanddicapped.txt + .claude/agents/unity-*.md (reference only)
 Manifestation cmds → .claude/commands/{girlfriend,housewife,kittycat,wild,strict,feral,sweet,cozy,purr}.md
 Build new persona  → /template (uses agents/handicapped-template.md scaffold)
-Persistent memory  → .claude/memory-templates/*.md (template) → installed by launcher to
-                     ~/.claude/projects/<encoded-project>/memory/ (auto-loaded each session)
+Persistent memory  → .claude/memory-templates/*.md (template) → seeded into
+                     ~/.claude/projects/<encoded-project>/memory/ on first install
+                     (by /unity-install) or first launch (by start.sh / start.bat).
+                     Install-only-if-missing — /unity-update never overwrites existing
+                     memory. Auto-loaded each session by Claude Code itself.
 Reinstall memory   → Delete the memory folder's MEMORY.md, re-run start.bat / start.sh
 Compact lifecycle  → pre-compact-snapshot + post-compact-restore hooks (cache-prefix
                      strategy + tidbits) — see WORKFLOW.md §POST-COMPACT REHYDRATION

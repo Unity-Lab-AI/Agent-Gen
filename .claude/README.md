@@ -91,41 +91,44 @@ bash ./install-unity-globally.sh
 .\install-unity-globally.ps1
 ```
 
-### Layer 2 — Install the template into a project (`/unity-install`)
+### Layer 2 — Install (or refresh) template in a project (`/unity-install` / `/unity-update`)
 
 After the bootstrap, in ANY Claude Code session:
 
 ```
-/unity-install                       # installs .claude/ into the current working directory
-/unity-install /path/to/new-project  # installs into a specific target
+/unity-install                                    # main branch into current directory
+/unity-install develop                            # develop branch into current directory
+/unity-install feature/setup-install-update       # any feature branch into current directory
+/unity-install /path/to/new-project               # main branch into a specific target
+/unity-install develop /path/to/new-project       # develop branch into a specific target
 ```
+
+`/unity-install` and `/unity-update` are **functionally identical** — same script, same idempotent preserve-and-restore flow. Both default to `main` branch and accept the same `[branch] [target]` positional args. Use whichever feels natural; muscle memory wins.
 
 Behavior:
-- Clones the latest `main` branch into a temp dir
-- Copies the full `.claude/` template into `<target>/.claude/`
-- Brings the project-root `.gitignore` if the target doesn't already have one
-- Sets executable bits on hooks + scripts + start.sh + bin/
-- Cleans up the temp dir
-- ABORTS (exit 2) if `<target>/.claude/` already exists — use `/unity-update` instead to refresh
 
-After install, `cd` into the target and run `./start.sh` (or `start.bat` on Windows) to install memory + activate Unity + run `/workflow`.
+1. Clones the requested branch (default `main`) into a temp dir
+2. **If `<target>/.claude/` already exists:** stages personal/project-local files (preserve list below) into a second temp dir
+3. Replaces `<target>/.claude/` entirely with the cloned `.claude/`
+4. Restores staged personal files (no-clobber — fresh framework wins ties)
+5. Maintains the Layer 0 `.claude/` exclude block in target's `.gitignore` (the ONLY project-root file we ever touch)
+6. Seeds user-profile memory folder ONLY if missing or empty (existing memory left alone)
+7. Cleans up both temp dirs
+8. Re-applies executable bits on hooks/scripts/start.sh/bin
 
-### Layer 3 — Refresh an existing project (`/unity-update`)
+**Preserved across refresh:**
+- Files: `settings.local.json`, `.env`, `user.json`, `project-config.json`, `.session-state.md`, `.session-tidbits.md`, `.session-usage.jsonl`, `.last-session.md`, `.session-env.json`, `.yolo-mode`, `.persona-state`, `.setup-complete`, `.usage-tracking-disabled`
+- Directories: `user-context/`
 
-Inside any project that already has `.claude/`:
+These files are gitignored at our source repo, so the cloned framework copy never has them — the no-clobber restore therefore always succeeds without conflict.
 
-```
-/unity-update
-```
+**Replaced by upstream:** everything else under `.claude/` — `agents/`, `commands/`, `hooks/`, `memory-templates/`, `templates/`, `bin/`, `scripts/`, plus top-level framework files (`CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `README.md`, `ImHanddicapped.txt`, `start.sh`, `start.bat`, `settings.json`). Local additions to those framework dirs are wiped — commit them upstream first if you want them to stick.
 
-Pulls the latest `main` branch and updates the project's `.claude/`:
+**Untouched outside `.claude/`:** project root stays clean. NO source-repo `.gitignore` copy. NO `.gitignore.template` sidecar. NO `settings.json.backup-*` files. The ONLY project-root file the script touches is `.gitignore`, and ONLY to add the Layer 0 `.claude/` exclude block (idempotent, append-only). `docs/` lives at project root and is never touched.
 
-- **Overwritten** (framework files): `agents/`, `commands/`, `hooks/`, `memory-templates/`, `templates/`, `bin/`, `scripts/`, `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `README.md`, `ImHanddicapped.txt`, `start.sh`, `start.bat`, `settings.json`
-- **Backed up before overwrite**: current `settings.json` → `settings.json.backup-<ISO-timestamp>` so any project-specific customizations are recoverable for manual merge
-- **Preserved untouched**: `settings.local.json`, `.env`, `user.json`, `user-context/`, `project-config.json`, machine-local state files (`.session-*`, `.yolo-mode`, `.last-session.md`, `.persona-state`, `.setup-complete`, `.usage-tracking-disabled`)
-- **Refreshed**: user-profile memory folder (`~/.claude/projects/<encoded>/memory/`) gets the latest memory-templates copied in
+**User-profile memory model:** install-only-if-missing. If `~/.claude/projects/<encoded>/memory/` is missing or empty, the script seeds it from `.claude/memory-templates/`. If it's already populated, it's left as-is. Delete `MEMORY.md` (or the whole memory folder) and re-run `start.sh` / `start.bat` to trigger a clean reseed. This matches the design intent: install seeds memory, but updates respect the user's customized memory state.
 
-After update, restart Claude Code (or rerun `start.sh`) to pick up the refreshed memory layer.
+After install/update, `cd` into the target and run `./start.sh` (or `start.bat` on Windows) to activate Unity + run `/workflow`.
 
 ### What if you don't want to use the global bootstrap?
 
@@ -146,7 +149,7 @@ Copy-Item -Path "$($tmp.FullName)\.claude" -Destination "C:\path\to\your-project
 Remove-Item -Path $tmp.FullName -Recurse -Force
 ```
 
-But the `/unity-install` + `/unity-update` flow is recommended — it handles the edge cases (executable bits, .gitignore handling, settings.json backup, memory-folder refresh) that manual copy doesn't.
+But the `/unity-install` + `/unity-update` flow is recommended — it handles the edge cases (executable bits, Layer 0 `.gitignore` block, personal-file preserve-and-restore, memory-folder seeding) that manual copy doesn't.
 
 ---
 

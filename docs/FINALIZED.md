@@ -261,3 +261,63 @@ Each session entry includes:
 - 0.78125% granularity confirmed mathematically: 16 cells × 8 sub-levels = 128 sub-cells, 100/128 = 0.78125%.
 - Color gradient (§8.12) layered on top of the bar geometry — the helper returns plain text; `_grad_color(p)` wraps the bracket-and-bar string in the truecolor escape.
 - Render width: 16-char bar interior + 2 brackets + space + percent + percent sign ≈ 22–23 chars per bar. Three bars on line 2 = ~70 chars. Well within terminal width on every modern setup.
+
+---
+
+### Modify the setup install and update tidbits — preserve-and-restore flow + branch arg
+
+**Verbatim user request (LAW #0):**
+
+> *"We need to make a new feature branch for modifying the setup install and update tidbits"* — Sponge
+
+> *"currently, we are in a repo, that is intended for working just on our Unity AI LAb team distributable workflow. So there are extra files, TODOs, and what not, which is fine. However, there is errors when updating or installing, talking about wiping out existing files, yada yada, updating git ignore, ext. Which the only updates to git ignore is the ignoring of .claude, we dont want to pull in the repo and copy EVERYTHING from the repo into our existing projects when we do a unity install command or unity update command, isntead, we really need it so that it does a proper install or update, where we are ONLY STRICTLY copying the .claude folder, not any other files or anything from inside the repo."* — Sponge
+
+> *"Basically the flow I am wanting should be this:
+> Inital terminal command: puts the unity install command in the global ~/.claude folder (or windows's active user's .claude)
+> unity install command: clone repo to temp folder -> copy JUST the .claude into the existing project. if a .claude exists in the current project then copy out memories and other information -> copy .claude from the cloned repo -> copy files back in (no overwrite), and clean up the temp directory and the place you copied stuff out to
+> update: Same as install, but assumed a .claude already exists, if it does, great, if not, its like a clean install
+>
+> The commands should also default to the main branch, but a unity install or unity update with the user saying develop, or a specific feature, would target that instead of main. Makes it nice clean and easy use for everyone in the team."* — Sponge
+
+> *"the only thing in global we want to mess with is the workflow setup memory based things, we dont really update those in the same sence, all of this .claude currently, is just for project level things, a project level .claude, the install command is only added to global to make installing the .claude to the project"* — Sponge (scope clarification: global side touches ONLY user-profile memory; everything else is project-level)
+
+**Design decisions confirmed via AskUserQuestion (verbatim choices):**
+
+- User-profile memory folder: **Install-only-if-missing** — "On install: if memory folder is missing or empty, populate from `.claude/memory-templates/`. If it has content, leave it alone. On update: same — don't touch existing memory."
+- Project-level preserve list: **Use the current preserve list as-is** (settings.local.json, .env, user.json, user-context/, project-config.json, machine-local session state files).
+- Branch override syntax: Sponge's verbatim — *"unity-install main, unity install develop, unity update develop, ext"* (positional, branch first).
+- `settings.json`: **Framework file, no backup** — "Overwritten on install/update. No `settings.json.backup-<timestamp>` files written. Personal customizations belong in `settings.local.json` (which IS preserved). Clean separation, no backup accumulation."
+
+**Files touched:**
+
+- `.claude/scripts/unity-install.sh` — full rewrite. Canonical idempotent installer. New flow: parse positional `[branch] [target-dir]` (with path-prefix heuristic so first arg can be either) → clone branch (default `main`) into temp clone-dir → if target/.claude/ exists, stage personal files (preserve list) into temp stage-dir then `rm -rf` target/.claude/ → drop fresh `.claude/` from clone → restore staged personal files no-clobber (framework wins ties) → re-apply executable bits on hooks/scripts/start.sh/bin → maintain Layer 0 `.claude/` exclude block in target's `.gitignore` (the ONLY project-root file touched, idempotent) → seed user-profile memory folder ONLY if missing or empty → cleanup both temp dirs. Removed: source-repo `.gitignore` wholesale copy, `settings.json.backup-<TS>` write, abort-on-existing-`.claude/` exit-code-2 path.
+- `.claude/scripts/unity-install.ps1` — PowerShell parity rewrite. Same flow, native Windows syntax. `Test-IsPathLike` regex matches `^[/.~]` and `^[A-Za-z]:[\\/]`.
+- `.claude/scripts/unity-update.sh` — converted to thin wrapper (~5 lines). `exec bash "$SCRIPT_DIR/unity-install.sh" "$@"`. Same flow as install.
+- `.claude/scripts/unity-update.ps1` — converted to thin wrapper. Calls `unity-install.ps1` with same args, propagates `$LASTEXITCODE`.
+- `.claude/commands/unity-install.md` — full rewrite. New §INVOCATION VARIANTS table covering 8 forms (no args / branch only / feature branch / path only / branch + path). New §TARGET-EXISTS BEHAVIOR — preserve-and-restore flow section. New §`.GITIGNORE` AUTO-MAINTENANCE section emphasizing "ONLY project-root file we ever touch". New §USER-PROFILE MEMORY FOLDER — install-only-if-missing section. Removed: §WHEN NOT TO USE "Refreshing an existing install" entry, §TARGET DIRECTORY HANDLING aborts-with-exit-2 row. Updated §RUNNING WHEN NO LOCAL SCRIPT EXISTS YET Path B one-liner to invoke cloned-repo's script with branch/target args.
+- `.claude/commands/unity-update.md` — full rewrite. Now explicitly framed as "alias of /unity-install — same script, same flow, same args. Exists for muscle memory." §INVOCATION VARIANTS table. §WHAT GETS PRESERVED cross-references unity-install.md. Removed: full §WHAT GETS UPDATED / §WHAT IS PRESERVED tables that duplicated the install doc. Removed: settings.json backup mentions.
+- `.claude/CLAUDE.md` — QUICK REFERENCE block updated. `/unity-install` entry rewritten to describe idempotent preserve-and-restore + positional branch arg. `/unity-update` entry rewritten as alias. `Persistent memory` entry updated to mention install-only-if-missing semantics.
+- `README.md` (top-level) — Layer 2 + Layer 3 sections collapsed into one "Layer 2 — Install (or refresh) template in a project" section. New positional branch-arg invocation examples. Preserved-vs-replaced lists. Untouched-outside-`.claude/` paragraph.
+- `.claude/README.md` — Layer 2 + Layer 3 sections collapsed similarly. Manual-install fallback section's "edge cases" sentence updated to reflect new flow (Layer 0 gitignore block, personal-file preserve-and-restore, memory-folder seeding) instead of old (executable bits, .gitignore handling, settings.json backup, memory-folder refresh).
+- `install-unity-globally.sh` — post-install help text expanded with branch-arg invocation examples; updated final paragraph to describe `/unity-update` as alias.
+- `install-unity-globally.ps1` — same parity update.
+- `docs/TODO.md` — verbatim entry captured (LAW #0) under In progress; sub-tasks decomposed; status flipped to in_progress. Will move to FINALIZED.md (this entry) and remove from TODO.md per `§FINALIZED BEFORE DELETE`.
+- `docs/FINALIZED.md` — this entry.
+
+**Closure notes — single-commit ship on `feature/setup-install-update-tidbits` off `develop`:**
+
+- **Root cause identified:** scripts were touching THREE things outside `.claude/` that they shouldn't have been — (1) wholesale-copying our source-repo `.gitignore` into target projects (which contained `node_modules/`, `.vscode/`, `*.log`, etc. — irrelevant noise to user projects), (2) writing `.gitignore.template` sidecar files in target project root on update, (3) accumulating `settings.json.backup-<ISO>` files inside `.claude/` on every update. All three are now eliminated.
+- **Idempotency unified:** `/unity-install` no longer aborts with exit 2 on existing `.claude/`. Both commands now share one preserve-and-restore flow. Running install or update on a populated project just refreshes it cleanly while preserving personal state.
+- **Branch arg first-class:** any branch can be installed/refreshed with positional syntax (`/unity-install develop`, `/unity-install feature/foo /tmp/bar`). Branch names with `/` work because branch is parsed as the first positional and only path-prefix heuristics route arg #1 to the target slot.
+- **Personal-file preserve list confirmed canonical:** matches `/unity-update` doc preserve list verbatim — no path differences.
+- **Memory model split clarified:** project framework is full-overwrite (clean upstream pull every time); user-profile memory is install-only-if-missing (delete `MEMORY.md` to trigger reseed). Matches Sponge's "we dont really update those in the same sence" intent.
+- **No-clobber restore is a structural guarantee:** all preserved files are gitignored at our source repo, so the cloned framework copy never has them — restore creates new files at empty paths after the framework drop. The `cp -p ... [ ! -e dest ] &&` / `Test-Path` no-clobber check is defense-in-depth.
+
+**Verification:**
+
+- `bash -n unity-install.sh` and `bash -n unity-update.sh` — both pass syntax check.
+- Argument parser traced manually for 8 input shapes (no args, branch only, feature/foo branch, /tmp/foo path, ~/projects/foo path, main + path, develop + path, feature/foo + path) — all resolve to correct (branch, target) tuples.
+- LAW #0 verbatim preserved in: TODO.md entry (In progress section), this FINALIZED entry, and inline citations in unity-install.md / unity-update.md / CLAUDE.md QUICK REFERENCE updates.
+- Defense-in-depth IP boundary preserved: Layer 0 gitignore append still happens on every install/update; no other gitignore touches; no source-repo file copied outside `.claude/`.
+
+**Why this matters (verbatim user-stated motivation):** *"we dont want to pull in the repo and copy EVERYTHING from the repo into our existing projects when we do a unity install command or unity update command, isntead, we really need it so that it does a proper install or update, where we are ONLY STRICTLY copying the .claude folder"* + *"Makes it nice clean and easy use for everyone in the team"*.

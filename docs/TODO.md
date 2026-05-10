@@ -17,7 +17,7 @@ LAW #0 reminder: every task description preserves the user's verbatim words.
 
 ## In progress
 
-_(none — `.claude/` IP boundary LAW four-phase rollout shipped on `feature/workflow-modifications`; verbatim audit trail in `docs/FINALIZED.md` Session 2026-05-09)_
+_(none — install/update preserve-and-restore refactor + branch arg shipped on `feature/setup-install-update-tidbits`; verbatim audit trail in `docs/FINALIZED.md` Session 2026-05-09 §"Modify the setup install and update tidbits")_
 
 ---
 

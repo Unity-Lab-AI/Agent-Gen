@@ -30,26 +30,35 @@ gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWork
 
 Inspect-before-running variants + clone-and-run fallback (works without `gh`) documented in `.claude/README.md` Layer 1.
 
-### Layer 2 — Install template into a project (`/unity-install`)
+### Layer 2 — Install (or refresh) template in a project (`/unity-install` / `/unity-update`)
 
 After the bootstrap, in ANY Claude Code session:
 
 ```
-/unity-install                       # installs .claude/ into the current working directory
-/unity-install /path/to/new-project  # installs into a specific target
+/unity-install                                    # main branch into current directory
+/unity-install develop                            # develop branch into current directory
+/unity-install feature/setup-install-update       # any feature branch into current directory
+/unity-install /path/to/new-project               # main branch into a specific target
+/unity-install develop /path/to/new-project       # develop branch into a specific target
 ```
 
-Aborts (exit 2) if `<target>/.claude/` already exists — use `/unity-update` instead to refresh existing installs.
+`/unity-install` and `/unity-update` are **functionally identical** — same script, same idempotent preserve-and-restore flow. Use whichever feels right; muscle memory wins. Both default to `main` branch and accept the same `[branch] [target]` positional args.
 
-### Layer 3 — Refresh existing project (`/unity-update`)
+The flow:
 
-Inside any project that already has `.claude/`:
+1. Clone the requested branch into a temp dir
+2. **If target already has `.claude/`:** stage personal/project-local files (preserve list below) into a second temp dir
+3. Replace `<target>/.claude/` entirely with the cloned `.claude/`
+4. Restore staged personal files (no-clobber — fresh framework wins ties)
+5. Maintain Layer 0 `.claude/` exclude block in target's `.gitignore` (the ONLY project-root file we ever touch)
+6. Seed user-profile memory folder ONLY if missing (existing memory left alone)
+7. Clean up both temp dirs
 
-```
-/unity-update
-```
+**Preserved across refresh:** `settings.local.json`, `.env`, `user.json`, `user-context/`, `project-config.json`, `.session-state.md`, `.session-tidbits.md`, `.session-usage.jsonl`, `.last-session.md`, `.session-env.json`, `.yolo-mode`, `.persona-state`, `.setup-complete`, `.usage-tracking-disabled`.
 
-Pulls the latest `main` branch and updates the project's `.claude/` framework files (agents/commands/hooks/memory-templates/templates/bin/scripts + top-level .md + start.* + settings.json), backs up `settings.json` to a timestamped `.backup-` file before overwrite, preserves personal-override files (`settings.local.json`, `.env`, `user.json`, `user-context/`, `project-config.json`) and machine-local state untouched, refreshes the user-profile memory folder.
+**Replaced by upstream:** everything else under `.claude/` — `agents/`, `commands/`, `hooks/`, `memory-templates/`, `templates/`, `bin/`, `scripts/`, plus top-level framework files (`CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `README.md`, `ImHanddicapped.txt`, `start.sh`, `start.bat`, `settings.json`).
+
+**Untouched outside `.claude/`:** project root stays clean. No source-repo `.gitignore` copy, no `.gitignore.template` sidecar, no `settings.json.backup-*` files. The ONLY project-root file the script touches is `.gitignore` and ONLY to add the Layer 0 `.claude/` exclude block (idempotent, append-only).
 
 ### Prereqs
 
