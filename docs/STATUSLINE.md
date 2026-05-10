@@ -412,8 +412,8 @@ Line 3:  cpu N% ×K | ram U/TG | <drive-label> FG / TG free
 
 | Segment | Source (Linux) | Source (Windows) | Format |
 |---------|----------------|------------------|--------|
-| `cpu N% ×K` | `/proc/loadavg` 1-min load ÷ `os.cpu_count()` × 100 (clamped to 100%); cores from `os.cpu_count()` | wmic + sidecar cache (deferred — see below); cores from `os.cpu_count()` (cross-platform stdlib, works now) | percentage + `×<core-count>` cyan suffix |
-| `ram U/TG` | `/proc/meminfo` `MemTotal` and `MemAvailable` | wmic + sidecar cache (deferred) | used / total in GB |
+| `cpu N% ×K` | `/proc/loadavg` 1-min load ÷ `os.cpu_count()` × 100 (clamped to 100%); cores from `os.cpu_count()` | `ctypes.windll.kernel32.GetSystemTimes` → `(idle, kernel, user)` FILETIMEs; sidecar cache `~/.claude/cpu-cache.json` holds the previous render's tuple so the next render computes a delta (kernel includes idle, so total = kernel + user, busy = total - idle); cores from `os.cpu_count()` | percentage + `×<core-count>` cyan suffix |
+| `ram U/TG` | `/proc/meminfo` `MemTotal` and `MemAvailable` | `ctypes.windll.kernel32.GlobalMemoryStatusEx` → `MEMORYSTATUSEX.{ullTotalPhys, ullAvailPhys}` (the same "Available" figure Task Manager shows: free + standby cache) | used / total in GB |
 | `<drive-label> FG / TG free` | `shutil.disk_usage('.')` → `du.free` and `du.total`; label from `findmnt LABEL/TARGET` | `shutil.disk_usage('.')` → `du.free` and `du.total`; label from `os.path.splitdrive(os.getcwd())` → `C:/` / `F:/` | drive identifier (cyan) + `<free>G / <total>G` (gradient) + `free` (cyan suffix) |
 
 ### CPU cores suffix (§8.14)
@@ -436,7 +436,7 @@ The two `findmnt` calls add ~5–15ms per render on Linux — well within the su
 ### Why this approach
 
 - **Linux uses stdlib only** — `/proc/*` reads + `shutil.disk_usage` are sub-millisecond, fast enough to run every render with no caching infrastructure.
-- **Windows CPU/RAM deferred** — `wmic` shell-outs are ~200–500ms, blowing the sub-100ms render budget per Claude Code docs. Cross-platform parity will land in a follow-up commit using a sidecar JSON cache (`~/.claude/syscache.json`) refreshed in the background. Until then, Windows shows `cpu —` and `ram —` (dim grey) while disk works correctly.
+- **Windows uses ctypes → kernel32** — `GlobalMemoryStatusEx` (RAM) returns instantly; `GetSystemTimes` (CPU) returns instantly but a single sample is meaningless, so a tiny sidecar cache (`~/.claude/cpu-cache.json`, ~70 bytes) holds the previous render's `(idle, kernel, user)` FILETIMEs and the next render computes a delta. No `wmic`, no PowerShell, no subprocess shell-out — both reads stay sub-millisecond, matching the Linux stdlib path's render-budget profile. **First render after launch shows `cpu —`** because no prior sample exists yet; the cache seeds on that render and every render after is accurate. The CPU sidecar is independent of the GPU sidecar (`~/.claude/gpu-cache.json`, §8.11) — different TTL semantics (CPU = always-overwrite-with-latest; GPU = 5s freshness).
 - **Disk works everywhere** — `shutil.disk_usage` is cross-platform stdlib and reads the filesystem of the script's CWD. Claude Code invokes the statusline with the project root as CWD, so the segment naturally reports the project's drive.
 
 ### Color rules
@@ -461,8 +461,11 @@ echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Op
 #                                          partition LABEL from findmnt
 #                                          (or '/' / mountpoint when LABEL empty)
 
-# Windows render — drive label = drive letter
-# Line 3 → cpu — | ram — | C:/ 89G / 512G free   (CPU/RAM dim-grey until wmic-cache lands)
+# Windows render — drive label = drive letter, CPU/RAM via ctypes -> kernel32
+# Line 3 → cpu 62% ×16 | ram 21.0/127.9G | C:/ 107G / 931G free
+# (First render after Claude Code launches shows `cpu —` while the sidecar cache
+#  seeds; every render after that computes the (kernel + user - idle) delta and
+#  shows accurate CPU%. RAM is always accurate from render 1 — no delta needed.)
 
 # Broken JSON → line 3 self-omits via empty LINE3
 echo 'garbage' | bash .claude/statusline.sh
@@ -747,7 +750,7 @@ The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/status
 > ✓ **Implemented**: 5-hour and 7-day rate-limit progress bars render between the ctx bar and the model abbreviation. See §8.7 above for behavior + JSON field reference + self-omit fallback for free plans.
 > ✓ **Implemented**: two-line static layout — line 1 is identity + activity, line 2 is gauges. See §8.8 above for the layout rules + multi-line rendering caveats.
 > ✓ **Implemented**: git branch with state-aware coloring (main blue / develop purple / feature green; pushed = branch color, ahead = orange `+`, dirty = red `*`). See §8.9 above for the full state matrix.
-> ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows CPU/RAM deferred to a wmic-cache follow-up, disk works cross-platform. See §8.10 above for fallback behavior.
+> ✓ **Implemented**: line 3 system stats — CPU, RAM, drive free space. Linux uses stdlib (sub-ms reads); Windows uses `ctypes → kernel32` (`GlobalMemoryStatusEx` for RAM, `GetSystemTimes` + sidecar cache `~/.claude/cpu-cache.json` for CPU delta — both sub-ms, no `wmic` shell-out); disk works cross-platform via `shutil.disk_usage`. See §8.10 above for fallback behavior.
 > ✓ **Implemented**: line 4 GPU stats via nvidia-smi with 5s sidecar cache. Multi-GPU pipe-separated; "No GPU Detected" red fallback when nvidia-smi missing or empty. See §8.11 above for short-name extraction + cache strategy.
 
 ### Derived from `transcript_path` (single file read per render)
@@ -906,5 +909,5 @@ This is the same procedure used to verify §8.5 (`/color` doesn't persist anywhe
 
 **File**: `.claude/statusline.sh` (UAL template) · `C:/claude/shared/statusline.sh` (FDC bot-system, § 1–7)
 **Wired in**: `.claude/settings.json` → `statusLine.command` (project-level) · `~/.claude/settings.json` (global, FDC)
-**Side-effect file**: `~/.claude/context_pct.txt`
+**Side-effect files**: `~/.claude/context_pct.txt` (every render — context %) · `~/.claude/gpu-cache.json` (5s TTL, §8.11) · `~/.claude/cpu-cache.json` (Windows only, every render — `(idle, kernel, user)` FILETIMEs for next-render CPU delta, §8.10)
 **Per-project identity**: derived from cwd basename, no config needed
