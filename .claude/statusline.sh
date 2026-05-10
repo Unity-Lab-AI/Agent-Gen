@@ -304,11 +304,14 @@ try:
     think_part = f' \033[92m·\033[0m \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
     # Line 3: cpu | ram | drive free space.
-    # Linux uses /proc + shutil stdlib for sub-millisecond reads. Windows
-    # CPU/RAM deferred to a follow-up commit (wmic + sidecar cache);
-    # disk works cross-platform via shutil.disk_usage.
+    # Linux: /proc + shutil stdlib (sub-millisecond reads).
+    # Windows: ctypes -> kernel32 (GlobalMemoryStatusEx for RAM, GetSystemTimes
+    #   + sidecar cache for CPU delta). Also sub-ms; no subprocess / wmic
+    #   shell-out so the render stays inside the sub-100ms budget.
+    # Disk works cross-platform via shutil.disk_usage on every path.
     cpu_pct = None
-    if platform.system() == 'Linux':
+    sys_name = platform.system()
+    if sys_name == 'Linux':
         try:
             with open('/proc/loadavg') as f_la:
                 load_1m = float(f_la.read().split()[0])
@@ -316,9 +319,53 @@ try:
             cpu_pct = min(100.0, (load_1m / ncpu_calc) * 100.0)
         except Exception:
             pass
+    elif sys_name == 'Windows':
+        # GetSystemTimes returns (idle, kernel, user) FILETIMEs. lpKernelTime
+        # INCLUDES idle time, so total = kernel + user, busy = total - idle.
+        # Single sample is meaningless -> sidecar cache holds the previous
+        # render's tuple; we compute the delta. First render after launch
+        # shows '—' (no prior sample); every render after that is accurate.
+        try:
+            import ctypes
+            from ctypes import wintypes
+            idle_t = wintypes.FILETIME()
+            kern_t = wintypes.FILETIME()
+            user_t = wintypes.FILETIME()
+            ctypes.windll.kernel32.GetSystemTimes(
+                ctypes.byref(idle_t),
+                ctypes.byref(kern_t),
+                ctypes.byref(user_t),
+            )
+            def _ft_int(ft):
+                return (ft.dwHighDateTime << 32) | ft.dwLowDateTime
+            cur_idle = _ft_int(idle_t)
+            cur_kern = _ft_int(kern_t)
+            cur_user = _ft_int(user_t)
+            cpu_cache_file = os.path.join(home, '.claude', 'cpu-cache.json')
+            prev = None
+            try:
+                if os.path.exists(cpu_cache_file):
+                    with open(cpu_cache_file) as f_cc:
+                        prev = json.load(f_cc)
+            except Exception:
+                pass
+            if prev:
+                d_idle = cur_idle - prev.get('idle', 0)
+                d_total = (cur_kern + cur_user) - (prev.get('kern', 0) + prev.get('user', 0))
+                if d_total > 0:
+                    busy = d_total - d_idle
+                    cpu_pct = max(0.0, min(100.0, (busy / d_total) * 100.0))
+            try:
+                os.makedirs(os.path.dirname(cpu_cache_file), exist_ok=True)
+                with open(cpu_cache_file, 'w') as f_cc:
+                    json.dump({'idle': cur_idle, 'kern': cur_kern, 'user': cur_user}, f_cc)
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     ram_used_gb = ram_total_gb = ram_pct = None
-    if platform.system() == 'Linux':
+    if sys_name == 'Linux':
         try:
             with open('/proc/meminfo') as f_mi:
                 mi = f_mi.read()
@@ -326,6 +373,32 @@ try:
             avail_kb = int(re.search(r'MemAvailable:\s+(\d+)', mi).group(1))
             ram_total_gb = (total_kb * 1024) / (1024**3)
             ram_used_gb = ((total_kb - avail_kb) * 1024) / (1024**3)
+            ram_pct = (ram_used_gb / ram_total_gb) * 100 if ram_total_gb > 0 else 0
+        except Exception:
+            pass
+    elif sys_name == 'Windows':
+        # GlobalMemoryStatusEx via ctypes — instant (~microseconds), no
+        # subprocess. ullAvailPhys is the same 'Available' figure Task
+        # Manager shows (free + standby cache); used = total - avail.
+        try:
+            import ctypes
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ('dwLength', ctypes.c_ulong),
+                    ('dwMemoryLoad', ctypes.c_ulong),
+                    ('ullTotalPhys', ctypes.c_ulonglong),
+                    ('ullAvailPhys', ctypes.c_ulonglong),
+                    ('ullTotalPageFile', ctypes.c_ulonglong),
+                    ('ullAvailPageFile', ctypes.c_ulonglong),
+                    ('ullTotalVirtual', ctypes.c_ulonglong),
+                    ('ullAvailVirtual', ctypes.c_ulonglong),
+                    ('sullAvailExtendedVirtual', ctypes.c_ulonglong),
+                ]
+            ms = MEMORYSTATUSEX()
+            ms.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))
+            ram_total_gb = ms.ullTotalPhys / (1024**3)
+            ram_used_gb = (ms.ullTotalPhys - ms.ullAvailPhys) / (1024**3)
             ram_pct = (ram_used_gb / ram_total_gb) * 100 if ram_total_gb > 0 else 0
         except Exception:
             pass
