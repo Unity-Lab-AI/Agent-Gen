@@ -17,13 +17,13 @@ LAW #0 reminder: every task description preserves the user's verbatim words.
 
 ## In progress
 
-_(none)_
+_(none — statusline 7-modification refactor + empirical schema reference shipped on `feature/statusline-modifications`; verbatim audit trail in `docs/FINALIZED.md` Session 2026-05-09 §"Statusline modifications — seven changes + empirical schema reference")_
 
 ---
 
 ## Pending
 
-_(none)_
+- [ ] **"Note it all works on linux as-is, but windows may need adjustments"** — Gee's platform-coverage note after the seven statusline modifications shipped. Linux is live-verified end-to-end; Windows code paths (`os.path.splitdrive` → `C:/` drive label, `os.cpu_count()` for cores, `tput cols < /dev/tty` from Git Bash mintty for centering) are written defensively but not live-tested on a Windows box. Pre-existing Windows gaps (CPU/RAM via wmic-cache deferral) remain. Action: live-render against Windows mintty + Windows native CMD/PowerShell, verify all four lines + centering + drive label resolution; capture any required adjustments here as sub-tasks.
 
 ---
 

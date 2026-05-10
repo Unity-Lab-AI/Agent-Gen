@@ -792,6 +792,198 @@ If a commit or PR ships with the banned attribution:
 
 ---
 
+# LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE
+
+## The rule
+
+**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Mills). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are **PRIVATE** repositories owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"). No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
+
+This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"*
+
+Reinforced shortly after: *"You might need to use gh isntead of just git to check the status and give us a proper way to check and verify"* — establishing `gh` (GitHub CLI) as the canonical visibility-verification tool; `git` alone cannot distinguish PUBLIC from PRIVATE without API access.
+
+## Pass criteria (all must hold for a remote to be allowed)
+
+A remote is **allowed** to receive `.claude/` content only when **every one of these conditions** is satisfied:
+
+| Check | Required value |
+|-------|----------------|
+| `gh repo view <owner/repo> --json visibility` | `"PRIVATE"` |
+| `gh repo view <owner/repo> --json owner` | `owner.login == "Unity-Lab-AI"` |
+| `gh auth status` | authenticated (otherwise visibility cannot be verified — block by default) |
+
+If **any** check fails or cannot be performed, the remote is **NOT allowed** and the LAW blocks.
+
+## Forbidden actions
+
+- ❌ `git add` of any path under `.claude/` in a repo whose remotes contain ANY public or non-`Unity-Lab-AI`-private remote
+- ❌ `git commit` while any `.claude/` path is staged AND any configured remote is public OR not under `Unity-Lab-AI`
+- ❌ `git push` of any commit touching `.claude/` to a public remote, a non-`Unity-Lab-AI` remote, or to ANY remote when even one OTHER configured remote is public/non-allowed
+- ❌ `git push --force` / `--force-with-lease` to bypass the LAW (the enforcement hook does NOT respect force flags)
+- ❌ Removing `.claude/` from `.gitignore` without first verifying via `gh repo view` that ALL configured remotes are PRIVATE + `Unity-Lab-AI`-owned
+- ❌ Adding a public remote (`git remote add <name> <public-url>`) to a repo where `.claude/` is currently committed or staged
+- ❌ Forking a `Unity-Lab-AI` private repo to a personal/public namespace and pushing `.claude/` there — even if the source was allowed
+- ❌ Bypassing the enforcement hook by calling git through a wrapper, alias, or via `subprocess.run` from a Python script — the hook fires on every Bash invocation regardless of the calling context
+- ❌ Disabling the `pre-tool-public-repo-guard.cjs` hook in `settings.json` — that's a LAW violation
+- ❌ Mirroring `.claude/` content into a public-facing artifact (gist, paste, README, blog post, screenshot of the file tree) — the LAW applies to ALL public exposure paths, not just `git push`
+
+## Required actions
+
+- ✅ **Install-time defense-in-depth (Layer 0):** Every `/unity-install` and `/unity-update` ensures `.claude/` is present in the target project's `.gitignore`. Idempotent — safe to re-run.
+- ✅ **`gh`-backed visibility check (Layer 2):** Before any git command touching `.claude/`, run `gh repo view <owner/repo> --json visibility,owner` for every remote configured in `git remote -v`. Cache results for 60 seconds in `~/.claude/repo-visibility-cache.json`.
+- ✅ **PreToolUse Bash hook enforcement (Layer 1):** `.claude/hooks/pre-tool-public-repo-guard.cjs` parses every Bash call for `git add` / `git commit` / `git push` patterns, runs the visibility check on all configured remotes, and exits with code 2 (blocking) if any non-allowed remote is found.
+- ✅ **Multi-remote paranoia:** Check ALL remotes from `git remote -v`, not just `origin`. Even a public fork remote that the user "would never push to" gets caught — the LAW assumes adversarial mistakes.
+- ✅ **Local-only repos (no remote configured):** Allow commits. No remote = no public exposure path. The hook re-validates if a remote is later added (via the hook's interception of `git push`).
+- ✅ **Opt-in publish command (Layer 3):** `/claude-publish` is the ONLY sanctioned path to remove `.claude/` from a target repo's `.gitignore`. It runs `gh repo view` and refuses unless visibility=PRIVATE AND owner=Unity-Lab-AI.
+- ✅ **`gh` is the canonical visibility tool:** Never parse remote URLs with regex to guess visibility. URLs lie (private repos have public-looking HTTPS URLs). Always call `gh repo view --json visibility,owner` for ground truth.
+- ✅ **Block by default on uncertainty:** If `gh` is not installed, not authenticated, or the API call fails — BLOCK. Surface the error with a paste-ready `gh auth login` or install instruction. Never assume "probably safe."
+
+## Why
+
+The `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group. It encodes:
+
+- The team's binding LAWs (CONSTRAINTS.md) — engineering discipline that took months to formalize
+- Persistent persona definitions (Unity + manifestation modes) — internal lab character canon
+- Hook architecture (PreToolUse safety, PreCompact snapshots, UserPromptSubmit state-refresh) — internal tooling primitives
+- Memory templates (project-agnostic feedback files) — cross-session instruction priming
+- Workflow scripts (install, update, publish, scanner agents, etc.) — internal team tooling
+
+A leak to a public repo means **anyone** — competitors, opportunists, scrapers, AI-training data collectors — gets the entire workflow as a free copy-paste. The lab's competitive advantage erodes in a single accidental `git push`.
+
+Defense-in-depth is the correct posture because:
+
+1. **Single-layer enforcement always fails eventually.** A gitignore alone won't stop `git add -f`. A hook alone won't stop a user editing the gitignore. A visibility check alone won't stop a public fork remote.
+2. **The cost of a leak is unbounded.** Once `.claude/` is in public git history, even a force-push doesn't fully scrub it (clones, archives, GitHub's commit cache, the way wayback works).
+3. **The cost of paranoia is small.** Hook latency under 50ms (with cache). Install-time gitignore add is one extra line. The publish command is opt-in.
+
+The over-paranoid design — confirmed by Sponge as *"just what a security gating feature needs"* — is intentional.
+
+## Enforcement protocol
+
+### Pre-edit / pre-commit / pre-push hook (Layer 1)
+
+The PreToolUse hook `.claude/hooks/pre-tool-public-repo-guard.cjs` (matcher: `Bash`) intercepts every Bash invocation:
+
+```
+[CLAUDE-IP-GUARD] command: <intercepted>
+[CLAUDE-IP-GUARD] git pattern detected: add | commit | push | (none)
+[CLAUDE-IP-GUARD] .claude/ involvement: yes | no | (n/a)
+[CLAUDE-IP-GUARD] checking remotes via gh...
+[CLAUDE-IP-GUARD] remote `origin` (Unity-Lab-AI/UAL-ClaudeWorkflow): PRIVATE + Unity-Lab-AI ✓
+[CLAUDE-IP-GUARD] remote `fork` (someone/myfork): PUBLIC + non-Unity-Lab-AI ✗
+[CLAUDE-IP-GUARD] DECISION: BLOCK
+```
+
+**FAIL conditions (any one is sufficient to block):**
+
+- Any configured remote returns `visibility != "PRIVATE"` from `gh repo view`
+- Any configured remote returns `owner.login != "Unity-Lab-AI"`
+- `gh` is not installed on PATH
+- `gh auth status` reports unauthenticated
+- The `gh repo view` API call fails (network error, repo not accessible to the auth'd user, etc.)
+
+**Recovery on FAIL:**
+
+The hook prints a clear stderr message naming the specific remote that failed and the specific check (visibility vs ownership), plus a paste-ready remediation:
+
+```
+[CLAUDE-IP-GUARD] BLOCKED — `.claude/` cannot land on a public/non-Unity-Lab-AI repo.
+
+Offending remote: fork → https://github.com/someone/myfork (PUBLIC)
+
+Options to proceed:
+  1. Remove the public remote: git remote remove fork
+  2. Move .claude/ work to a different feature branch + repo
+  3. If this remote is genuinely meant to receive .claude/ AND is private + Unity-Lab-AI:
+     run `gh repo view someone/myfork --json visibility,owner` to verify
+     then re-run the original command — visibility is cached for 60s
+```
+
+### Pre-push remote-target check
+
+When the intercepted command is `git push <remote> <branch>` (or `git push` with a default upstream), the hook:
+
+1. Resolves the explicit `<remote>` argument (or the upstream remote if implicit)
+2. Runs the visibility check on that remote AND every other configured remote
+3. Blocks if ANY remote fails — the paranoid stance is "if you have a public remote in this repo, you cannot push `.claude/` ANYWHERE from this repo"
+
+### Pre-stage scan
+
+When the intercepted command is `git add` (any form — `git add .`, `git add -A`, `git add .claude/foo.md`, etc.), the hook:
+
+1. Pre-checks the staging set: `git diff --cached --name-only` (already-staged) UNION the explicit args
+2. If any path matches `^\.claude/` → run visibility check on remotes
+3. Block if any remote fails
+
+### Visibility cache
+
+To keep hook latency under 50ms after first invocation:
+
+- Cache file: `~/.claude/repo-visibility-cache.json`
+- Schema: `{ "<remote-url>": { "visibility": "PRIVATE", "owner": "Unity-Lab-AI", "checked_at": <unix-ts> } }`
+- TTL: 60 seconds
+- Cache miss or stale entry → fresh `gh repo view` call
+
+### Install-time enforcement (Layer 0)
+
+`.claude/scripts/unity-install.sh` and `unity-install.ps1`:
+
+1. After installing `.claude/` into the target directory
+2. Check if target's `.gitignore` exists; create if missing
+3. Check if `.gitignore` already contains `^\.claude/?$` line
+4. If not, append the block:
+   ```
+   # Unity AI Lab .claude/ workflow — proprietary, never commit to public repos
+   # See .claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY
+   .claude/
+   ```
+5. Idempotent — re-running doesn't duplicate the block
+
+### Opt-in publish path (Layer 3)
+
+`/claude-publish` is the ONLY sanctioned way to remove `.claude/` from a project's `.gitignore`:
+
+1. Verify current branch is work-eligible (not protected per Git Flow LAW)
+2. Run `gh repo view --json visibility,owner` on `origin`
+3. Verify `visibility == "PRIVATE"` AND `owner.login == "Unity-Lab-AI"`
+4. If both hold, present a CONFIRMATION prompt with the verified facts
+5. Only after explicit user confirmation, edit `.gitignore` to remove the `.claude/` block
+6. Update `docs/FINALIZED.md` with the publish decision recorded verbatim
+
+## Failure recovery
+
+When `.claude/` content has accidentally landed on a public repo (worst-case scenario):
+
+1. STOP. Treat as a critical IP leak. Acknowledge the violation.
+2. Identify the offending commit(s): `git log --all --oneline -- .claude/`
+3. Identify which remote(s) received the push: `git log origin/<branch> --oneline -- .claude/` for each remote
+4. **Surface to the user immediately — do NOT attempt unilateral remediation.** Force-pushing public history requires user authorization. Possible courses of action (user picks):
+   - History rewrite via `git filter-repo` or BFG + force-push to all affected remotes (still leaves the content in clones/archives — partial mitigation only)
+   - Repo deletion + recreation as private (only path that fully scrubs from GitHub's caches)
+   - Make repo private retroactively (does NOT remove indexed copies; weak mitigation)
+5. After remediation, update `docs/FINALIZED.md` with the incident, recovery steps taken, and any residual exposure
+6. Audit whether the LAW's enforcement layers failed (was the hook disabled? was the gitignore removed without `/claude-publish`?). Patch the gap.
+
+## What this LAW does NOT cover
+
+- **The source repo itself (`Unity-Lab-AI/UAL-ClaudeWorkflow`)** — confirmed PRIVATE under `Unity-Lab-AI` org, passes the LAW naturally; no special-case marker needed
+- **Local-only repos with no configured remote** — no public exposure path possible; LAW allows commits but re-validates the moment a remote is added
+- **Memory installation under `~/.claude/projects/<encoded>/memory/`** — that's outside the working tree of any project, never enters git
+- **`.claude/.env`, `.claude/user.json`, `.claude/user-context/`** — already gitignored by Anthropic default; LAW is a layer on top, not a replacement
+- **Deliberate public publishing of derivative work** (e.g., a blog post, a public README screenshot of part of the workflow) — those are conscious authorial decisions outside the scope of `git push`. The LAW is about preventing accidental git-level leakage, not about gagging the team's voluntary disclosures.
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
+- Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) — registered in `.claude/settings.json` PreToolUse:Bash
+- Install-time gitignore add: `.claude/scripts/unity-install.sh` + `unity-install.ps1`
+- Opt-in publish: `.claude/commands/claude-publish.md`
+- Hooks reference doc: `.claude/agents/hooks.md`
+- Workflow mechanics: `.claude/WORKFLOW.md §CLAUDE IP BOUNDARY ENFORCEMENT`
+
+---
+
 ## How to invoke this file
 
 `.claude/CLAUDE.md` (the always-loaded index) references this file via its LAW one-liner index. Treat `.claude/CONSTRAINTS.md` as binding from the moment CLAUDE.md points here. When a new session starts, read CLAUDE.md first, then open this file before any LAW-bearing task.
