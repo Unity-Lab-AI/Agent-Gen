@@ -1,8 +1,11 @@
 #!/bin/bash
 # Unity AI Lab — Claude Code Status Line
 #
-# Renders a strip at the bottom of the Claude Code CLI showing:
-#   [LABEL] | [######-------] 57% | O4.7 | up 1h23m · think 2m41s
+# Renders a centered multi-line strip at the bottom of the Claude Code CLI:
+#   Line 1: [Label] | up Xh · think Ym | Model | git-branch[*+]
+#   Line 2: CTX [bar] N% | <reset-countdown> [bar] N% | <reset-countdown> [bar] N%
+#   Line 3: cpu N% ×cores | ram U/T G | <drive-label> N G free
+#   Line 4: <gpu-name> U/T gb util% (or red "No GPU Detected")
 #
 # Label rules (auto-adapt to /rename):
 #   - If `session_name` is present in the statusline JSON (set via Claude
@@ -24,9 +27,10 @@
 #   1. Claude Code spawns this script as a subprocess each time the
 #      status line refreshes.
 #   2. Pipes a JSON blob to stdin: { context_window: { used_percentage },
-#      model: { display_name }, session_name, session_id, ... }
-#   3. We parse, format, and print the result to stdout. Claude Code
-#      renders it as the status line text. ANSI color escapes honored.
+#      model: { display_name }, session_name, session_id, rate_limits,
+#      cost, ... } — full schema captured + documented in §10 of the doc.
+#   3. We parse, format, center, and print the result to stdout. Claude
+#      Code renders it as the status line text. ANSI color escapes honored.
 #
 # Side effect (per spec section 3): writes the current context % to
 # ~/.claude/context_pct.txt so hooks / watchdogs / external tooling can
@@ -95,9 +99,22 @@ if [ -n "$GIT_BRANCH" ]; then
     esac
 fi
 
-eval "$(echo "$input" | PYTHONIOENCODING=utf-8 PROJECT_NAME_RESOLVED="$PROJECT_NAME" $PYBIN -c "
+# Terminal width for dynamic centering. tput cols < /dev/tty reads the
+# controlling TTY's TIOCGWINSZ even when stdin is the piped JSON. Falls
+# back to $COLUMNS env (set by some parent shells) and finally 80 — at
+# which point centering on an 80-column virtual width still produces a
+# reasonable layout for most terminal sizes; lines wider than 80 just
+# self-degrade to left-align via the max(0, ...) clamp in python.
+TERM_COLS=$(tput cols 2>/dev/null < /dev/tty || echo "${COLUMNS:-80}")
+
+eval "$(echo "$input" | PYTHONIOENCODING=utf-8 \
+    PROJECT_NAME_RESOLVED="$PROJECT_NAME" \
+    GIT_PART_RAW="$GIT_PART" \
+    TERM_COLS="$TERM_COLS" \
+    $PYBIN -c "
 import sys, json, os, hashlib, re, shutil, platform, subprocess, time
 sys.stdout.reconfigure(encoding='utf-8')
+ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
 try:
     d = json.load(sys.stdin)
 
@@ -212,16 +229,20 @@ try:
             return '█' * cells
         return '█' * full + LEVELS[rem] + ' ' * (cells - full - 1)
 
-    ctx_str = f'{_grad_color(pct)}[{_make_bar(pct)}] {pct:.0f}%\033[0m'
+    # CTX prefix added before the bar. Cyan label matches the rate-limit /
+    # uptime / think / sys-stat cyan-label convention so every gauge segment
+    # shares the same color hierarchy (cyan label + gradient-colored value).
+    ctx_str = f'\033[36mCTX\033[0m {_grad_color(pct)}[{_make_bar(pct)}] {pct:.0f}%\033[0m'
 
-    # Rate limit gauges (Pro/Max only — rate_limits block absent on free
-    # plans, so each bar self-omits when its used_percentage is missing).
-    # Same bar style + same green/yellow/red threshold as ctx for visual
-    # consistency. 5h = current session usage (rolling 5-hour window),
-    # 7d = weekly usage (rolling 7-day window). Cyan label matches the
-    # uptime/thinking cyan-label convention.
+    # Rate-limit gauges. Labels show TIME REMAINING UNTIL RESET, not the bare
+    # window length — sourced from rate_limits.{five_hour,seven_day}.resets_at
+    # which Claude Code emits as a Unix epoch (seconds, integer). Verified
+    # empirically against live JSON capture (CC 2.1.138, see STATUSLINE.md §10).
+    # Falls back to the static '5h'/'7d' label if resets_at is missing or in
+    # the past. Bar still tracks used_percentage with the canonical gradient.
+    # Self-omits when used_percentage is missing (free plans).
     # NOTE: no backticks anywhere in this Python block — they trigger
-    # bash command substitution inside the python3 -c "..." heredoc.
+    # bash command substitution inside the python3 -c '...' heredoc.
     def _pct_bar(p):
         try: p = float(p)
         except: p = 0
@@ -229,11 +250,33 @@ try:
         if p > 100: p = 100
         return f'{_grad_color(p)}[{_make_bar(p)}] {p:.0f}%\033[0m'
 
+    def _reset_label(default_label, reset_ts, now_ts):
+        if reset_ts is None: return default_label
+        try:
+            delta = float(reset_ts) - now_ts
+        except (TypeError, ValueError):
+            return default_label
+        if delta <= 0: return default_label
+        s = int(delta)
+        if s < 60: return f'{s}s'
+        mm = s // 60
+        if mm < 60: return f'{mm}m'
+        hh, mm = divmod(mm, 60)
+        if hh < 24: return f'{hh}h{mm:02d}m'
+        dd, hh = divmod(hh, 24)
+        return f'{dd}d{hh:02d}h'
+
+    now_ts = time.time()
     rate_limits = d.get('rate_limits', {})
-    five_h_pct = rate_limits.get('five_hour', {}).get('used_percentage')
-    seven_d_pct = rate_limits.get('seven_day', {}).get('used_percentage')
-    rate5h_part = f' \033[92m|\033[0m \033[36m5h\033[0m {_pct_bar(five_h_pct)}' if five_h_pct is not None else ''
-    rate7d_part = f' \033[92m|\033[0m \033[36m7d\033[0m {_pct_bar(seven_d_pct)}' if seven_d_pct is not None else ''
+    five_h_block = rate_limits.get('five_hour', {})
+    seven_d_block = rate_limits.get('seven_day', {})
+    five_h_pct = five_h_block.get('used_percentage')
+    seven_d_pct = seven_d_block.get('used_percentage')
+    five_h_label_str = _reset_label('5h', five_h_block.get('resets_at'), now_ts)
+    seven_d_label_str = _reset_label('7d', seven_d_block.get('resets_at'), now_ts)
+
+    rate5h_part = f' \033[92m|\033[0m \033[36m{five_h_label_str}\033[0m {_pct_bar(five_h_pct)}' if five_h_pct is not None else ''
+    rate7d_part = f' \033[92m|\033[0m \033[36m{seven_d_label_str}\033[0m {_pct_bar(seven_d_pct)}' if seven_d_pct is not None else ''
 
     # Session uptime + cumulative thinking/API time from cost block.
     # cost.total_duration_ms = wall-clock since CLI session start (CC docs)
@@ -255,10 +298,8 @@ try:
     uptime_fmt = _fmt_ms(cost.get('total_duration_ms', 0))
     think_fmt = _fmt_ms(cost.get('total_api_duration_ms', 0))
     # Cyan label + bright-white value (97). Bright white over plain white
-    # so the timer values pop on dark terminals — terminal-default fg
-    # often renders as light gray, which got lost next to the cyan label.
-    # Leading separator baked in so empty values don't leave dangling
-    # ' | ·' fragments in the echo line.
+    # so the timer values pop on dark terminals. Leading separator baked in
+    # so empty values don't leave dangling ' | ·' fragments.
     uptime_part = f' \033[92m|\033[0m \033[36mup\033[0m \033[97m{uptime_fmt}\033[0m' if uptime_fmt else ''
     think_part = f' \033[92m·\033[0m \033[36mthink\033[0m \033[97m{think_fmt}\033[0m' if think_fmt else ''
 
@@ -271,8 +312,8 @@ try:
         try:
             with open('/proc/loadavg') as f_la:
                 load_1m = float(f_la.read().split()[0])
-            ncpu = os.cpu_count() or 1
-            cpu_pct = min(100.0, (load_1m / ncpu) * 100.0)
+            ncpu_calc = os.cpu_count() or 1
+            cpu_pct = min(100.0, (load_1m / ncpu_calc) * 100.0)
         except Exception:
             pass
 
@@ -289,38 +330,84 @@ try:
         except Exception:
             pass
 
-    disk_free_gb = disk_pct = None
+    disk_free_gb = disk_total_gb_val = disk_pct = None
     try:
         du = shutil.disk_usage('.')
         disk_free_gb = du.free / (1024**3)
+        disk_total_gb_val = du.total / (1024**3)
         disk_pct = (du.used / du.total) * 100 if du.total > 0 else 0
     except Exception:
         pass
 
-    def _sys_seg(label, value_str, pct):
+    # Drive label resolution.
+    #   Windows -> 'C:/' / 'F:/' from cwd drive letter via os.path.splitdrive
+    #   POSIX   -> findmnt LABEL of the partition backing cwd; fall back to
+    #              the mount point ('/', '/home', '/mnt/...') when no
+    #              partition label is set.
+    # Makes 'WHAT drive' immediately legible without parsing the project
+    # path. Two findmnt calls are ~5-10ms each; acceptable per-render cost,
+    # no caching needed.
+    def _get_drive_label():
+        if platform.system() == 'Windows':
+            dd = os.path.splitdrive(os.getcwd())[0]
+            return f'{dd}/' if dd else 'drive'
+        try:
+            cwd = os.getcwd()
+            r = subprocess.run(
+                ['findmnt', '-no', 'LABEL', '--target', cwd],
+                capture_output=True, text=True, timeout=1.0
+            )
+            label_str = r.stdout.strip() if r.returncode == 0 else ''
+            if label_str:
+                return label_str
+            r2 = subprocess.run(
+                ['findmnt', '-no', 'TARGET', '--target', cwd],
+                capture_output=True, text=True, timeout=1.0
+            )
+            target_str = r2.stdout.strip() if r2.returncode == 0 else ''
+            return target_str or '/'
+        except Exception:
+            return 'drive'
+
+    drive_label = _get_drive_label()
+
+    # CPU cores suffix — appended after the cpu% in cyan to match the label
+    # palette. × is the multiplication sign '×' (cleaner than 'x' next
+    # to the digits). Self-omits when os.cpu_count() returns None (rare).
+    ncpu = os.cpu_count() or 0
+    cores_suffix = f' \033[36m×{ncpu}\033[0m' if ncpu else ''
+
+    def _sys_seg(label_str, value_str, pct_val, suffix=''):
         # value_str is dim-grey '—' on N/A; otherwise gradient-colored
-        # via the shared _grad_color helper.
+        # via the shared _grad_color helper. suffix is appended verbatim
+        # (already-formatted, includes own ANSI), used for cpu's '×N cores'.
         if value_str is None:
-            return f'\033[36m{label}\033[0m \033[90m—\033[0m'
-        return f'\033[36m{label}\033[0m {_grad_color(pct)}{value_str}\033[0m'
+            return f'\033[36m{label_str}\033[0m \033[90m—\033[0m'
+        return f'\033[36m{label_str}\033[0m {_grad_color(pct_val)}{value_str}\033[0m{suffix}'
 
     cpu_val = f'{cpu_pct:.0f}%' if cpu_pct is not None else None
     ram_val = f'{ram_used_gb:.1f}/{ram_total_gb:.1f}G' if ram_pct is not None else None
-    disk_val = f'{disk_free_gb:.0f}G free' if disk_free_gb is not None else None
+    # Drive segment: '<free>G / <total>G free' — both gigabyte values share
+    # the gradient color (which tracks % USED so high = red), and the literal
+    # word 'free' is cyan-suffixed to match the rest-of-line cyan-label palette
+    # (drive_label, cpu, ram). Implemented via the new free_suffix passed to
+    # _sys_seg so the gradient block ends cleanly before the cyan word starts.
+    disk_val = f'{disk_free_gb:.0f}G / {disk_total_gb_val:.0f}G' if disk_free_gb is not None and disk_total_gb_val is not None else None
+    free_suffix = ' \033[36mfree\033[0m' if disk_val else ''
 
     sys_line = (
-        f'{_sys_seg(\"cpu\", cpu_val, cpu_pct)}'
+        f'{_sys_seg(\"cpu\", cpu_val, cpu_pct, cores_suffix)}'
         f' \033[92m|\033[0m '
         f'{_sys_seg(\"ram\", ram_val, ram_pct)}'
         f' \033[92m|\033[0m '
-        f'{_sys_seg(\"drive\", disk_val, disk_pct)}'
+        f'{_sys_seg(drive_label, disk_val, disk_pct, free_suffix)}'
     )
 
-    # Line 4: GPU(s) via nvidia-smi. Cached in ~/.claude/gpu-cache.json
-    # with a 5-second TTL so the ~150ms nvidia-smi shell-out doesn't
-    # block every render. On cache miss the script blocks once to refresh.
-    # When nvidia-smi is missing OR returns no GPUs, line 4 renders as
-    # red 'No GPU Detected' so the user knows the card wasn't found.
+    # Line 4: GPU(s) via nvidia-smi (with sidecar cache). Cached in
+    # ~/.claude/gpu-cache.json with a 5-second TTL so the ~150ms nvidia-smi
+    # shell-out doesn't block every render. On cache miss the script blocks
+    # once to refresh. When nvidia-smi is missing OR returns no GPUs, line 4
+    # renders as red 'No GPU Detected'.
     home_dir = os.environ.get('USERPROFILE') or os.path.expanduser('~')
     gpu_cache_file = os.path.join(home_dir, '.claude', 'gpu-cache.json')
     gpu_data = {'gpus': []}
@@ -394,37 +481,55 @@ try:
             )
         gpu_line = ' \033[92m|\033[0m '.join(gpu_segs)
 
-    print(f'CTX=\"{ctx_str}\" RATE5H=\"{rate5h_part}\" RATE7D=\"{rate7d_part}\" MODEL=\"{model_str}\" UPTIME=\"{uptime_part}\" THINK=\"{think_part}\" LABEL=\"{label}\" SYS3=\"{sys_line}\" GPU=\"{gpu_line}\"')
-except:
+    # Line composition (moved from bash so dynamic centering can run inline
+    # without spawning a second python subprocess). UPTIME's leading
+    # separator is baked in so it self-omits cleanly on fresh sessions —
+    # without it, the line falls back to a single pipe between label and
+    # model. Line 2's RATE5H/RATE7D follow the same self-omit pattern.
+    git_part_raw = os.environ.get('GIT_PART_RAW', '')
+    pipe = '\033[92m|\033[0m'
+    if uptime_part:
+        line1 = f'{label}{uptime_part}{think_part} {pipe} {model_str}{git_part_raw}'
+    else:
+        line1 = f'{label} {pipe} {model_str}{git_part_raw}'
+    line2 = f'{ctx_str}{rate5h_part}{rate7d_part}'
+    line3 = sys_line
+    line4 = gpu_line
+
+    # Dynamic centering — terminal width from \$TERM_COLS env (computed in
+    # bash via tput cols < /dev/tty). Strips ANSI for visible-length count
+    # using the precompiled ANSI_RE; pads with leading spaces only (no
+    # trailing padding to avoid cursor-position drift). Self-degrades to
+    # left-align when terminal width can't be determined or when content
+    # is wider than the terminal (negative pad clamps to 0). Each line
+    # centers independently so different-width lines naturally stack.
+    cols_str = os.environ.get('TERM_COLS', '80') or '80'
+    try:
+        cols = int(cols_str)
+    except ValueError:
+        cols = 80
+    def _center(s):
+        if not s: return s
+        visible = ANSI_RE.sub('', s)
+        pad = max(0, (cols - len(visible)) // 2)
+        return ' ' * pad + s
+
+    line1c = _center(line1)
+    line2c = _center(line2)
+    line3c = _center(line3)
+    line4c = _center(line4)
+
+    print(f'LINE1=\"{line1c}\" LINE2=\"{line2c}\" LINE3=\"{line3c}\" LINE4=\"{line4c}\"')
+except Exception:
     fallback_name = os.environ.get('PROJECT_NAME_RESOLVED') or '?'
     fallback_label = f'\033[35m[{fallback_name}]\033[0m'
-    print(f'CTX=\"?\" RATE5H=\"\" RATE7D=\"\" MODEL=\"?\" UPTIME=\"\" THINK=\"\" LABEL=\"{fallback_label}\" SYS3=\"\" GPU=\"\"')
+    print(f'LINE1=\"{fallback_label}\" LINE2=\"\" LINE3=\"\" LINE4=\"\"')
 " 2>/dev/null)"
 
-# Render TWO lines so the segment list can keep growing (git branch,
-# system stats, etc.) without busting terminal width:
-#   Line 1: [Label] | up · think | Model     (identity + activity)
-#   Line 2: [ctx-bar] | 5h | 7d              (gauges)
-#
-# LABEL carries the colored brackets — magenta when no rename is set
-# (Unity-AI-Lab pink, closest 4-bit match to brand pink #ff4d9a), or a
-# hash-derived bright color when /rename has been used. Pipe separators
-# in bright green (92) frame each section visually.
-#
-# UPTIME has its leading pipe baked in so it self-omits cleanly on
-# fresh sessions; when absent, line 1 falls back to a single pipe
-# directly between label and model. Line 2's RATE5H / RATE7D segments
-# also have leading pipes baked in so they self-omit independently.
-PIPE="\033[92m|\033[0m"
-if [ -n "$UPTIME" ]; then
-    LINE1="$LABEL$UPTIME$THINK $PIPE $MODEL$GIT_PART"
-else
-    LINE1="$LABEL $PIPE $MODEL$GIT_PART"
-fi
-LINE2="$CTX$RATE5H$RATE7D"
-LINE3="$SYS3"
-LINE4="$GPU"
+# Render — composition + centering both happen inside the python heredoc
+# above, so bash just emits the four LINE vars. Lines 2/3/4 self-omit on
+# empty (e.g. exception path or all-N/A sys metrics).
 echo -e "$LINE1"
-echo -e "$LINE2"
+[ -n "$LINE2" ] && echo -e "$LINE2"
 [ -n "$LINE3" ] && echo -e "$LINE3"
 [ -n "$LINE4" ] && echo -e "$LINE4"

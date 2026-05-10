@@ -251,22 +251,27 @@ echo '{"context_window":{"used_percentage":55},"model":{"id":"MiniMax-M2.7","dis
 
 ## 8.7 Rate-limit usage bars — 5h session + 7d weekly
 
-Two additional progress bars render between the context bar and the model abbreviation, sourced from the `rate_limits` block of the statusline JSON:
+Two additional progress bars render on line 2 (alongside the ctx bar), sourced from the `rate_limits` block of the statusline JSON. **The label slot shows the time remaining until the window resets**, not the bare window length — so at a glance you see exactly when the cap rolls over without having to do mental subtraction. The bar itself still tracks `used_percentage` with the canonical gradient.
 
 ```
-[Label] | [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z% | Model | up · think
+Line 2:  CTX [bar] X% | 4h12m [bar] Y% | 5d03h [bar] Z%
+                       ^^^^^             ^^^^^
+                       countdown to      countdown to
+                       5h reset          7d reset
 ```
 
-| Bar | JSON field | Window | Use case |
-|-----|------------|--------|----------|
-| `5h [bar] Y%` | `rate_limits.five_hour.used_percentage` | rolling 5-hour | "current session" pacing — shows how close you are to the 5h Pro/Max cap |
-| `7d [bar] Z%` | `rate_limits.seven_day.used_percentage` | rolling 7-day | weekly burn — long-arc usage tracking |
+| Bar | JSON percentage field | JSON reset field (Unix epoch seconds) | Window | Label format |
+|-----|------------------------|----------------------------------------|--------|--------------|
+| `<countdown> [bar] Y%` | `rate_limits.five_hour.used_percentage` | `rate_limits.five_hour.resets_at` | rolling 5-hour | `XmYs` / `XhYYm` / `XdYYh` |
+| `<countdown> [bar] Z%` | `rate_limits.seven_day.used_percentage` | `rate_limits.seven_day.resets_at` | rolling 7-day | same ladder |
+
+`resets_at` is an **integer Unix epoch in seconds** (verified empirically against CC 2.1.138 — see §10 for the full schema capture). The script computes `delta = resets_at - time.time()` and formats the positive delta with the same time-format ladder as `up` / `think`. If `resets_at` is missing or already in the past, the label falls back to the literal `5h` / `7d` so the segment still renders something sensible.
 
 ### Visual treatment
 
-- Bar style identical to ctx bar — 15-char `#`/`-` fill.
+- Bar style: 16-cell × 8-sub-level Unicode block-fill — see §8.13 for geometry.
 - Color thresholds match the shared 6-tier gradient — see §8.12 for the canonical scheme.
-- Label (`5h`, `7d`) renders in cyan (`\033[36m`) matching the `up`/`think` label convention.
+- Countdown label renders in cyan (`\033[36m`) matching the `up`/`think`/`CTX`/`cpu`/`ram` label convention.
 - Section pipe separators bright green (`\033[92m`) per §8 convention.
 
 ### Self-omitting fallback
@@ -314,7 +319,9 @@ Line 2:  [ctx-bar] X% | 5h [bar] Y% | 7d [bar] Z%
 
 ### Implementation note
 
-Both lines composed in bash from the eval'd Python output. The conditional fallback for line 1 (`if [ -n "$UPTIME" ]`) avoids a double-pipe when timers self-omit, since UPTIME has its leading separator baked into the f-string for the original single-line auto-omit semantics.
+**As of §8.14 (centering refactor):** all four lines are composed inside the single embedded `python3 -c '...'` heredoc rather than in bash. Bash still computes `GIT_PART` (cheap git shell-outs) and the `TERM_COLS` value via `tput cols < /dev/tty`, then passes both as env vars into Python. Python composes line 1's conditional UPTIME fallback inline (`if uptime_part: ... else: ...`), centers each line independently using the shared `ANSI_RE` strip + leading-space pad, and emits four `LINEN="..."` assignments for bash to `eval` and `echo`. One python subprocess per render preserves the sub-100ms latency budget.
+
+(Historical note: prior to §8.14, both lines were composed in bash via per-segment env vars `CTX="..." RATE5H="..." MODEL="..."` etc. The refactor was triggered by dynamic centering needing Unicode-aware visible-length counting, which is trivial in Python and a multi-tool dance in bash.)
 
 ### Test recipe for 8.8
 
@@ -400,14 +407,31 @@ echo '{"context_window":{"used_percentage":50},"model":{"display_name":"S"}}' | 
 A new third row surfaces local machine resource usage so you can see at a glance whether your dev box is under stress while you're working:
 
 ```
-Line 3:  cpu N% | ram U/TG | drive NG free
+Line 3:  cpu N% ×K | ram U/TG | <drive-label> FG / TG free
 ```
 
 | Segment | Source (Linux) | Source (Windows) | Format |
 |---------|----------------|------------------|--------|
-| `cpu N%` | `/proc/loadavg` 1-minute load ÷ `os.cpu_count()` × 100 (clamped to 100%) | wmic + sidecar cache (deferred — see below) | percentage |
+| `cpu N% ×K` | `/proc/loadavg` 1-min load ÷ `os.cpu_count()` × 100 (clamped to 100%); cores from `os.cpu_count()` | wmic + sidecar cache (deferred — see below); cores from `os.cpu_count()` (cross-platform stdlib, works now) | percentage + `×<core-count>` cyan suffix |
 | `ram U/TG` | `/proc/meminfo` `MemTotal` and `MemAvailable` | wmic + sidecar cache (deferred) | used / total in GB |
-| `drive NG free` | `shutil.disk_usage('.')` | `shutil.disk_usage('.')` (cross-platform stdlib) | free space in GB |
+| `<drive-label> FG / TG free` | `shutil.disk_usage('.')` → `du.free` and `du.total`; label from `findmnt LABEL/TARGET` | `shutil.disk_usage('.')` → `du.free` and `du.total`; label from `os.path.splitdrive(os.getcwd())` → `C:/` / `F:/` | drive identifier (cyan) + `<free>G / <total>G` (gradient) + `free` (cyan suffix) |
+
+### CPU cores suffix (§8.14)
+
+The `×K` segment uses Unicode `×` (U+00D7 multiplication sign — visually distinct from lowercase `x`) followed by the integer core count from `os.cpu_count()`. Cyan-colored to match the cyan label palette. Self-omits when `os.cpu_count()` returns `None` (rare — virtualized environments without `/proc/cpuinfo`).
+
+### Drive label resolution (§8.14)
+
+The cyan label slot — previously the literal string `drive` — now displays the actual drive identifier so you can see WHICH drive without parsing the project path:
+
+| Platform | Source | Examples |
+|----------|--------|----------|
+| Windows | `os.path.splitdrive(os.getcwd())[0]` + trailing `/` | `C:/`, `F:/`, `D:/` |
+| Linux (labeled partition) | `findmnt -no LABEL --target $cwd` | `External`, `HDD1`, `SSD`, `Backup` |
+| Linux (unlabeled partition) | `findmnt -no TARGET --target $cwd` (mountpoint fallback) | `/`, `/home`, `/mnt/data` |
+| macOS / BSD / no findmnt | exception path | `drive` (literal — same as pre-§8.14) |
+
+The two `findmnt` calls add ~5–15ms per render on Linux — well within the sub-100ms budget. No sidecar cache; the partition label rarely changes mid-session, but the cost is small enough that caching adds complexity without a meaningful speedup.
 
 ### Why this approach
 
@@ -417,9 +441,9 @@ Line 3:  cpu N% | ram U/TG | drive NG free
 
 ### Color rules
 
-Same green / yellow / red threshold as the ctx and rate-limit bars: `<60%` green, `60–80%` yellow, `>80%` red. Cyan label (`cpu`, `ram`, `drive`) matching the `up` / `think` / `5h` / `7d` label convention.
+Same green / yellow / red threshold as the ctx and rate-limit bars: `<60%` green, `60–80%` yellow, `>80%` red. Cyan label (`cpu`, `ram`, plus the resolved drive identifier from §8.14 — `C:/`, `SSD`, `External`, `/`, etc.) matching the `up` / `think` / `CTX` / `5h-countdown` / `7d-countdown` label convention.
 
-For disk specifically, the threshold is on **percent used** (matching the other gauges' semantics — high % = bad). `261G free` showing yellow means the drive is 60–80% full overall, even though the absolute free figure looks plentiful.
+For disk specifically, the threshold is on **percent used** (matching the other gauges' semantics — high % = bad). `261G / 954G free` showing orange means the drive is 66–79% full overall (i.e. 73% used in this case — `(954-261)/954`), even though the absolute free figure looks plentiful. The literal word `free` is split out as a cyan suffix (it's a label, not a value), so only the gigabyte numbers carry the gradient color.
 
 ### Self-omitting fallback
 
@@ -428,11 +452,19 @@ If a stat fails (e.g., `/proc/loadavg` unreadable, no `MemAvailable` in older ke
 ### Test recipes
 
 ```bash
-# Linux full render
+# Linux full render — drive label = partition label or mountpoint
 echo '{"context_window":{"used_percentage":8},"model":{"display_name":"Claude Opus 4.7"}}' | bash .claude/statusline.sh
-# Line 3 → cpu 13% | ram 11.4/61.6G | drive 261G free
+# Line 3 → cpu 13% ×16 | ram 11.4/61.6G | SSD 261G / 954G free
+#                  ^^^                     ^^^ ^^^^^^^^^^^^ ^^^^
+#                  cores from              |   gradient     cyan
+#                  os.cpu_count()          |   (% used)     suffix
+#                                          partition LABEL from findmnt
+#                                          (or '/' / mountpoint when LABEL empty)
 
-# Broken JSON → line 3 self-omits via SYS3=""
+# Windows render — drive label = drive letter
+# Line 3 → cpu — | ram — | C:/ 89G / 512G free   (CPU/RAM dim-grey until wmic-cache lands)
+
+# Broken JSON → line 3 self-omits via empty LINE3
 echo 'garbage' | bash .claude/statusline.sh
 # Lines 1-2 render with ? placeholders, line 3 absent
 ```
@@ -626,6 +658,76 @@ When implementing the multi-space padding (`[████            ]`), the ba
 
 ---
 
+## 8.14 Statusline modifications shipped 2026-05-09 (`feature/statusline-modifications`)
+
+Seven modifications shipped together on `feature/statusline-modifications` from a single empirical-capture session against CC 2.1.138. Verbatim brief from Gee (six core + one follow-on):
+
+> "Drive on windows would say C:/ F:/ ext instead of drive, linux it would go off the label for the drive (example on my system is HDD 1 or External or SSD, the install drive would just say /), this would make it easier to see WHAT drive, isntead of relying on the project pathing to understand what drive."
+> "cpu with is percentage is good, but a little x-cores after the cpu% would show the core count at a glace"
+> "The context bar should say CTX infront of it, before the bar"
+> "The bar for session usage instead of 5h should show the time remaining until the session usage resets"
+> "The bar for the 7d usage, the 7d should be the time reamining until the 7d window resets"
+> "If it is possible for a dynamic centering that would look nice as well"
+> "Extra thing: for the drive free space thing I would like gigabytes / gigabytes free with the whole gigabyte / gigabytes being colored but 'free' being the cyan the rest of the normal text is"
+
+### Visual diff
+
+```
+BEFORE                                                AFTER
+[Label] | up · think | Model | branch                 [Label] | up · think | Model | branch
+[ctx] N% | 5h [..] N% | 7d [..] N%                    CTX [ctx] N% | 4h12m [..] N% | 5d03h [..] N%
+cpu N% | ram U/T G | drive NG free                        cpu N% ×16 | ram U/T G | SSD FG / TG free
+gpu1 U/T 0% | gpu2 U/T 0%                                       gpu1 U/T 0% | gpu2 U/T 0%
+^                                                     ^^^^^^^^^^^^^^^^^
+left-aligned                                          dynamically centered (each line independently)
+```
+
+### What changed (1:1 with verbatim spec)
+
+| # | Spec | Implementation | Verified against |
+|---|------|----------------|-------------------|
+| 1 | Drive label per-platform | `os.path.splitdrive` on Windows; `findmnt -no LABEL` then `findmnt -no TARGET` fallback on POSIX. New `_get_drive_label()` helper; result feeds the cyan label slot of the drive segment in `_sys_seg(...)`. | `SSD` rendered for `/mnt/0C38...` partition (live) |
+| 2 | `×cores` after cpu% | `os.cpu_count()` already loaded; new `cores_suffix` cyan-colored `×K` appended via `_sys_seg(...)`'s new `suffix` parameter. Self-omits when `cpu_count()` returns None. | `×12` rendered (live) |
+| 3 | `CTX` prefix on context bar | `ctx_str` f-string prepends cyan `CTX` matching the rate-limit / sys-stat / uptime cyan-label palette. | `CTX [bar] 14%` (live) |
+| 4 | 5h label → time-to-reset | New `_reset_label('5h', resets_at, now_ts)` formats `resets_at - time.time()` with the same time ladder as `_fmt_ms`. Falls back to literal `5h` when reset is missing or in the past. | `3h03m` rendered (live) |
+| 5 | 7d label → time-to-reset | Same `_reset_label('7d', ...)` helper. | `3d07h` rendered (live) |
+| 6 | Dynamic centering (best-effort) | `tput cols < /dev/tty` from bash → `TERM_COLS` env → python `_center()` strips ANSI via the precompiled `ANSI_RE`, prepends `(cols - visible) // 2` spaces. Each line centers independently. Fallback ladder: `tput` → `$COLUMNS` → 80; negative pad clamps to 0 (left-align). | 18-space leading pad on line 3 / 22-space on line 4 (live, 80-col mintty) |
+| 7 | Drive `<free>G / <total>G free` with split coloring | New `disk_total_gb_val` computed alongside existing `disk_free_gb` from `shutil.disk_usage('.').total`. `disk_val` rebuilt as `f'{free}G / {total}G'` (gradient via `_sys_seg`). New `free_suffix = ' \033[36mfree\033[0m'` passed as `_sys_seg`'s suffix slot so the cyan word lands AFTER the gradient block's `\033[0m` reset. Self-omits when disk metrics unavailable. | `SSD 261G / 954G free` (live) — `SSD` cyan, `261G / 954G` orange (73% used → §8.12 orange-600 stop), `free` cyan |
+
+### Implementation refactor (composition moved to Python)
+
+To keep dynamic centering inside the existing single python subprocess (avoiding a second python startup that would push the render past the sub-100ms budget), all four lines are now composed in Python rather than bash:
+
+- Bash still computes `GIT_PART` (cheap git shell-outs) and `TERM_COLS`.
+- Both pass into Python as env vars (`GIT_PART_RAW`, `TERM_COLS`).
+- Python composes line 1's conditional UPTIME fallback (`if uptime_part: ... else: ...`), centers each line via `_center()` (uses the precompiled `ANSI_RE`), and emits `LINE1="..." LINE2="..." LINE3="..." LINE4="..."`.
+- Bash `eval`s the four assignments and `echo -e`s each (with `[ -n "$LINEN" ]` guards on lines 2-4 for the exception fallback path).
+
+The pre-§8.14 per-segment env-var pattern (`CTX="..." RATE5H="..." MODEL="..."` etc.) is gone. If you're reading commits older than 2026-05-09, expect that earlier shape.
+
+### Source-of-truth for `resets_at`
+
+Verified via temp-tee debug (`echo "$input" > /tmp/sl-debug.json` between `input=$(cat)` and the heredoc) on 2026-05-09 against CC 2.1.138:
+
+```json
+"rate_limits": {
+  "five_hour": { "used_percentage": 61, "resets_at": 1778384400 },
+  "seven_day": { "used_percentage": 17, "resets_at": 1778659200 }
+}
+```
+
+`resets_at` is an **integer Unix epoch seconds** value, not ISO 8601. The countdown is just `int(resets_at - time.time())` formatted via the existing time-ladder. Full schema dump in §10.
+
+### Centering edge cases
+
+- **Terminal narrower than line content** → negative pad clamps to 0; line renders left-aligned and overflows the right edge (same as pre-§8.14).
+- **No `/dev/tty`** (sandboxed env, container without TTY) → `tput cols` fails; `${COLUMNS:-80}` fallback; centering lands on a virtual 80-column width which still produces a reasonable visual on most terminals.
+- **Windows + Git Bash mintty** → `tput cols < /dev/tty` works; mintty exposes a TIOCGWINSZ-compatible ioctl.
+- **Multi-byte unicode** (block-fill glyphs, `×`, `—`) → counted by Python `len()` which counts code points (not bytes). The block-fill chars are 1 column wide so `len()` matches visual width. For wider unicode (CJK, emoji) we'd need `wcwidth` — not currently a dependency, would require a follow-up if such characters ever entered a label.
+- **ANSI escape stripping** → uses precompiled `ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')` matching the `[<digits or ;>]m` form (color/style escapes only). Cursor-movement escapes aren't stripped but we don't emit any.
+
+---
+
 ## 9. Future Capabilities Brainstorm — other fields the statusline could surface
 
 The full Claude Code statusLine JSON schema (per [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline)) includes more than the four fields we currently use. Each row below is a candidate capability — pick what's useful, leave the rest. Order is by "easiest signal-to-effort ratio first."
@@ -687,6 +789,118 @@ Each of these turns the statusline render cycle (which fires every few seconds) 
 - **Network ping to claude.ai** — adds tail-latency to every render; never put network calls in a statusline command
 
 The render budget is sub-100ms target. Anything that costs more than parsing JSON + reading one file should be pre-computed by a hook and dropped into a sidecar file for the statusline to `cat`.
+
+---
+
+## 10. Reference: empirically-captured statusline JSON schema (CC 2.1.138)
+
+Captured 2026-05-09 via temp-tee in `.claude/statusline.sh` (`echo "$input" > /tmp/sl-debug.json` between `input=$(cat)` and the heredoc) running against Claude Code 2.1.138 in this project. Use this as the **source of truth** when planning new segments — Anthropic's docs at [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline) are not always exhaustive or current.
+
+### Full live capture
+
+```json
+{
+    "session_id": "3113828a-6e60-4817-a3ce-232df428ba0c",
+    "transcript_path": "/home/sponge/.claude2/projects/-mnt-0C38361B292A2255-Development-UnityAILab-UAL-ClaudeWorkflow/3113828a-6e60-4817-a3ce-232df428ba0c.jsonl",
+    "cwd": "/mnt/0C38361B292A2255/Development/UnityAILab/UAL-ClaudeWorkflow",
+    "effort": { "level": "xhigh" },
+    "session_name": "ClaudeWorkflow",
+    "model": {
+        "id": "claude-opus-4-7[1m]",
+        "display_name": "Opus 4.7 (1M context)"
+    },
+    "workspace": {
+        "current_dir": "/mnt/0C38361B292A2255/Development/UnityAILab/UAL-ClaudeWorkflow",
+        "project_dir": "/mnt/0C38361B292A2255/Development/UnityAILab/UAL-ClaudeWorkflow",
+        "added_dirs": []
+    },
+    "version": "2.1.138",
+    "output_style": { "name": "default" },
+    "cost": {
+        "total_cost_usd": 9.378615499999997,
+        "total_duration_ms": 5488065,
+        "total_api_duration_ms": 1661996,
+        "total_lines_added": 692,
+        "total_lines_removed": 594
+    },
+    "context_window": {
+        "total_input_tokens": 108070,
+        "total_output_tokens": 8,
+        "context_window_size": 1000000,
+        "current_usage": {
+            "input_tokens": 6,
+            "output_tokens": 8,
+            "cache_creation_input_tokens": 397,
+            "cache_read_input_tokens": 107667
+        },
+        "used_percentage": 11,
+        "remaining_percentage": 89
+    },
+    "exceeds_200k_tokens": false,
+    "fast_mode": false,
+    "thinking": { "enabled": true },
+    "rate_limits": {
+        "five_hour":  { "used_percentage": 61, "resets_at": 1778384400 },
+        "seven_day":  { "used_percentage": 17, "resets_at": 1778659200 }
+    }
+}
+```
+
+### Per-field annotation
+
+| Field | Type | Status | Notes |
+|-------|------|--------|-------|
+| `session_id` | string (UUID) | ✓ used | Drives the §8.5 hash-color palette when `session_name` is set. Stable for the session lifetime. |
+| `transcript_path` | string (abs path) | candidate | §9 brainstorm (idle timer, tool-call count, files modified, last-prompt blurb, cache-hit rate, sub-agent depth) all derive from this — single file read per render. |
+| `cwd` | string (abs path) | implicit | Same as `os.getcwd()` inside the script; we use the latter for cross-platform parity (e.g. `pwd -W` Git Bash quirk). |
+| `effort.level` | string enum | candidate | `low` / `medium` / `high` / `xhigh` / `max` — could surface as a small gradient indicator (`░▒▓`) on line 1. |
+| `session_name` | string (optional) | ✓ used | §8.5 — set via Claude Code's `/rename` slash command. Empty/absent on un-renamed sessions. |
+| `model.id` | string | ✓ used (regex) | §8.6 — `MiniMax-?M?<digits>` regex matches against `display_name + id` for provider-override classification. |
+| `model.display_name` | string | ✓ used | §8.6 — primary classifier for Opus/Sonnet/Haiku branches. Note: 1M-context Opus shows `Opus 4.7 (1M context)`, not `Claude Opus 4.7`, so the `'Opus' in model_disp` substring check is what triggers correctly. |
+| `workspace.current_dir` | string (abs path) | unused | Same as `cwd` in this capture; might diverge if Claude Code adds workspace switching. |
+| `workspace.project_dir` | string (abs path) | unused | Same as `current_dir` in this capture. |
+| `workspace.added_dirs` | array | unused | Empty in this capture; would populate when user adds extra context dirs via Claude Code config. |
+| `version` | string (semver) | candidate | Useful for version-conditional rendering (e.g. only enable a feature if CC ≥ 2.1.138). |
+| `output_style.name` | string | candidate | `default` / others — could surface as a small badge if/when alt styles ship. |
+| `cost.total_cost_usd` | float | **candidate (high value)** | §9 brainstorm — real-time spend awareness. Trivial to add. Color thresholds: `<$2` green, `$2-5` yellow, `>$5` red. |
+| `cost.total_duration_ms` | int | ✓ used | §8 — feeds the `up` (uptime) timer via `_fmt_ms`. |
+| `cost.total_api_duration_ms` | int | ✓ used | §8 — feeds the `think` timer. The closest signal to "time Claude has been thinking." |
+| `cost.total_lines_added` | int | candidate | §9 brainstorm — `+L -R` diff scope at a glance. Visible on line 1 alongside model. |
+| `cost.total_lines_removed` | int | candidate | (paired with `total_lines_added`) |
+| `context_window.total_input_tokens` | int | candidate | §9 brainstorm — `47k/200k` token gauge alongside the percentage. |
+| `context_window.total_output_tokens` | int | candidate | (output is usually tiny relative to input — small badge if anything) |
+| `context_window.context_window_size` | int | candidate | Denominator for the token gauge. `1000000` for 1M-context Opus, `200000` for standard. |
+| `context_window.current_usage.input_tokens` | int | candidate | Per-turn input tokens (vs `total_input_tokens` cumulative). Could surface as a "this turn cost" indicator. |
+| `context_window.current_usage.output_tokens` | int | candidate | Per-turn output. |
+| `context_window.current_usage.cache_creation_input_tokens` | int | candidate | Per-turn fresh cache writes. |
+| `context_window.current_usage.cache_read_input_tokens` | int | candidate | Per-turn cache hits. **§9 brainstorm cache-hit-rate** can be derived from `cache_read / (cache_read + cache_creation + input)`. |
+| `context_window.used_percentage` | int | ✓ used | §8 — primary ctx bar percentage. |
+| `context_window.remaining_percentage` | int | redundant | `100 - used_percentage`; not used. |
+| `exceeds_200k_tokens` | bool | candidate | True when context > 200k (1M-context Opus only). Could surface as a small badge. |
+| `fast_mode` | bool | candidate | True when `/fast` is active (Opus 4.6 fast variant). Could surface as a small `⚡` badge. |
+| `thinking.enabled` | bool | candidate | §9 brainstorm — `🧠` badge when true. |
+| `rate_limits.five_hour.used_percentage` | int | ✓ used | §8.7 — bar value. |
+| `rate_limits.five_hour.resets_at` | int (Unix epoch) | ✓ used | §8.14 — countdown label. **Verified seconds, not milliseconds, not ISO 8601.** |
+| `rate_limits.seven_day.used_percentage` | int | ✓ used | §8.7 — bar value. |
+| `rate_limits.seven_day.resets_at` | int (Unix epoch) | ✓ used | §8.14 — countdown label. |
+
+### How to re-capture if the schema changes
+
+Anthropic may add/remove/rename fields in future CC releases. To re-capture:
+
+1. Edit `.claude/statusline.sh`, add `echo "$input" > /tmp/sl-debug.json 2>/dev/null` immediately after `input=$(cat)`.
+2. Trigger a render — any user prompt or tool call will refresh the statusline.
+3. Inspect: `cat /tmp/sl-debug.json | python3 -m json.tool`.
+4. **Revert the tee** before committing — never ship the debug write.
+
+This is the same procedure used to verify §8.5 (`/color` doesn't persist anywhere readable) and §8.14 (`resets_at` shape). Update this section's capture if the schema diverges materially from what's documented above.
+
+### Fields NOT exposed (verified absent in CC 2.1.138)
+
+- **`/color` selection** — verified empirically in §8.5; no field carries the user-set color through to the statusline. Whatever `/color` does, stays inside the running CC process.
+- **Terminal width / size** — no `terminal.{width,height}` field; the script gets terminal dimensions via `tput cols < /dev/tty` from bash and falls back to `$COLUMNS` env or 80.
+- **Active subagent / Task tool state** — no field exposes whether a subagent is currently running. Would need to derive from `transcript_path` parsing.
+- **Hook firing signals** — no field. §9 brainstorm "hook firing indicator" needs a sidecar file written by hook scripts.
 
 ---
 

@@ -321,3 +321,58 @@ Each session entry includes:
 - Defense-in-depth IP boundary preserved: Layer 0 gitignore append still happens on every install/update; no other gitignore touches; no source-repo file copied outside `.claude/`.
 
 **Why this matters (verbatim user-stated motivation):** *"we dont want to pull in the repo and copy EVERYTHING from the repo into our existing projects when we do a unity install command or unity update command, isntead, we really need it so that it does a proper install or update, where we are ONLY STRICTLY copying the .claude folder"* + *"Makes it nice clean and easy use for everyone in the team"*.
+
+---
+
+### Statusline modifications — seven changes + empirical schema reference
+
+**Verbatim user request (LAW #0):** Each item below is a separate task description, captured exactly per LAW #0:
+
+> *"Drive on windows would say C:/ F:/ ext instead of drive, linux it would go off the label for the drive (example on my system is HDD 1 or External or SSD, the install drive would just say /), this would make it easier to see WHAT drive, isntead of relying on the project pathing to understand what drive."* — Gee
+
+> *"cpu with is percentage is good, but a little x-cores after the cpu% would show the core count at a glace"* — Gee
+
+> *"The context bar should say CTX infront of it, before the bar"* — Gee
+
+> *"The bar for session usage instead of 5h should show the time remaining until the session usage resets"* — Gee
+
+> *"The bar for the 7d usage, the 7d should be the time reamining until the 7d window resets"* — Gee
+
+> *"If it is possible for a dynamic centering that would look nice as well"* — Gee
+
+> *"Extra thing: for the drive free space thing I would like gigabytes / gigabytes free with the whole gigabyte / gigabytes being colored but 'free' being the cyan the rest of the normal text is"* — Gee (follow-on after the first six landed)
+
+> *"document all of that somewhere then, for refference, all the extra stuff you found"* — Gee (re: the bonus JSON fields surfaced during empirical schema capture)
+
+**Schema-capture decision (verbatim AskUserQuestion choice):** *"Empirically capture live JSON first (Recommended)"* — confirmed before coding the rate-limit countdown segment.
+
+**Files touched:**
+
+- `.claude/statusline.sh` — major refactor. Line composition moved entirely into the existing `python3 -c '...'` heredoc so dynamic centering can run inside the same subprocess (preserving sub-100ms render budget). Bash now only computes `GIT_PART` (cheap git shell-outs) + `TERM_COLS` (via `tput cols < /dev/tty`), passes both as env vars, then `eval`s four `LINE1="..."` ... `LINE4="..."` assignments and `echo -e`s them. New helpers: `_get_drive_label()` (Windows splitdrive / Linux findmnt LABEL→TARGET fallback), `_reset_label(default, reset_ts, now_ts)` (Unix-epoch delta → time-ladder format), `_center(s)` (ANSI-strip + leading-space pad). `_sys_seg(label, value, pct, suffix='')` extended with optional cyan-suffix slot — used by cpu (`×N` cores) and drive (`free` label after the gradient block). New segments: `CTX` cyan prefix on context bar, `×K` cores suffix on cpu, `<drive-label>` resolved per-platform, `<countdown>` 5h/7d labels from `rate_limits.{five_hour,seven_day}.resets_at`, `<free>G / <total>G free` disk format with split coloring (gradient on numbers, cyan on `free`). Removed: pre-§8.14 per-segment env-var emit (`CTX="..." RATE5H="..." MODEL="..."` etc.) — now `LINE1-4` only. Pre-existing FDC-version comments preserved.
+- `docs/STATUSLINE.md` — atomic doc update per docs-before-push LAW. §8.7 amended (rate-limit bars now show time-to-reset countdown, sourced from `resets_at` Unix epoch). §8.8 amended (line composition moved to Python). §8.10 amended (CPU shows ×cores, drive segment fully reworked: `<drive-label> <free>G / <total>G free` with per-platform label resolution table + per-segment color split). §8.10 test recipes updated. New §8.14 "Statusline modifications shipped 2026-05-09" — verbatim user spec preservation, 7-row implementation table, refactor rationale (composition move to Python), `resets_at` source-of-truth proof, centering edge cases. New §10 "Reference: empirically-captured statusline JSON schema (CC 2.1.138)" — full live JSON capture, per-field annotation table (~30 fields with used/candidate/redundant status), re-capture procedure, fields-NOT-exposed (verified absent in CC 2.1.138).
+- `docs/TODO.md` — verbatim entry captured during work (LAW #0) under In progress as a 7-sub-bullet block; status flipped through [~] in_progress; will be removed after this FINALIZED write per `§FINALIZED BEFORE DELETE`.
+- `docs/FINALIZED.md` — this entry.
+
+**Closure notes — single-commit ship on `feature/statusline-modifications` off `develop`:**
+
+- **Empirical-first methodology:** Anthropic's docs at `code.claude.com/docs/en/statusline` were not exhaustive on the `rate_limits.*.resets_at` field shape. Rather than code defensively against a guessed field name, used the same temp-tee debug technique from §8.5 (`echo "$input" > /tmp/sl-debug.json` between `input=$(cat)` and the heredoc) to capture one live render's JSON. Confirmed `resets_at` is **integer Unix epoch seconds** (not ISO 8601, not milliseconds, not `seconds_until_reset`). Tee reverted before commit.
+- **Bonus schema reveals captured:** the empirical capture surfaced ~25 fields beyond what the script currently uses — `cost.total_cost_usd` (real-time spend), `cost.total_lines_added/removed` (diff scope), `effort.level` (xhigh/max/etc.), `thinking.enabled` (extended-thinking badge candidate), `fast_mode` (Opus 4.6 fast variant), `exceeds_200k_tokens`, `context_window.current_usage.{cache_read,cache_creation}_input_tokens` (cache-hit-rate derivation candidate), full `transcript_path` (idle timer / tool-call count / files-modified candidate), and `version` (semver-conditional rendering candidate). All documented in §10 with used/candidate status per field — preserved as a reference index for future `§9` brainstorm pickups.
+- **Refactor scope justified:** centering needs Unicode-aware visible-length counting + ANSI strip, both trivial in Python and a multi-tool dance in bash. Two python subprocesses per render would have pushed past the sub-100ms budget. Solution: move all line composition into the existing single python heredoc — bash retains only the cheap git shell-outs and `tput` for TERM_COLS. Verified end-to-end render < 70ms on Linux dev box.
+- **`_sys_seg` extended for cyan suffixes:** the function previously rendered `<cyan-label> <gradient-value>` only. Extended with an optional `suffix=''` parameter that's appended verbatim AFTER the gradient block's `\033[0m` reset — cyan suffix can carry its own ANSI escapes. Used by cpu (`×K` cores) and drive (`free` label). Keeps the existing single-call interface; ram doesn't need it (no suffix), so existing call sites unchanged.
+- **`disk_total_gb_val` variable name:** chose `_val` suffix to avoid clobbering — `disk_total_gb` would have been ambiguous if a future capacity-related field landed. Same reason `cores_suffix` and `free_suffix` are explicit names instead of generic `suffix`.
+- **Drive label resolution falls back gracefully:** macOS / BSD don't have `findmnt`; the helper catches `FileNotFoundError` and returns the literal `'drive'` (matching pre-§8.14 behavior). Linux without a partition LABEL falls back to mountpoint — `/`, `/home`, `/mnt/...` — so the segment ALWAYS resolves to something useful.
+- **Centering self-degrades:** `tput cols < /dev/tty` is the primary path; `${COLUMNS:-80}` is the bash fallback; negative pad clamps to 0 (left-align) when content is wider than terminal. No environment without ANY signal — the worst case is left-align on a virtual 80-column width, identical to pre-§8.14 behavior.
+- **All ANSI escapes are `\x1b[<digits or ;>m` form** (color/style only). The precompiled `ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')` matches all of them and nothing else; we don't emit cursor-movement escapes anywhere.
+
+**Verification:**
+
+- `bash -n .claude/statusline.sh` — passes syntax check after every edit.
+- Live render against captured JSON shows all 7 modifications correct: `[ClaudeWorkflow] | up 1h31m · think 35m13s | O4.7 | feature/statusline-modifications*` (line 1 with hash-color label + dirty-red git), `CTX [bar] 14% | 2h55m [bar] 61% | 3d07h [bar] 17%` (line 2 with CTX prefix + countdown labels — orange 61% bar correctly mapped to gradient stop), `cpu 6% ×12 | ram 11.9/61.6G | SSD 261G / 954G free` (line 3 — cores suffix + drive label `SSD` + new `<free>G / <total>G free` with split coloring), GPU line 4 unchanged. All four lines centered (~15-22 space leading pads on this 80-col terminal).
+- LAW #0 verbatim preserved in: TODO.md In progress entry (8 sub-bullets), this FINALIZED entry (8 verbatim quotes), §8.14 of STATUSLINE.md (7 verbatim quotes inline).
+- Docs-before-push LAW honored: STATUSLINE.md updated atomically with the code in this single feature-branch commit before merge to develop.
+- No Claude attribution in commit messages, code comments, doc bodies, or any artifact (per LAW).
+- Empirical schema reference (§10) is a structural backstop — future statusline work can cross-reference verified field shapes instead of guessing or re-capturing.
+
+**Why this matters (verbatim user-stated motivation):** *"this would make it easier to see WHAT drive, isntead of relying on the project pathing to understand what drive"* + *"would show the core count at a glace"* + *"would look nice as well"* (centering) + *"document all of that somewhere then, for refference, all the extra stuff you found"* (schema reference).
+
+**Platform-coverage note from Gee (verbatim, LAW #0):** *"Note it all works on linux as-is, but windows may need adjustments"*. Live-verified end-to-end on Linux only. Windows code paths (`os.path.splitdrive` → `C:/` drive label, `os.cpu_count()` for cores, `tput cols < /dev/tty` from Git Bash mintty for centering, `shutil.disk_usage('.')` for drive total/free) are written defensively per platform check (`platform.system() == 'Windows'`) but have NOT been live-tested on a Windows machine in this commit. Pre-existing Windows gaps (`cpu —` / `ram —` dim-grey via wmic-cache deferral from §8.10) remain. Follow-up Windows verification pass scheduled via `docs/TODO.md` pending entry.
