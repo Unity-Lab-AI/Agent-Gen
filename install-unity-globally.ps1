@@ -85,14 +85,20 @@ try {
     Write-Host "[unity-bootstrap] Installed: $UserGlobalCommands\unity-install.md"
     Write-Host ''
     Write-Host '  Done. In ANY Claude Code session on this machine, you can now run:'
-    Write-Host '    /unity-install                         (installs .claude/ into the current working directory)'
-    Write-Host '    /unity-install C:\path\to\new-project  (installs into a specific target)'
+    Write-Host '    /unity-install                                       (main branch into current dir)'
+    Write-Host '    /unity-install develop                               (develop branch into current dir)'
+    Write-Host '    /unity-install feature/foo                           (any feature branch into current dir)'
+    Write-Host '    /unity-install C:\path\to\new-project                (main branch into a specific target)'
+    Write-Host '    /unity-install develop C:\path\to\new-project        (develop branch into a specific target)'
     Write-Host ''
     Write-Host '  After install, cd into the target and run:'
     Write-Host '    .\.claude\start.bat       # Windows native'
     Write-Host '    bash ./.claude/start.sh   # Linux/macOS/Git Bash'
     Write-Host ''
-    Write-Host '  To update an existing install: cd into a project with .claude/, then run /unity-update.'
+    Write-Host '  To refresh an existing install, /unity-update is an alias of /unity-install — same flow,'
+    Write-Host '  same args. Both are idempotent: running on an existing .claude\ stages your personal files'
+    Write-Host '  (settings.local.json, .env, user.json, user-context\, etc.), drops the fresh framework, and'
+    Write-Host '  restores the personal files. Project root stays clean.'
 
 } finally {
     if (Test-Path -Path $TmpDir) {
