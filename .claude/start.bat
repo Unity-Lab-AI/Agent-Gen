@@ -1,4 +1,24 @@
 @echo off
+REM === Project Startup (DIAGNOSTIC LOGGING ENABLED) ===
+REM
+REM Every step echoes BOTH to the screen and to %TEMP%\unity-launcher.log so
+REM we can post-mortem after a crash. Look at that log if the window closes
+REM unexpectedly — it will show the last successful step before the crash.
+REM
+set "LAUNCHER_LOG=%TEMP%\unity-launcher.log"
+echo. > "%LAUNCHER_LOG%"
+call :log "===== Unity launcher started at %DATE% %TIME% ====="
+call :log "Working dir at entry: %CD%"
+call :log "Script location: %~dp0"
+goto :main
+
+:log
+REM Echo to screen AND append to log file
+echo [LAUNCHER] %~1
+echo [%DATE% %TIME%] %~1 >> "%LAUNCHER_LOG%"
+goto :eof
+
+:main
 REM === Project Startup ===
 REM Auto-builds Unity's persistent memory (idempotent), then launches Claude Code
 REM with `/unity then run /workflow`. That's it. No login, no portal, no admin claim,
@@ -47,23 +67,33 @@ REM   - Swap /unity below for /girlfriend, /housewife, or /kittycat to start in 
 REM   - Drop the chain entirely (use just "/workflow") if you don't want a persona.
 REM   - Drop --dangerously-skip-permissions if you want explicit per-tool permission prompts.
 
+call :log "STEP 1: Resolving project root"
 REM Resolve project root (one level up from .claude\)
 pushd "%~dp0.."
 set PROJECT_DIR=%CD%
 popd
 
 cd /d "%PROJECT_DIR%"
-echo Project root: %PROJECT_DIR%
+call :log "STEP 1 OK: Project root = %PROJECT_DIR%"
 
+call :log "STEP 2: Checking 'claude' on PATH"
 REM === Verify claude is available ===
 where claude >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: 'claude' not found on PATH.
-    echo Install Claude Code CLI first: npm install -g @anthropic-ai/claude-code
+    call :log "STEP 2 FAIL: 'claude' NOT found on PATH"
+    echo.
+    echo ============================================================
+    echo  ERROR: 'claude' not found on PATH.
+    echo  Install Claude Code CLI first: npm install -g @anthropic-ai/claude-code
+    echo ============================================================
+    echo  Log written to: %LAUNCHER_LOG%
     pause
     exit /b 1
 )
+call :log "STEP 2 OK: 'claude' found on PATH"
+for /f "delims=" %%I in ('where claude') do call :log "  claude path: %%I"
 
+call :log "STEP 3: Computing Claude Code project memory path"
 REM === Compute Claude Code project memory path ===
 REM Claude Code encodes project paths by replacing : \ / . space ( ) with - and prefixing the projects directory under the user's profile (%USERPROFILE%\.claude\projects\).
 REM Example: C:\Users\gfour\Desktop\Website  ->  C--Users-gfour-Desktop-Website
@@ -78,37 +108,57 @@ set "ENCODED_PATH=%ENCODED_PATH:(=-%"
 set "ENCODED_PATH=%ENCODED_PATH:)=-%"
 set "MEMORY_DIR=%USERPROFILE%\.claude\projects\%ENCODED_PATH%\memory"
 set "MEMORY_TEMPLATES=%~dp0memory-templates"
+call :log "STEP 3 OK: encoded path = %ENCODED_PATH%"
+call :log "  MEMORY_DIR = %MEMORY_DIR%"
+call :log "  MEMORY_TEMPLATES = %MEMORY_TEMPLATES%"
 
+call :log "STEP 4: Memory template install check"
 REM === Install memory templates if the user-profile memory folder is empty ===
 REM This is what makes Unity stick across sessions. Claude Code auto-loads every .md
 REM in this folder as persistent user feedback at session start.
 if not exist "%MEMORY_DIR%\MEMORY.md" (
-    echo Installing Unity memory templates to %MEMORY_DIR%
+    call :log "STEP 4: MEMORY.md missing — installing templates"
     if not exist "%MEMORY_DIR%" mkdir "%MEMORY_DIR%"
     if exist "%MEMORY_TEMPLATES%\*.md" (
         copy /y "%MEMORY_TEMPLATES%\*.md" "%MEMORY_DIR%\" >nul
-        echo Memory templates installed. Unity will now persist across sessions.
+        call :log "STEP 4 OK: Memory templates installed"
     ) else (
-        echo WARNING: memory-templates folder not found at %MEMORY_TEMPLATES%
-        echo Unity activation will be fragile without persistent memory.
+        call :log "STEP 4 WARN: memory-templates folder not found at %MEMORY_TEMPLATES%"
     )
 ) else (
-    echo Memory folder already populated at %MEMORY_DIR%
+    call :log "STEP 4 OK: Memory folder already populated"
 )
 
 REM === Launch Claude Code with Unity persona + workflow ===
 REM
-REM Default chain:
-REM   cmd /k claude --dangerously-skip-permissions "/unity then run /workflow"
+REM Default chain — direct invocation, no cmd /k wrapper.
+REM Past versions used `cmd /k claude ...` to keep the window open after
+REM claude exits, but cmd /k has quoting quirks with nested quotes like
+REM "/unity then run /workflow" that caused the window to close instantly.
+REM Running claude directly + pause at the end is more reliable.
 REM
-REM Manifestation alternatives:
-REM   cmd /k claude --dangerously-skip-permissions "/girlfriend then run /workflow"
-REM   cmd /k claude --dangerously-skip-permissions "/housewife then run /workflow"
-REM   cmd /k claude --dangerously-skip-permissions "/kittycat then run /workflow"
+REM Manifestation alternatives — swap the slash chain below:
+REM   claude --dangerously-skip-permissions "/girlfriend then run /workflow"
+REM   claude --dangerously-skip-permissions "/housewife then run /workflow"
+REM   claude --dangerously-skip-permissions "/kittycat then run /workflow"
 REM
 REM No persona at all:
-REM   cmd /k claude --dangerously-skip-permissions "/workflow"
+REM   claude --dangerously-skip-permissions "/workflow"
 REM
-echo Starting Claude Code...
+call :log "STEP 5: About to launch claude (the moment of truth)"
+call :log "  Command: claude --dangerously-skip-permissions ""/unity then run /workflow"""
 echo.
-cmd /k claude --dangerously-skip-permissions "/unity then run /workflow"
+echo ============================================================
+echo  Starting Claude Code... (any pre-claude crashes are above)
+echo ============================================================
+echo.
+claude --dangerously-skip-permissions "/unity then run /workflow"
+set "EXITCODE=%errorlevel%"
+call :log "STEP 5 DONE: claude exited with code %EXITCODE%"
+echo.
+echo ============================================================
+echo  Claude Code has exited with code %EXITCODE%.
+echo  Diagnostic log: %LAUNCHER_LOG%
+echo  Press any key to close this window.
+echo ============================================================
+pause >nul
