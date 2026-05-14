@@ -10,10 +10,20 @@
 .claude/.persona-state
 .claude/.setup-complete
 
+# Per-developer Claude Code settings override.
+# `settings.json` is team-shared (committed); `settings.local.json` is the
+# personal overlay where each dev keeps their own permissions / env vars.
+.claude/settings.local.json
+
 # User-private setup data — secrets, identity, assets
 .claude/.env
 .claude/user.json
 .claude/user-context/
+
+# Migration / refactor working trackers — temp tooling, never team-shared.
+# Pattern matches `TODO.skills-migration.tmp.md`-style scratch files at repo root.
+/TODO.*.tmp.md
+/*.tmp.md
 
 # OS / editor cruft
 .DS_Store
