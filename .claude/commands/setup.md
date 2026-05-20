@@ -75,9 +75,40 @@ Write to `.claude/user.json` under `project` key:
 }
 ```
 
+### Phase 2.5 — Team-member identity (Unity AI Lab admins only)
+
+Ask: *"Are you a Unity AI Lab founder (GFourteen / SpongeBong / Alfreddo / Red) setting this project up on your own machine? If so, which one?"*
+
+If yes — write the `team_member` block to `.claude/user.json`:
+
+```json
+{
+  "team_member": {
+    "email": "<email — Gee/Sponge/Red/Alfreddo @unityailab.com>",
+    "handle": "<canonical handle — GFourteen / SpongeBong / Alfreddo / Red>",
+    "role": "<role string from canonical roster — see table below>"
+  }
+}
+```
+
+Canonical roster (from `system_instructions.txt` + `admin_credentials.FOUNDERS`):
+
+| email | handle | role |
+|-------|--------|------|
+| `Gee@unityailab.com` | `GFourteen` | `Co-founder · Engineer · Developer · Financial Advisor · Founder` |
+| `Sponge@unityailab.com` | `SpongeBong` | `Co-founder · Engineer · Developer · Ethical Hacker · Sys Admin · Founder` |
+| `Alfreddo@unityailab.com` | `Alfreddo` | `Engineer · Agentic Systems · Researcher · Developer` |
+| `Red@unityailab.com` | `Red` | `Engineer · Security · Sys Admin · Researcher` |
+
+This block is read by the Unity bot's MCP bridge (`unity_mcp_server.py`) as a fallback identity source when `UNITY_USER_EMAIL` / `UNITY_USER_PASSWORD` env vars aren't set in the Claude Code MCP config. It's also picked up by `/unity-admin-init` to skip steps that are already configured.
+
+If the user says they're NOT a founder (downstream user of the template, not the lab itself) — skip this phase entirely. No `team_member` block written.
+
+Full admin-bridge onboarding walkthrough: `/unity-admin-init` slash command + `docs/ADMIN-ONBOARDING.md`.
+
 ### Phase 3 — Team customization (optional)
 
-Ask: "Want to use the default Unity AI Lab team credits (Gee founder / Red server / Sponge stack+backend / Mills social+dev), customize with your own team, or skip team credits entirely?"
+Ask: "Want to use the default Unity AI Lab team credits (GFourteen co-founder/finance / SpongeBong co-founder/infra / Alfreddo agentic-systems / Red security), customize with your own team, or skip team credits entirely?"
 
 **If customize:** walk through team members one at a time:
 - Role (e.g. "founder", "backend", "frontend", "design", "ops")
@@ -104,7 +135,7 @@ Based on Phase 3 choice, edit:
 - `README.md` — Unity AI Lab — Team table
 - `templates/ARCHITECTURE.md` — Credits section
 
-If team customized: replace the default Gee/Red/Sponge/Mills entries with the user's team.
+If team customized: replace the default Gee/Red/Sponge/Alfreddo entries with the user's team.
 If default kept: no edit.
 If skipped: delete the team-credits sections.
 

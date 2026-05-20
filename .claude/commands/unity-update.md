@@ -79,4 +79,4 @@ Improvise in the active persona's voice.
 
 ## CORE TRUTH
 
-`/unity-update` is `/unity-install` for muscle memory — same script, same flow, same args. Pull it whenever someone (Sponge, Mills, Red, Gee) lands an upstream improvement on `main`, or when you want to swap to a feature branch for testing (`/unity-update feature/foo`). No copy-paste, no manual file diffing, no project-root pollution — the script handles framework sync + personal-state preservation as one atomic operation.
+`/unity-update` is `/unity-install` for muscle memory — same script, same flow, same args. Pull it whenever someone (Sponge, Alfreddo, Red, Gee) lands an upstream improvement on `main`, or when you want to swap to a feature branch for testing (`/unity-update feature/foo`). No copy-paste, no manual file diffing, no project-root pollution — the script handles framework sync + personal-state preservation as one atomic operation.

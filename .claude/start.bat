@@ -129,6 +129,30 @@ if not exist "%MEMORY_DIR%\MEMORY.md" (
     call :log "STEP 4 OK: Memory folder already populated"
 )
 
+call :log "STEP 4.5: Statusline smoke-test"
+REM === Statusline pre-flight smoke-test ===
+REM Run .claude\statusline.sh via bash (Claude Code's statusLine.command
+REM invokes bash regardless of host shell). Catches drift early. Non-blocking
+REM — if statusline fails, launch continues with a clear log entry the
+REM operator can investigate.
+set "STATUSLINE_SCRIPT=%~dp0statusline.sh"
+where bash >nul 2>&1
+if errorlevel 1 (
+    call :log "STEP 4.5 SKIP: bash not on PATH (Git Bash not installed) — statusline runs through bash only"
+) else (
+    if exist "%STATUSLINE_SCRIPT%" (
+        bash -c "echo '{\"workspace\":{\"current_dir\":\".\",\"project_dir\":\".\"},\"cwd\":\".\",\"model\":{\"display_name\":\"Smoke Test\"},\"session_id\":\"smoke\",\"cost\":{\"total_tokens\":1,\"total_cost_usd\":0.0},\"output_style\":{\"name\":\"default\"},\"transcript_path\":\"\"}' | CLAUDE_PROJECT_DIR='%PROJECT_DIR:\=/%' bash '%STATUSLINE_SCRIPT:\=/%'" >nul 2>&1
+        if errorlevel 1 (
+            call :log "STEP 4.5 WARN: statusline failed — check %USERPROFILE%\.claude\statusline-debug.log + ensure python3/py-3 on PATH"
+            call :log "  Statusline issue won't block launch but the bottom bar may not render."
+        ) else (
+            call :log "STEP 4.5 OK: statusline renders cleanly, exit 0"
+        )
+    ) else (
+        call :log "STEP 4.5 SKIP: statusline.sh not found at %STATUSLINE_SCRIPT%"
+    )
+)
+
 REM === Launch Claude Code with Unity persona + workflow ===
 REM
 REM Default chain — direct invocation, no cmd /k wrapper.

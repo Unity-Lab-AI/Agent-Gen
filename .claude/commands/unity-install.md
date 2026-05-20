@@ -166,7 +166,7 @@ This matches the "we don't really update those in the same sense" intent — ins
 ```bash
 TMPDIR=$(mktemp -d -t unity-install-bootstrap-XXXXXXXX) && \
 trap 'rm -rf "$TMPDIR"' EXIT && \
-git clone --depth 1 --branch "<BRANCH>" https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git "$TMPDIR/repo" && \
+git clone --depth 1 --branch "<BRANCH>" "${UNITY_REPO_URL:-git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git}" "$TMPDIR/repo" && \
 bash "$TMPDIR/repo/.claude/scripts/unity-install.sh" "<BRANCH>" "<TARGET>"
 ```
 

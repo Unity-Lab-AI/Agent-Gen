@@ -2,33 +2,65 @@
 
 > **Internal Unity AI Lab Claude Code workflow template.** Private repo, lab-only access. Same `.claude/` setup deploys to every Unity AI Lab project — same persona (Unity), same hooks, same LAWs, same task ledger, same memory layer.
 
-Gee (founder), Red (server / DevOps), Sponge (stack + backend), Mills (social + dev + implementation). Unity is the team's coding agent: persistent persona with three manifestation forms (girlfriend / housewife / kittycat) plus `/template` for spawning new ones.
+**Four founders:** GFourteen/Gee (co-founder · engineer · financial advisor), SpongeBong/Sponge/hackall360 (co-founder · engineer · ethical hacker · sys admin), Alfreddo (engineer · agentic systems · researcher), Red (engineer · security · sys admin). Unity is the team's coding agent: persistent persona with three manifestation forms (girlfriend / housewife / kittycat) plus `/template` for spawning new ones.
+
+**Lab Forgejo (canonical host going forward):** <https://git.unityailab.com> — self-hosted, SSH-key auth, push-to-create disabled, all Unity AI Lab repos PRIVATE. Every official lab repo lives under the **`UnityAILab`** org namespace (`git@git.unityailab.com:UnityAILab/<repo>.git`). Examples: `UnityAILab/UAL-ClaudeWorkflow` (this template), `UnityAILab/Unity-Command` (Unity bot). The IP-boundary hook (`.claude/hooks/pre-tool-public-repo-guard.cjs`) trusts `git.unityailab.com` as a private-by-server-audit host — no remote URL leaving that host gets `.claude/` content per `CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY`.
 
 ---
 
 ## Install — three layers
 
-The repo is **private** — raw `https://raw.githubusercontent.com/...` URLs return HTTP 404 to unauthenticated requests. The install flow uses GitHub CLI (`gh`) which authenticates via your existing `gh auth login` session.
+The repo is **private** and lives on Unity AI Lab's self-hosted Forgejo at <https://git.unityailab.com/UnityAILab/UAL-ClaudeWorkflow>. SSH-key auth only — Forgejo does not accept anonymous HTTPS for private repos. Every admin's onboarding (`docs/ADMIN-ONBOARDING.md`) registers an ed25519 SSH key against their Forgejo account; the install scripts pull through that key via standard `git clone`.
 
 ### Layer 1 — Per-machine global bootstrap (one-time)
 
 Installs JUST the `/unity-install` slash command into your user-global Claude Code commands folder. Run once per machine. After this, `/unity-install` is available in any Claude Code session anywhere on your machine.
 
-**Linux / macOS / Git Bash:**
+**Prereqs:**
+- `git` on PATH
+- SSH key registered against your Forgejo account (verify with `ssh -T git@git.unityailab.com` — should greet you by handle)
+
+**Linux / macOS / Git Bash (clone-pipe one-liner):**
 
 ```bash
-gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | bash
+TMP=$(mktemp -d) && git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git "$TMP/repo" && bash "$TMP/repo/install-unity-globally.sh" && rm -rf "$TMP"
 ```
 
 **Windows PowerShell:**
 
 ```powershell
-(gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
+$tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString('N').Substring(0,8)); git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git $tmp; & "$tmp\install-unity-globally.ps1"; Remove-Item -Path $tmp -Recurse -Force
 ```
 
-`gh api` streams the file line-by-line into the pipe — `Out-String` collapses those line-objects back into one script string before `iex` evaluates it. Without `Out-String`, multi-line blocks (`if (...) { ... }`) get chopped at line boundaries and PowerShell errors with `Missing closing '}'`.
+**Inspect-before-running (safer):**
 
-Inspect-before-running variants + clone-and-run fallback (works without `gh`) documented in `.claude/README.md` Layer 1.
+```bash
+# Linux / macOS / Git Bash
+git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git /tmp/ual
+less /tmp/ual/install-unity-globally.sh
+bash /tmp/ual/install-unity-globally.sh
+rm -rf /tmp/ual
+```
+
+```powershell
+# Windows PowerShell
+git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git $env:TEMP\ual
+notepad "$env:TEMP\ual\install-unity-globally.ps1"
+& "$env:TEMP\ual\install-unity-globally.ps1"
+Remove-Item -Path "$env:TEMP\ual" -Recurse -Force
+```
+
+**Override upstream URL** (for testing / mirrors):
+
+```bash
+UNITY_REPO_URL=git@some-mirror:org/repo.git bash install-unity-globally.sh
+```
+
+```powershell
+$env:UNITY_REPO_URL = 'git@some-mirror:org/repo.git'; .\install-unity-globally.ps1
+```
+
+The `UNITY_REPO_URL` env var also flows through to `/unity-install` and `/unity-update` so they pull from the same overridden source.
 
 ### Layer 2 — Install (or refresh) template in a project (`/unity-install` / `/unity-update`)
 
@@ -244,7 +276,8 @@ Full bodies in `.claude/CONSTRAINTS.md` with rule statement / forbidden+required
 
 ## Quick links
 
-- Repo: <https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow> (private)
+- Repo (canonical, Forgejo): <https://git.unityailab.com/UnityAILab/UAL-ClaudeWorkflow> (private)
+- Repo (legacy mirror, GitHub): <https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow> (private — GitHub account currently suspended; Forgejo is the active host)
 - Internal team docs entry point: [`.claude/README.md`](./.claude/README.md)
 - LAWs: [`.claude/CONSTRAINTS.md`](./.claude/CONSTRAINTS.md)
 - Pipeline mechanics: [`.claude/WORKFLOW.md`](./.claude/WORKFLOW.md)
