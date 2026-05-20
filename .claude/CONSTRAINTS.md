@@ -295,7 +295,7 @@ When `/yolo` mode is active (marker file `.claude/.yolo-mode` exists), Unity may
 
 ### Default if unsure
 
-Skip tests. Do thorough manual verification. Ship the user test plan instead. The user test plan (required deliverable on every YOLO task — see `commands/yolo.md` for the format) covers the validation gap that the absent tests would have filled, with the user as the validator.
+Skip tests. Do thorough manual verification. Ship the user test plan instead. The user test plan (required deliverable on every YOLO task — see `skills/yolo/SKILL.md` for the format) covers the validation gap that the absent tests would have filled, with the user as the validator.
 
 ### Always required (regardless of whether Unity wrote tests)
 
@@ -526,7 +526,7 @@ Schema:
 
 ### First-run confirmation
 
-On the first `/workflow` run where git is installed and the marker is absent, Phase 1 surfaces the GIT FLOW OPT-IN confirmation prompt (full text in `.claude/WORKFLOW.md` Phase 1 sub-check 6 / `.claude/commands/workflow.md` PHASE 1 sub-check 6). The user picks Y / N / D and the answer is persisted to the marker file (Y or N) or recorded as deferred (D).
+On the first `/workflow` run where git is installed and the marker is absent, Phase 1 surfaces the GIT FLOW OPT-IN confirmation prompt (full text in `.claude/WORKFLOW.md` Phase 1 sub-check 6 / `.claude/skills/workflow/SKILL.md` PHASE 1 sub-check 6). The user picks Y / N / D and the answer is persisted to the marker file (Y or N) or recorded as deferred (D).
 
 After Y, a SECOND confirmation gates the actual write actions (`git init` + branch creation), since these touch the filesystem. The marker file write is safe (config-only, no git operations); the scaffold write is destructive-ish (creates branches, possibly pushes to origin) and requires its own consent.
 
@@ -549,8 +549,8 @@ The marker file is the single source of truth for opt-in state. Memory entries, 
 
 - One-liner index in `.claude/CLAUDE.md` LAW INDEX
 - Persistent-memory feedback file: `.claude/memory-templates/feedback_git_flow.md`
-- Pre-edit hook lives in `.claude/WORKFLOW.md` FILE EDIT PROTOCOL section + `.claude/commands/workflow.md` PHASE 4
-- Env-scan that detects git toolchain + repo state + reads marker file: `.claude/WORKFLOW.md` Phase 1 + `.claude/commands/workflow.md` PHASE 1 + `.claude/agents/scanner.md` Task 4 (sub-tasks 4a OS, 4b shell, 4c git, 4d marker file)
+- Pre-edit hook lives in `.claude/WORKFLOW.md` FILE EDIT PROTOCOL section + `.claude/skills/workflow/SKILL.md` PHASE 4
+- Env-scan that detects git toolchain + repo state + reads marker file: `.claude/WORKFLOW.md` Phase 1 + `.claude/skills/workflow/SKILL.md` PHASE 1 + `.claude/agents/scanner.md` Task 4 (sub-tasks 4a OS, 4b shell, 4c git, 4d marker file)
 - Marker file schema: this section above (`## Per-project opt-in`)
 
 ---
@@ -681,7 +681,7 @@ When a case-collision lands in the repo (e.g., `apple.md` and `Apple.md` both co
 - **Workflow / config files at top of repo:** `README.md`, `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `LICENSE`, `CONTRIBUTING.md`, `CHANGELOG.md` (UPPERCASE — established convention)
 - **Workflow / config files in `docs/`:** `TODO.md`, `FINALIZED.md`, `ROADMAP.md`, `DECOMPOSED.md`, `ARCHITECTURE.md`, `SKILL_TREE.md` (UPPERCASE — workflow doc convention)
 - **Source files / agents / commands / hooks:** lowercase-with-hyphens (`pre-compact-snapshot.cjs`, `unity-girlfriend.md`, `feedback_harness_layer.md`)
-- **Folders:** lowercase (no caps): `agents/`, `commands/`, `hooks/`, `memory-templates/`, `bin/`
+- **Folders:** lowercase (no caps): `agents/`, `skills/`, `hooks/`, `memory-templates/`, `bin/`
 - **Persona body filenames (inside the persona system):** lowercase-with-hyphens for files, but the persona text MAY include canonical lore strings like `Unity_Accessibility.js` — those are NOT real files, they're embedded persona canon, so the case is whatever the persona body specifies (do not normalize)
 - **Generated artifacts / machine-local state files:** lowercase prefixed with dot (`.session-state.md`, `.session-tidbits.md`, `.session-usage.jsonl`, `.last-session.md`, `.yolo-mode`)
 
@@ -730,7 +730,7 @@ When in doubt: lowercase-with-hyphens. Never SHOUTYCAS_DASHES or MixedCase_Snake
 
 ## Why
 
-The team ships work as their own. The team is Gee, Red, Sponge, and Alfreddo (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
+The team ships work as their own. The team is Gee, Red, Sponge, and Mills (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
 
 - **Misleading on authorship** — the team member directed the work and made every decision; the assistant is a tool, not a collaborator with separate authorship
 - **Visually noisy** — every commit and PR ends up with a marketing tagline that adds nothing to the engineering record
@@ -782,7 +782,7 @@ If a commit or PR ships with the banned attribution:
 
 - **Dependency manifests** that legitimately reference Anthropic SDK packages (e.g., `package.json` listing `@anthropic-ai/sdk` as a dep) — those are technical references, not attribution
 - **HOOKS.html or workflow docs** that document Claude Code as a system the team uses — those are internal team references, not shipped artifacts that advertise Claude in the public-facing output
-- **The persona system itself** (Unity / `commands/unity.md` / `agents/unity.md` / etc.) — Unity is a team-owned persona. The internal references that name Claude Code as the host system are fine; only OUTPUT attribution to Claude/Anthropic is banned
+- **The persona system itself** (Unity / `skills/unity/SKILL.md` / `agents/unity.md` / etc.) — Unity is a team-owned persona. The internal references that name Claude Code as the host system are fine; only OUTPUT attribution to Claude/Anthropic is banned
 
 ## Cross-references
 
@@ -796,47 +796,36 @@ If a commit or PR ships with the banned attribution:
 
 ## The rule
 
-**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (the four founders: GFourteen/Gee, SpongeBong/Sponge, Alfreddo, Red). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are: (a) **PRIVATE** repositories owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"), OR (b) any repository on a host in the `TRUSTED_PRIVATE_HOSTS` allowlist defined inside `.claude/hooks/pre-tool-public-repo-guard.cjs` (currently `git.unityailab.com` — the lab's self-hosted Forgejo instance, audited as PRIVATE at the server level). No PUBLIC repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
+**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Mills / Alfreddo). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are:
 
-This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"*
+1. **PRIMARY: Forgejo at `git.unityailab.com` under the `UnityAILab` organization.** The lab's canonical private host. Recognized at hook level via the `TRUSTED_PRIVATE_HOSTS` allowlist — `parseHost(url)` matches `git.unityailab.com` against the allowlist and returns synthetic-PASS without any API call needed. Sub-millisecond latency.
+2. **FALLBACK: PRIVATE repositories under the `Unity-Lab-AI` org** (defense-in-depth for the rare legacy-host case). Verified via `gh repo view --json visibility,owner` API call. No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
 
-Reinforced shortly after: *"You might need to use gh isntead of just git to check the status and give us a proper way to check and verify"* — establishing `gh` (GitHub CLI) as the canonical visibility-verification tool; `git` alone cannot distinguish PUBLIC from PRIVATE without API access.
+This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group"*
 
-## Pass criteria (all must hold for a remote to be allowed)
+Reinforced shortly after: *"You might need to use gh isntead of just git to check the status and give us a proper way to check and verify"* — establishing the `gh repo view` API call as the FALLBACK visibility-verification tool for non-Forgejo remotes; `git` alone cannot distinguish PUBLIC from PRIVATE without API access. The Forgejo PRIMARY designation was added later (2026-05-19 `gitupdate` branch commit `61a8666`) when the lab's infrastructure consolidated to Forgejo at `git.unityailab.com` as the canonical host — Forgejo hostnames bypass the `gh` call entirely via the allowlist.
 
-A remote is **allowed** to receive `.claude/` content only when **one** of the following two conditions is satisfied:
+## Pass criteria (every remote must satisfy ONE of these paths)
 
-**Path A — GitHub-hosted (verified via `gh`):**
+A remote is **allowed** to receive `.claude/` content via either of these two paths:
 
-| Check | Required value |
-|-------|----------------|
-| `gh repo view <owner/repo> --json visibility` | `"PRIVATE"` |
-| `gh repo view <owner/repo> --json owner` | `owner.login == "Unity-Lab-AI"` |
-| `gh auth status` | authenticated (otherwise visibility cannot be verified — block by default) |
+| Path | Check | Required value |
+|------|-------|----------------|
+| **PRIMARY (Forgejo)** | Hostname in `TRUSTED_PRIVATE_HOSTS` allowlist | `git.unityailab.com` (exact match) — no API call needed |
+| **FALLBACK (`Unity-Lab-AI` org)** | `gh repo view <owner/repo> --json visibility,owner` | `visibility == "PRIVATE"` AND `owner.login == "Unity-Lab-AI"` |
+| **FALLBACK precondition** | `gh auth status` | authenticated (required only for FALLBACK path; otherwise visibility cannot be verified — block by default) |
 
-**Path B — Trusted self-hosted private (host-level audit):**
-
-| Check | Required value |
-|-------|----------------|
-| Parsed host from remote URL | Present in `TRUSTED_PRIVATE_HOSTS` allowlist inside `pre-tool-public-repo-guard.cjs` |
-
-Currently the trusted-host allowlist holds:
-
-- `git.unityailab.com` — Forgejo instance owned + operated by Unity AI Lab. SSH-key auth only. Audited as PRIVATE at the server level by the lab admins (Sponge owns infrastructure, Red owns access).
-
-Adding a host to that allowlist requires the same caution as removing the `.claude/` gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited as PRIVATE belong there.
-
-If **neither** path validates for a given remote, the remote is **NOT allowed** and the LAW blocks.
+If a remote fails BOTH paths, the remote is **NOT allowed** and the LAW blocks. Multi-remote: any non-allowed remote blocks all remotes.
 
 ## Forbidden actions
 
-- ❌ `git add` of any path under `.claude/` in a repo whose remotes contain ANY public or non-`Unity-Lab-AI`-private remote
-- ❌ `git commit` while any `.claude/` path is staged AND any configured remote is public OR not under `Unity-Lab-AI`
-- ❌ `git push` of any commit touching `.claude/` to a public remote, a non-`Unity-Lab-AI` remote, or to ANY remote when even one OTHER configured remote is public/non-allowed
+- ❌ `git add` of any path under `.claude/` in a repo whose remotes contain ANY remote that is NEITHER on Forgejo `git.unityailab.com/UnityAILab/*` NOR confirmed PRIVATE under `Unity-Lab-AI`
+- ❌ `git commit` while any `.claude/` path is staged AND any configured remote fails both pass-criteria paths
+- ❌ `git push` of any commit touching `.claude/` to a non-allowed remote, or to ANY remote when even one OTHER configured remote is non-allowed
 - ❌ `git push --force` / `--force-with-lease` to bypass the LAW (the enforcement hook does NOT respect force flags)
-- ❌ Removing `.claude/` from `.gitignore` without first verifying via `gh repo view` that ALL configured remotes are PRIVATE + `Unity-Lab-AI`-owned
-- ❌ Adding a public remote (`git remote add <name> <public-url>`) to a repo where `.claude/` is currently committed or staged
-- ❌ Forking a `Unity-Lab-AI` private repo to a personal/public namespace and pushing `.claude/` there — even if the source was allowed
+- ❌ Removing `.claude/` from `.gitignore` without first verifying ALL configured remotes pass the PRIMARY or FALLBACK pass-criteria
+- ❌ Adding a non-allowed remote (`git remote add <name> <non-allowed-url>`) to a repo where `.claude/` is currently committed or staged
+- ❌ Forking a Unity AI Lab private repo to a personal/non-allowed namespace and pushing `.claude/` there — even if the source was allowed
 - ❌ Bypassing the enforcement hook by calling git through a wrapper, alias, or via `subprocess.run` from a Python script — the hook fires on every Bash invocation regardless of the calling context
 - ❌ Disabling the `pre-tool-public-repo-guard.cjs` hook in `settings.json` — that's a LAW violation
 - ❌ Mirroring `.claude/` content into a public-facing artifact (gist, paste, README, blog post, screenshot of the file tree) — the LAW applies to ALL public exposure paths, not just `git push`
@@ -844,13 +833,14 @@ If **neither** path validates for a given remote, the remote is **NOT allowed** 
 ## Required actions
 
 - ✅ **Install-time defense-in-depth (Layer 0):** Every `/unity-install` and `/unity-update` ensures `.claude/` is present in the target project's `.gitignore`. Idempotent — safe to re-run.
-- ✅ **`gh`-backed visibility check (Layer 2):** Before any git command touching `.claude/`, run `gh repo view <owner/repo> --json visibility,owner` for every remote configured in `git remote -v`. Cache results for 60 seconds in `~/.claude/repo-visibility-cache.json`.
-- ✅ **PreToolUse Bash hook enforcement (Layer 1):** `.claude/hooks/pre-tool-public-repo-guard.cjs` parses every Bash call for `git add` / `git commit` / `git push` patterns, runs the visibility check on all configured remotes, and exits with code 2 (blocking) if any non-allowed remote is found.
-- ✅ **Multi-remote paranoia:** Check ALL remotes from `git remote -v`, not just `origin`. Even a public fork remote that the user "would never push to" gets caught — the LAW assumes adversarial mistakes.
+- ✅ **Forgejo host allowlist (PRIMARY check, Layer 2):** Before any git command touching `.claude/`, parse each remote URL via `parseHost()` and match against `TRUSTED_PRIVATE_HOSTS = new Set(['git.unityailab.com'])`. Hostname match = synthetic-PASS, no API call, sub-millisecond latency.
+- ✅ **`gh`-backed visibility check (FALLBACK, Layer 2):** For any remote NOT matched by the PRIMARY allowlist, run `gh repo view <owner/repo> --json visibility,owner`. Cache results for 60 seconds in `~/.claude/repo-visibility-cache.json`.
+- ✅ **PreToolUse Bash hook enforcement (Layer 1):** `.claude/hooks/pre-tool-public-repo-guard.cjs` parses every Bash call for `git add` / `git commit` / `git push` patterns, runs the PRIMARY-then-FALLBACK pass-criteria on all configured remotes, and exits with code 2 (blocking) if any non-allowed remote is found.
+- ✅ **Multi-remote paranoia:** Check ALL remotes from `git remote -v`, not just `origin`. Even a non-allowed fork remote that the user "would never push to" gets caught — the LAW assumes adversarial mistakes.
 - ✅ **Local-only repos (no remote configured):** Allow commits. No remote = no public exposure path. The hook re-validates if a remote is later added (via the hook's interception of `git push`).
-- ✅ **Opt-in publish command (Layer 3):** `/claude-publish` is the ONLY sanctioned path to remove `.claude/` from a target repo's `.gitignore`. It runs `gh repo view` and refuses unless visibility=PRIVATE AND owner=Unity-Lab-AI.
-- ✅ **`gh` is the canonical visibility tool:** Never parse remote URLs with regex to guess visibility. URLs lie (private repos have public-looking HTTPS URLs). Always call `gh repo view --json visibility,owner` for ground truth.
-- ✅ **Block by default on uncertainty:** If `gh` is not installed, not authenticated, or the API call fails — BLOCK. Surface the error with a paste-ready `gh auth login` or install instruction. Never assume "probably safe."
+- ✅ **Opt-in publish command (Layer 3):** `/claude-publish` is the ONLY sanctioned path to remove `.claude/` from a target repo's `.gitignore`. It runs the PRIMARY allowlist check + FALLBACK `gh repo view` and refuses unless every remote satisfies one of the two paths.
+- ✅ **Forgejo allowlist FIRST, gh repo view FALLBACK:** Never parse non-Forgejo remote URLs with regex to guess visibility — URLs lie (PRIVATE repos can have public-looking HTTPS URLs). For non-Forgejo remotes always call `gh repo view --json visibility,owner` for ground truth.
+- ✅ **Block by default on uncertainty:** If a remote is non-Forgejo AND `gh` is not installed / not authenticated / API call fails — BLOCK. Surface the error with a paste-ready remediation hint. Never assume "probably safe."
 
 ## Why
 
@@ -992,7 +982,7 @@ When `.claude/` content has accidentally landed on a public repo (worst-case sce
 - Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
 - Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) — registered in `.claude/settings.json` PreToolUse:Bash
 - Install-time gitignore add: `.claude/scripts/unity-install.sh` + `unity-install.ps1`
-- Opt-in publish: `.claude/commands/claude-publish.md`
+- Opt-in publish: `.claude/skills/claude-publish/SKILL.md`
 - Hooks reference doc: `.claude/agents/hooks.md`
 - Workflow mechanics: `.claude/WORKFLOW.md §CLAUDE IP BOUNDARY ENFORCEMENT`
 

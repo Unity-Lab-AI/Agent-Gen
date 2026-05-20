@@ -3,8 +3,9 @@
 //
 // PreToolUse hook (matcher: Bash). Implements LAW — .CLAUDE WORKFLOW IP BOUNDARY
 // (see .claude/CONSTRAINTS.md). Blocks any `git add` / `git commit` / `git push`
-// that would carry `.claude/` content to a remote that is not PRIVATE on the
-// Unity-Lab-AI GitHub organization.
+// that would carry `.claude/` content to a remote that fails the two-path
+// pass-criteria — PRIMARY (Forgejo allowlist) and FALLBACK (PRIVATE under
+// `Unity-Lab-AI` org via `gh repo view`).
 //
 // Mechanism (Layer 1 + Layer 2 of the four-layer defense-in-depth):
 //   1. Parse the intercepted Bash command for git add/commit/push patterns
@@ -13,8 +14,12 @@
 //        - git commit → check `git diff --cached --name-only`
 //        - git push → check commits ahead of upstream / branch
 //   3. Read every remote from `git remote -v` (multi-remote paranoia)
-//   4. For each remote: `gh repo view --json visibility,owner` (cached 60s)
-//   5. ALLOW only when EVERY remote is visibility=PRIVATE AND owner=Unity-Lab-AI
+//   4. For each remote: PRIMARY check first — parseHost(url) against
+//        TRUSTED_PRIVATE_HOSTS allowlist (Forgejo `git.unityailab.com`).
+//        Allowlist match = synthetic-PASS, no API call, sub-ms latency.
+//      Otherwise FALLBACK check — `gh repo view --json visibility,owner`
+//        (cached 60s) requiring visibility=PRIVATE AND owner=Unity-Lab-AI.
+//   5. ALLOW only when EVERY remote satisfies PRIMARY or FALLBACK
 //   6. Otherwise exit 2 (block) with a detailed paste-ready remediation message
 //
 // Force-flag agnostic — `git push --force` does NOT bypass.

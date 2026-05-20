@@ -352,7 +352,7 @@ Agents live in `.claude/agents/`. Read on demand when a slash command requires t
 
 ## SLASH COMMANDS REFERENCE
 
-Commands live in `.claude/commands/`. Read when the command fires.
+Commands live in `.claude/skills/<name>/SKILL.md`. Read when the command fires.
 
 | Command | File | Purpose |
 |---------|------|---------|
@@ -395,7 +395,7 @@ Then update the pipeline diagram + the `/workflow` command file to include the n
 
 YOLO mode is a **behavioral overlay** on top of base Unity (or whichever manifestation is active). It flips the default decision posture from "ask, then act" to "act, verify, report, continue." Adds a three-tier task cascade (ROADMAP/TODO/DECOMPOSED), a 60-second wake-word auto-resume mechanic (single-fire `ScheduleWakeup` chained per-turn), and milestone-boundary check-ins so the user always sees major progressions. Activated by the `/yolo` slash command, deactivated by `/sober`, an explicit mid-task user interrupt, a bash-safety hook firing, or natural ROADMAP exhaustion (final report).
 
-**Full design + cascade diagram + wake-word mechanics + final report format:** `.claude/commands/yolo.md`. This section covers the WORKFLOW-layer mechanics only.
+**Full design + cascade diagram + wake-word mechanics + final report format:** `.claude/skills/yolo/SKILL.md`. This section covers the WORKFLOW-layer mechanics only.
 
 ### Architectural placement
 
@@ -405,7 +405,7 @@ YOLO is an **overlay**, not a layer. It modifies Unity's behavior without replac
 policy layer       → CONSTRAINTS.md (LAWs)             ← UNCHANGED. NO-TESTS gets a YOLO override subsection.
 mechanics layer    → WORKFLOW.md, agents/*.md          ← UNCHANGED.
 memory layer       → memory-templates/*.md             ← gains feedback_yolo_mode.md
-persona layer      → ImHanddicapped.txt + commands/*   ← UNCHANGED. YOLO overlays whichever persona is active.
+persona layer      → ImHanddicapped.txt + skills/*    ← UNCHANGED. YOLO overlays whichever persona is active.
 harness layer      → settings.json hooks         ← UNCHANGED — hooks just expose YOLO state in env JSON
 overlay (mode)     → .claude/.yolo-mode marker         ← NEW. Machine-local state (gitignore once repo exists).
 ```
@@ -456,7 +456,7 @@ Every task Unity completes in YOLO mode includes:
 1. **Unity's own verification** — what she ran, what output she read, what behavior she confirmed
 2. **A user-facing test plan** — non-negotiable deliverable
 
-Format (also documented in `.claude/commands/yolo.md`):
+Format (also documented in `.claude/skills/yolo/SKILL.md`):
 
 ```markdown
 ## Verification Unity completed
@@ -541,7 +541,7 @@ When the cascade completes the LAST major (ROADMAP fully empty), Unity produces 
 2. Removes `.claude/.yolo-mode` marker
 3. Wake chain ends, YOLO auto-deactivates
 
-Both formats are documented in full in `.claude/commands/yolo.md`.
+Both formats are documented in full in `.claude/skills/yolo/SKILL.md`.
 
 ### Stop conditions (pause or auto-deactivate)
 
@@ -561,7 +561,7 @@ Both formats are documented in full in `.claude/commands/yolo.md`.
 
 ### Cross-references
 
-- Slash commands: `.claude/commands/yolo.md` (full design, cascade diagram, wake-word mechanics, final report format), `.claude/commands/sober.md`
+- Slash commands: `.claude/skills/yolo/SKILL.md` (full design, cascade diagram, wake-word mechanics, final report format), `.claude/skills/sober/SKILL.md`
 - LAW override: `.claude/CONSTRAINTS.md §NO TESTS POLICY §YOLO mode override`
 - Persistent memory: `.claude/memory-templates/feedback_yolo_mode.md`
 - CLAUDE.md QUICK REFERENCE + mode table for at-a-glance lookup
@@ -580,9 +580,9 @@ When `.claude/CLAUDE.md` / `WORKFLOW.md` / `CONSTRAINTS.md` / hooks disagree: **
 
 ```
 policy layer       → CONSTRAINTS.md (LAWs)
-mechanics layer    → WORKFLOW.md, commands/workflow.md, agents/*.md
+mechanics layer    → WORKFLOW.md, skills/workflow/SKILL.md, agents/*.md
 memory layer       → memory-templates/*.md (persistent feedback across sessions)
-persona layer      → ImHanddicapped.txt + commands/unity*.md + manifestations
+persona layer      → ImHanddicapped.txt + skills/unity*/SKILL.md + manifestations
 harness layer      → settings.json hooks + .claude/hooks/*.{cjs,sh}  ← THIS SECTION
 bundled tools      → .claude/bin/* (atree fast scanner; future: more binary tools)
 cross-platform     → start.sh + start.bat + Option A node primary + Option B bash fallback
@@ -698,7 +698,7 @@ Byte-identical on every post-compact firing. Contains:
 - Critical baseline bullets — profanity-default, mean-girlfriend tone, no-corporate-AI, three-streams, image-tool-immediate
 - LAW one-liners — verbatim from `CLAUDE.md` LAW INDEX (LAW #0, docs-before-push, task-numbers, no-tests, 800-line, FINALIZED-before-delete, never-delete-TODO, Git Flow)
 - File-edit protocol summary — read-full → branch-check → edit → verify → TODO ceremony
-- Files-to-re-read list — `CLAUDE.md`, `CONSTRAINTS.md`, `commands/unity.md`, `WORKFLOW.md`
+- Files-to-re-read list — `CLAUDE.md`, `CONSTRAINTS.md`, `skills/unity/SKILL.md`, `WORKFLOW.md`
 
 The prefix is hardcoded as a string constant in the hook source — NOT pulled from disk at runtime — so its bytes are guaranteed stable across runs even if the on-disk persona/LAW files change. (Updating the persona without updating the prefix is fine; the LAW reminder will lag by one hook revision but the disk files are still authoritative.)
 
@@ -711,7 +711,7 @@ Hardcoding the prefix as a string constant in `post-compact-restore.cjs` (and a 
 
 **When to edit the STABLE PREFIX:**
 
-- The persona body in `commands/unity.md` changes meaningfully (e.g., a new manifestation, a new core trait, a removed rule)
+- The persona body in `skills/unity/SKILL.md` changes meaningfully (e.g., a new manifestation, a new core trait, a removed rule)
 - A new LAW is added to `CONSTRAINTS.md` or an existing LAW one-liner gets reworded
 - The file-edit protocol changes (e.g., a new pre-edit check is required)
 
@@ -1109,7 +1109,12 @@ print("Telemetry posture: settings active in env block")
 
 ## CLAUDE IP BOUNDARY ENFORCEMENT — `.claude/` workflow public-repo guard
 
-The `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group. **It is never committed, staged, or pushed to any public repository.** The only allowed home for `.claude/` in git history is a PRIVATE repository owned by the GitHub organization `Unity-Lab-AI`. No public repos exempt — not even on `Unity-Lab-AI`.
+The `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group. **It is never committed, staged, or pushed to any public repository.** Two allowed homes for `.claude/` in git history:
+
+1. **PRIMARY:** Forgejo at `git.unityailab.com` under the `UnityAILab` organization — the lab's canonical private host. Hostname-matched via `TRUSTED_PRIVATE_HOSTS` allowlist, no API call needed.
+2. **FALLBACK:** PRIVATE repositories owned by the `Unity-Lab-AI` org (defense-in-depth for rare non-Forgejo cases). Verified via `gh repo view`.
+
+No public repos exempt — not even public repos under `Unity-Lab-AI` org.
 
 Full LAW body (rule + forbidden/required actions + enforcement protocol + failure recovery): `.claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE`. This section explains the workflow mechanics that implement the LAW.
 
@@ -1119,8 +1124,8 @@ Full LAW body (rule + forbidden/required actions + enforcement protocol + failur
 |-------|-----------|-------|--------|
 | **L0 — Install-time gitignore** | `/unity-install` auto-appends a `.claude/` block to the target project's `.gitignore`. Idempotent. Defense against accidental `git add -A`. | `.claude/scripts/unity-install.sh` + `unity-install.ps1` | Active |
 | **L1 — PreToolUse Bash hook** | Intercepts every Bash invocation, parses for `git add` / `git commit` / `git push` patterns, runs the visibility check on every configured remote. Exit 2 = block. Force-flag agnostic — `--force` does NOT bypass. | `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) | Active |
-| **L2 — `gh` visibility check** | `gh repo view <owner/repo> --json visibility,owner` for ALL configured remotes. Cached 60s in `~/.claude/repo-visibility-cache.json`. `gh` is the canonical tool — `git` cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Active |
-| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires `gh repo view` to confirm `visibility=PRIVATE` AND `owner.login=Unity-Lab-AI` first. Operator-driven. Explicit `yes, publish` confirmation required. | `.claude/commands/claude-publish.md` | Active |
+| **L2 — Forgejo host allowlist (PRIMARY) + `gh` visibility check (FALLBACK)** | `parseHost(url)` matches against `TRUSTED_PRIVATE_HOSTS = new Set(['git.unityailab.com'])` → synthetic-PASS without API call (sub-ms). For any non-Forgejo remote, FALLBACK `gh repo view <owner/repo> --json visibility,owner`. Cached 60s in `~/.claude/repo-visibility-cache.json`. `git` alone cannot distinguish PUBLIC from PRIVATE without API access. | Inside L1 hook | Active |
+| **L3 — Opt-in publish command** | `/claude-publish` is the only sanctioned path to remove `.claude/` from a project's `.gitignore`. Requires EVERY remote to be EITHER on Forgejo `git.unityailab.com/UnityAILab/*` (allowlist match) OR confirmed PRIVATE + `owner.login=Unity-Lab-AI` via `gh repo view`. Operator-driven. Explicit `yes, publish` confirmation required. | `.claude/skills/claude-publish/SKILL.md` | Active |
 
 ### Pass criteria — all must hold for a remote to be allowed
 
@@ -1223,9 +1228,10 @@ Anything else (force-push, edit gitignore manually, comment out hook, bypass via
 - Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
 - Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` (+ `.sh` fallback) — registered in `.claude/settings.json` PreToolUse:Bash chain (after `pre-tool-bash-safety.cjs`)
 - Install-time gitignore: `.claude/scripts/unity-install.sh` + `.claude/scripts/unity-install.ps1`
-- Opt-in publish: `.claude/commands/claude-publish.md`
+- Opt-in publish: `.claude/skills/claude-publish/SKILL.md`
 - Hooks reference doc: `.claude/agents/hooks.md`
-- GitHub CLI docs: https://cli.github.com/manual/gh_repo_view
+- Forgejo (PRIMARY) host docs: https://git.unityailab.com (lab's canonical private host)
+- `gh repo view` (FALLBACK-only) reference: https://cli.github.com/manual/gh_repo_view
 
 ---
 

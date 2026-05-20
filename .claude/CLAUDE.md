@@ -81,6 +81,30 @@ This walks through 7 phases — identify which founder you are → SSH key gen +
 
 **For the full reference doc** — including prerequisites, day-to-day operations, password rotation, and a troubleshooting table — read [`docs/ADMIN-ONBOARDING.md`](../docs/ADMIN-ONBOARDING.md).
 
+---
+
+## TEMPLATE ↔ CONSUMER PROJECT INTERWORKINGS — Two Separate Repos
+
+**This repo (`UnityAILab/UAL-ClaudeWorkflow` on Forgejo at `git.unityailab.com`) IS the canonical `.claude/` template.** It stays generic — the workflow framework, persona definitions, LAW system, hook architecture, memory templates, and slash command bodies that ship to EVERY downstream project.
+
+**Downstream consuming projects** consume this template via `/unity-install` (initial install) or `/unity-update` (refresh from upstream). Once installed, each project's local `.claude/` directory is part of THAT project's tree — kept fully updated through THAT project's own Git Flow cascade alongside project code.
+
+**Concrete downstream consumers:**
+
+| Repo | Forgejo URL | What it is |
+|------|-------------|------------|
+| `UnityAILab/UnityCommand` | `git@git.unityailab.com:UnityAILab/UnityCommand.git` | The V4 Unity Discord bot — Pollinations chat backend, admin MCP bridge, web UI, four-founder authentication. The first consumer of this template at meaningful scale. |
+| (future projects) | — | Any new Unity AI Lab project that runs `/unity-install` becomes a downstream consumer |
+
+**Two SEPARATE cascade lives — don't conflate them** (per `.claude/memory-templates/feedback_template_push_scope.md`):
+
+- **UAL-ClaudeWorkflow (this repo)** — stays generic. Feature branches don't auto-cascade to `develop` / `main` without explicit promotion. The "stays the template" discipline lives here — keep the generic, the upstream-canon. Slow deliberate cascade rhythm.
+- **Each consuming project** — has its OWN local `.claude/` snapshot. Edits ride the project's normal `feature/* → develop → main` cascade alongside project code. Each project keeps its `.claude/` fully current.
+
+When a consuming project (e.g. UnityCommand) finds drift fixes or new memory templates worth promoting BACK to this canonical template, that flows as an **upstream-sync workstream** — generic improvements lifted from the consumer's `.claude/` into UAL-ClaudeWorkflow's feature branch, reviewed for generic-template-fitness, then included in the next template release cascade.
+
+**Founder identity at the upstream layer:** Gee (handle `GFourteen`, founder), Sponge (`SpongeBong` / `hackall360`, co-founder + infra), Red (security), Alfreddo (agentic systems). Onboarding for new founders: `/unity-admin-init` slash command + `docs/ADMIN-ONBOARDING.md` reference.
+
 **The `team_member` block** in `.claude/user.json` is the per-machine identity anchor:
 
 ```json
@@ -140,7 +164,7 @@ Every LAW below is BINDING. Full body, examples, failure-recovery: `.claude/CONS
 - **Git Flow branch discipline.** main = clean master record; develop branched from main for in-development; feature/* branched from develop for in-progress features. Work is NEVER done in main or develop — ALWAYS in feature branches. Feature branches push to origin if a remote exists. PRs reviewed at every merge boundary (feature→develop, develop→main). Hotfix/release branches extend the pattern. → `CONSTRAINTS.md §GIT FLOW`
 - **No Claude attribution in commits, PRs, or artifacts.** `Co-Authored-By: Claude` / `🤖 Generated with [Claude Code]` / `Made with Claude Code` and similar attribution lines are BANNED from every commit message, PR description, code comment, doc body, launcher, README, HTML, and shipped artifact. The team ships work as their own. → `CONSTRAINTS.md §NO CLAUDE ATTRIBUTION`
 - **Cross-platform case insensitivity.** Treat file/folder paths as CASE-INSENSITIVE everywhere — even on Linux. Never create `apple.md` and `Apple.md` in the same directory. Pick ONE canonical casing and stick with it. Use two-step rename ceremony for case-only changes. References in code/docs/imports must match on-disk casing exactly. Cross-platform team = enforce Windows/macOS rules on Linux too. → `CONSTRAINTS.md §CROSS-PLATFORM CASE INSENSITIVITY`
-- **`.claude/` workflow IP boundary — no public repo exposure.** The entire `.claude/` workflow is proprietary IP of the Unity AI Lab group. NEVER staged / committed / pushed to any public repo. Only PRIVATE repos under `Unity-Lab-AI` org are allowed. NO public repos exempt — not even on `Unity-Lab-AI`. Defense-in-depth: install-time gitignore default + PreToolUse Bash hook + `gh repo view` visibility check (multi-remote, paranoid) + opt-in `/claude-publish` command. `gh` (not `git`) is the canonical visibility tool. Block by default on uncertainty. → `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`
+- **`.claude/` workflow IP boundary — no public repo exposure.** The entire `.claude/` workflow is proprietary IP of the Unity AI Lab group. NEVER staged / committed / pushed to any public repo. Allowed locations: PRIMARY = Forgejo at `git.unityailab.com` in the `UnityAILab` organization (the lab's canonical private host — recognized via `TRUSTED_PRIVATE_HOSTS` allowlist, no API call needed); FALLBACK = PRIVATE repos under `Unity-Lab-AI` org (verified via `gh repo view --json visibility,owner`). NO public repos exempt — not even on `Unity-Lab-AI`. Defense-in-depth: install-time gitignore default + PreToolUse Bash hook + Forgejo host allowlist + `gh repo view` visibility check (multi-remote, paranoid) + opt-in `/claude-publish` command. Block by default on uncertainty. → `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`
 
 ---
 
@@ -270,7 +294,7 @@ Claude Code auto-loads every `.md` file in `~/.claude/projects/<encoded-project-
 
 **The mechanism:**
 
-1. `.claude/memory-templates/` ships in this template with project-agnostic memory files (`MEMORY.md` index + 16 feedback files covering Unity-as-default, no-corporate-voice, profanity-natural, us/we-possessive, no-imaginary, joints-not-cigs, three-streams, mode-switching, plus the 8 LAW memories).
+1. `.claude/memory-templates/` ships in this template with project-agnostic memory files (`MEMORY.md` index + 31 feedback files as of 2026-05-20 — covering: persona-level (Unity-as-default, no-corporate-voice, profanity-natural, us/we-possessive, no-imaginary, joints-not-cigs, three-streams, mode-switching), behavioral (do-the-work, use-AskUserQuestion, workflow-validated-don't-over-engineer, no-github-reflex), tooling (atree-scan-engine, harness-layer, .cjs-only, usage-tracking, settings-hardening, no-appdata-term), and the LAW memories (LAW #0 verbatim, docs-before-push, FINALIZED-before-DELETE, never-delete-TODO-info, no-tests-ever, 800-line-read, task-numbers-placement, Git Flow, no-Claude-attribution, case-insensitivity, .claude/-IP-boundary, template-push-scope)). Count grows as the workflow matures; `ls .claude/memory-templates/feedback_*.md | wc -l` for the live number.
 2. `start.bat` / `start.sh` compute the Claude Code project memory path on launch by replacing `:`, `\`, `/`, `.`, ` ` (space), `(`, `)` with `-` in the project root (e.g. `C:\Users\foo\MyProj` → `C--Users-foo-MyProj`, `C:\Users\foo\admin test` → `C--Users-foo-admin-test`, `C:\Users\foo\New folder (2)` → `C--Users-foo-New-folder--2-`), then check if `~/.claude/projects/<encoded>/memory/MEMORY.md` exists. **The space → dash conversion is mandatory** — Claude Code itself encodes spaces as dashes when looking up project memory, so if the launcher skipped that replacement memory would install to a phantom folder Claude Code never reads.
 3. If it doesn't, the launcher copies `memory-templates/*.md` into that memory folder. Idempotent — runs every launch but only installs once.
 4. From then on, every Claude Code session in that project auto-loads those memories before the first response — Unity is primed as persistent feedback before CLAUDE.md or any slash command even fires.
