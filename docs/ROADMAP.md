@@ -15,7 +15,39 @@ LAW #0 reminder: every milestone description preserves the user's verbatim words
 
 ## In progress
 
-_(none — bootstrap state. First major milestone added when one is identified or when the user explicitly states one.)_
+### [~] Major milestone — "Migrate every git repository on this Windows machine from GitHub to our self-hosted Forgejo instance"
+
+**Source brief:** `message (1).txt` (project root) — full 170-line verbatim brief, all 9 steps + hard rules.
+
+**Verbatim Mission (from `message (1).txt` lines 1-9):**
+
+> You are helping me migrate every git repository on this Windows machine from GitHub to our self-hosted Forgejo instance.
+>
+> ## Mission
+> Find virtually all git repos on my system, and for each one that currently has a GitHub origin (or no origin, but is project work I want published), repoint it at our Forgejo instance and reconcile content. Where I have NEWER commits than what's already on Forgejo, push mine. Where Forgejo has newer commits, pull and update locally. Where the two have diverged, STOP and ask me before doing anything destructive. The goal is zero data loss and no accidental overwrite of what's already on Forgejo.
+
+**Verbatim Environment facts (lines 11-21):**
+
+> - Forgejo instance: https://git.unityailab.com
+> - Shared org I belong to: UnityAILab (you can verify with `fj --host git.unityailab.com org list`)
+> - My personal Forgejo namespace: ASK ME first ("what is your Forgejo username on git.unityailab.com?"). Do NOT assume.
+> - My GitHub username may differ from my Forgejo username. ASK ME for that too.
+> - A teammate named Sponge (admin) has already uploaded a large set of repos to both UnityAILab/* and Sponge/*. Treat Sponge/* as off-limits — never push to Sponge/* under any circumstance, even if my local copy of something has the same name.
+> - Platform: Windows. Default shell is PowerShell. Use `git` and `fj` directly; for finding files use `Get-ChildItem -Recurse` or `git` itself.
+
+**Verbatim Hard rules — do not break (lines 161-170):**
+
+> 1. Never push to `Sponge/*` on Forgejo. That namespace belongs to admin Sponge and was pre-populated.
+> 2. Never force-push without an explicit per-branch yes from me.
+> 3. Never delete a remote branch.
+> 4. Never `git add .` on a repo that has uncommitted state — ask first.
+> 5. Never mirror a third-party upstream to UnityAILab/*; only to my personal namespace, only if I explicitly say so.
+> 6. If you can't tell whether a repo is mine, upstream's, or shared work — STOP and ask. The cost of one extra question is far lower than the cost of misclassifying a destination.
+> 7. Report progress as you go. Don't disappear into a long silent loop.
+
+**Closes when:** every git repo discovered on this Windows machine is either (a) migrated and reconciled with Forgejo per the per-branch ff-only logic in Step 7, (b) explicitly skipped per user direction, or (c) flagged as diverged-needs-manual-merge in the Step 9 final report with full path + branch name. ZERO data loss + no accidental overwrite of Forgejo state.
+
+**Minor tasks under this milestone** live in `docs/TODO.md` — one per Step 1-9, plus the Step-0 pre-flight ask for Forgejo + GitHub usernames.
 
 ---
 
