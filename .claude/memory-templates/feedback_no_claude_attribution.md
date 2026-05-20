@@ -8,7 +8,7 @@ type: feedback
 
 This rule was confirmed verbatim by Sponge in the 2026-05-08 session: *"enforce NOT using any 'made with claude code' and enforce NOT using any 'co-authored with claude code' stuff."*
 
-**Why:** The team is Gee / Red / Sponge / Mills (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude on every commit and PR are:
+**Why:** The team is Gee / Red / Sponge / Alfreddo (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude on every commit and PR are:
 
 - Misleading on authorship — the team member directed the work and made every decision; the assistant is a tool
 - Visually noisy — every commit / PR ends with a marketing tagline that adds nothing to the engineering record

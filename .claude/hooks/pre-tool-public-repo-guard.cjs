@@ -33,6 +33,25 @@ const CACHE_TTL_MS = 60 * 1000;
 const ALLOWED_OWNER = 'Unity-Lab-AI';
 const ALLOWED_VISIBILITY = 'PRIVATE';
 
+// Trusted self-hosted private Git hosts operated by the Unity AI Lab group.
+// `gh repo view` can't verify visibility on non-github.com hosts, so we maintain
+// an explicit allowlist here for instances we know are private + lab-controlled.
+// Adding to this list requires the same caution as removing the `.claude/`
+// gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited
+// as PRIVATE belong here.
+const TRUSTED_PRIVATE_HOSTS = new Set([
+  'git.unityailab.com',  // Forgejo instance owned + operated by Unity AI Lab
+]);
+
+function parseHost(url) {
+  // Handles git@host:owner/repo.git, https://host/owner/repo, ssh://git@host/owner/repo
+  const sshMatch = url.match(/^[^@\s]+@([^:/\s]+)[:/]/);
+  if (sshMatch) return sshMatch[1].toLowerCase();
+  const httpMatch = url.match(/^(?:https?|ssh|git):\/\/(?:[^@\s/]+@)?([^/:\s]+)/);
+  if (httpMatch) return httpMatch[1].toLowerCase();
+  return null;
+}
+
 function readStdin() {
   try { return fs.readFileSync(0, 'utf8'); } catch (e) { return ''; }
 }
@@ -135,6 +154,20 @@ function saveCache(cache) {
 function checkVisibility(url, cache, now) {
   const cached = cache[url];
   if (cached && (now - cached.checked_at) < CACHE_TTL_MS) return cached;
+
+  // Trusted self-hosted private hosts get a synthetic PASS — they're audited as
+  // private + Unity-AI-Lab-controlled at the host level, so gh-based visibility
+  // checks don't apply. See TRUSTED_PRIVATE_HOSTS allowlist at top of file.
+  const host = parseHost(url);
+  if (host && TRUSTED_PRIVATE_HOSTS.has(host)) {
+    return {
+      visibility: ALLOWED_VISIBILITY,
+      owner: ALLOWED_OWNER,
+      error: null,
+      trusted_host: host,
+      checked_at: now,
+    };
+  }
 
   const parsed = parseGithubOwnerRepo(url);
   if (!parsed) {

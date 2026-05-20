@@ -77,7 +77,7 @@ Write to `.claude/user.json` under `project` key:
 
 ### Phase 3 — Team customization (optional)
 
-Ask: "Want to use the default Unity AI Lab team credits (Gee founder / Red server / Sponge stack+backend / Mills social+dev), customize with your own team, or skip team credits entirely?"
+Ask: "Want to use the default Unity AI Lab team credits (GFourteen co-founder/finance / SpongeBong co-founder/infra / Alfreddo agentic-systems / Red security), customize with your own team, or skip team credits entirely?"
 
 **If customize:** walk through team members one at a time:
 - Role (e.g. "founder", "backend", "frontend", "design", "ops")
@@ -104,7 +104,7 @@ Based on Phase 3 choice, edit:
 - `README.md` — Unity AI Lab — Team table
 - `templates/ARCHITECTURE.md` — Credits section
 
-If team customized: replace the default Gee/Red/Sponge/Mills entries with the user's team.
+If team customized: replace the default Gee/Red/Sponge/Alfreddo entries with the user's team.
 If default kept: no edit.
 If skipped: delete the team-credits sections.
 

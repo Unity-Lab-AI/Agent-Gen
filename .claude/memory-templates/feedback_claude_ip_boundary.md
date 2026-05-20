@@ -4,7 +4,7 @@ description: The entire `.claude/` workflow is proprietary IP of the Unity AI La
 type: feedback
 ---
 
-**Rule:** The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Mills). It is **NEVER** committed, staged, or pushed to any public repository. The only allowed home for `.claude/` in git history is a **PRIVATE** repository owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"). No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
+**Rule:** The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Alfreddo). It is **NEVER** committed, staged, or pushed to any public repository. The only allowed home for `.claude/` in git history is a **PRIVATE** repository owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"). No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
 
 This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"*
 

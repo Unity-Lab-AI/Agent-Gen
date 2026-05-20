@@ -11,7 +11,7 @@ model: claude-sonnet-4-6
 - User invokes `/unity-update` slash command
 - User asks to "refresh the .claude/ template" / "pull latest workflow" / "update Unity"
 - User wants to swap framework to a different branch for testing
-- After Sponge/Mills/Red/Gee lands an upstream improvement on `main` and user wants it locally
+- After Sponge/Alfreddo/Red/Gee lands an upstream improvement on `main` and user wants it locally
 
 ## Trigger keywords / phrases
 

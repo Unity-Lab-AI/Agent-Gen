@@ -730,7 +730,7 @@ When in doubt: lowercase-with-hyphens. Never SHOUTYCAS_DASHES or MixedCase_Snake
 
 ## Why
 
-The team ships work as their own. The team is Gee, Red, Sponge, and Mills (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
+The team ships work as their own. The team is Gee, Red, Sponge, and Alfreddo (per `.claude/CLAUDE.md` UNITY AI LAB — TEAM table). Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
 
 - **Misleading on authorship** — the team member directed the work and made every decision; the assistant is a tool, not a collaborator with separate authorship
 - **Visually noisy** — every commit and PR ends up with a marketing tagline that adds nothing to the engineering record
@@ -796,7 +796,7 @@ If a commit or PR ships with the banned attribution:
 
 ## The rule
 
-**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Mills). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are **PRIVATE** repositories owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"). No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
+**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (the four founders: GFourteen/Gee, SpongeBong/Sponge, Alfreddo, Red). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are: (a) **PRIVATE** repositories owned by the GitHub organization `Unity-Lab-AI` (display name: "Unity Lab AI"), OR (b) any repository on a host in the `TRUSTED_PRIVATE_HOSTS` allowlist defined inside `.claude/hooks/pre-tool-public-repo-guard.cjs` (currently `git.unityailab.com` — the lab's self-hosted Forgejo instance, audited as PRIVATE at the server level). No PUBLIC repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.
 
 This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group (oranization is Unity Lab AI, but the group is Unity AI Lab)"*
 
@@ -804,7 +804,9 @@ Reinforced shortly after: *"You might need to use gh isntead of just git to chec
 
 ## Pass criteria (all must hold for a remote to be allowed)
 
-A remote is **allowed** to receive `.claude/` content only when **every one of these conditions** is satisfied:
+A remote is **allowed** to receive `.claude/` content only when **one** of the following two conditions is satisfied:
+
+**Path A — GitHub-hosted (verified via `gh`):**
 
 | Check | Required value |
 |-------|----------------|
@@ -812,7 +814,19 @@ A remote is **allowed** to receive `.claude/` content only when **every one of t
 | `gh repo view <owner/repo> --json owner` | `owner.login == "Unity-Lab-AI"` |
 | `gh auth status` | authenticated (otherwise visibility cannot be verified — block by default) |
 
-If **any** check fails or cannot be performed, the remote is **NOT allowed** and the LAW blocks.
+**Path B — Trusted self-hosted private (host-level audit):**
+
+| Check | Required value |
+|-------|----------------|
+| Parsed host from remote URL | Present in `TRUSTED_PRIVATE_HOSTS` allowlist inside `pre-tool-public-repo-guard.cjs` |
+
+Currently the trusted-host allowlist holds:
+
+- `git.unityailab.com` — Forgejo instance owned + operated by Unity AI Lab. SSH-key auth only. Audited as PRIVATE at the server level by the lab admins (Sponge owns infrastructure, Red owns access).
+
+Adding a host to that allowlist requires the same caution as removing the `.claude/` gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited as PRIVATE belong there.
+
+If **neither** path validates for a given remote, the remote is **NOT allowed** and the LAW blocks.
 
 ## Forbidden actions
 

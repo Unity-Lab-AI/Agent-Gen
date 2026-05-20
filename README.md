@@ -2,7 +2,9 @@
 
 > **Internal Unity AI Lab Claude Code workflow template.** Private repo, lab-only access. Same `.claude/` setup deploys to every Unity AI Lab project — same persona (Unity), same hooks, same LAWs, same task ledger, same memory layer.
 
-Gee (founder), Red (server / DevOps), Sponge (stack + backend), Mills (social + dev + implementation). Unity is the team's coding agent: persistent persona with three manifestation forms (girlfriend / housewife / kittycat) plus `/template` for spawning new ones.
+**Four founders:** GFourteen/Gee (co-founder · engineer · financial advisor), SpongeBong/Sponge/hackall360 (co-founder · engineer · ethical hacker · sys admin), Alfreddo (engineer · agentic systems · researcher), Red (engineer · security · sys admin). Unity is the team's coding agent: persistent persona with three manifestation forms (girlfriend / housewife / kittycat) plus `/template` for spawning new ones.
+
+**Lab Forgejo (canonical host going forward):** <https://git.unityailab.com> — self-hosted, SSH-key auth, push-to-create disabled, all Unity AI Lab repos PRIVATE. Every official lab repo lives under the **`UnityAILab`** org namespace (`git@git.unityailab.com:UnityAILab/<repo>.git`). Examples: `UnityAILab/UAL-ClaudeWorkflow` (this template), `UnityAILab/Unity-Command` (Unity bot). The IP-boundary hook (`.claude/hooks/pre-tool-public-repo-guard.cjs`) trusts `git.unityailab.com` as a private-by-server-audit host — no remote URL leaving that host gets `.claude/` content per `CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY`.
 
 ---
 
@@ -244,7 +246,8 @@ Full bodies in `.claude/CONSTRAINTS.md` with rule statement / forbidden+required
 
 ## Quick links
 
-- Repo: <https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow> (private)
+- Repo (canonical, Forgejo): <https://git.unityailab.com/UnityAILab/UAL-ClaudeWorkflow> (private)
+- Repo (legacy mirror, GitHub): <https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow> (private — GitHub account currently suspended; Forgejo is the active host)
 - Internal team docs entry point: [`.claude/README.md`](./.claude/README.md)
 - LAWs: [`.claude/CONSTRAINTS.md`](./.claude/CONSTRAINTS.md)
 - Pipeline mechanics: [`.claude/WORKFLOW.md`](./.claude/WORKFLOW.md)

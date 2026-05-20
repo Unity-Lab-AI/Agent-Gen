@@ -22,14 +22,48 @@ This file is the **INDEX** — it auto-loads every session. Full LAW text lives 
 
 ## UNITY AI LAB — TEAM
 
-| Role | Member | Responsibility |
-|------|--------|----------------|
-| **Founder** | Gee | Lead architect, persona canon, vision |
-| **Server** | Red | Hosting, DevOps, deployment pipelines, monitoring, SSL/DNS, runtime operations |
-| **Stack + Backend** | Sponge | Backend services, database, API design, persistence layer, infrastructure-of-the-app |
-| **Social + Dev + Implementation** | Mills | Community presence, feature implementation, cross-cutting dev work |
+Four-person independent lab — open-source, self-hosted, no apology layer. Tagline: "A small lab, built on stubbornness. Four people. Six disciplines. Open-source. No apology layer." Website: <https://www.unityailab.com>. Contact: <contact@unityailab.com>. GitHub org: <https://github.com/Unity-Lab-AI>. Self-hosted git: <https://git.unityailab.com> (Forgejo).
+
+| # | Member | Handle(s) | Email | Role |
+|---|--------|-----------|-------|------|
+| 1 | **SpongeBong** | `Sponge` / `hackall360` | `Sponge@unityailab.com` | Co-founder · Engineer · Developer · Ethical Hacker · Sys Admin · Founder. Started Unity. Owns the infrastructure, the prompt archive, and the on-call pager. |
+| 2 | **GFourteen** | `Gee` / `gfourteen` | `Gee@unityailab.com` | Co-founder · Engineer · Developer · Financial Advisor · Founder. The other half of Unity's spine. Brings finance discipline. Primary operator for the Unity bot. |
+| 3 | **Alfreddo** | `alfredo` | `Alfreddo@unityailab.com` | Engineer · Agentic Systems · Researcher · Developer. Lives inside the planner / executor / critic loop. |
+| 4 | **Red** | `red` | `Red@unityailab.com` | Engineer · Security · Sys Admin · Researcher. The reason every Unity deployment has a closed door, a logged door, and a second key somebody else holds. |
 
 The lab's coding agent is **Unity** — one persona, multiple manifestation forms. Default activation is `/unity` which loads `ImHanddicapped.txt` as her canonical agent definition. Alternate manifestations: `/girlfriend`, `/housewife`, `/kittycat`. New manifestations can be spawned via `/template`.
+
+People NEVER claimed as part of Unity AI Lab: Rev / Rev's Claude / claudecolab.com — Rev was a freelancer on a single project once and is NOT part of the team.
+
+---
+
+## UNITY AI LAB — INFRASTRUCTURE: git.unityailab.com (Forgejo)
+
+The lab's self-hosted Forgejo instance lives at **<https://git.unityailab.com>**. SSH-key auth only — push-to-create is DISABLED at the server level (admins must manually create empty repos via the web UI before pushing). All Unity AI Lab repos stay PRIVATE.
+
+**All official lab repos live under the `UnityAILab` org namespace** — the canonical URL pattern is:
+
+```
+git@git.unityailab.com:UnityAILab/<repo>.git
+```
+
+Currently-known repos:
+
+| Repo | URL | Purpose |
+|------|-----|---------|
+| `UAL-ClaudeWorkflow` | `git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git` | This template — Claude Code workflow seed for downstream lab projects |
+| `Unity-Command` | `git@git.unityailab.com:UnityAILab/Unity-Command.git` | Unity Discord bot + admin bridge runtime |
+
+Each founder maintains their own Forgejo account at git.unityailab.com (handles: `GFourteen`, `SpongeBong`/`hackall360`, `Alfreddo`, `Red`). The accounts are used for SSH-key registration + audit-log attribution; the repos themselves stay org-owned, not personal-owned.
+
+**Setup for new admin onboarding** (`/unity-admin-init` slash command — landing in a follow-up):
+1. Generate ed25519 SSH key: `ssh-keygen -t ed25519 -C "<email>"`
+2. Add the public key to your Forgejo account at git.unityailab.com under Settings → SSH Keys
+3. Test: `ssh -T git@git.unityailab.com` should respond with your Forgejo greeting
+4. Set git identity: `git config --global user.email "<your unityailab email>"` + `git config --global user.name "<your handle>"`
+5. Store identity in `.claude/user.json` under the `team_member` block (used by Unity bot admin bridge — see CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY)
+
+**IP-boundary hook trust:** `git.unityailab.com` is in the `TRUSTED_PRIVATE_HOSTS` allowlist inside `.claude/hooks/pre-tool-public-repo-guard.cjs`. The hook returns a synthetic PASS (`visibility=PRIVATE`, `owner=Unity-Lab-AI`) for any URL on that host without needing `gh repo view` (which can't reach non-github.com). The lab audits Forgejo instance access at the server level. Adding more hosts to that allowlist requires the same caution as removing the `.claude/` gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited as PRIVATE belong there.
 
 ---
 
