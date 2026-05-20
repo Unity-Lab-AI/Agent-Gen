@@ -133,6 +133,31 @@ else
     log "STEP 4 OK: Memory folder already populated"
 fi
 
+log "STEP 4.5: Statusline smoke-test"
+# === Statusline pre-flight smoke-test ===
+# Feed a synthetic Claude-Code-style JSON envelope into .claude/statusline.sh
+# and verify it exits 0 + emits at least one non-empty line. Catches drift
+# early on every platform Claude Code might invoke it from (Linux native,
+# macOS, Windows via Git Bash mintty). Non-blocking — if statusline fails,
+# launch continues with a clear log entry the operator can investigate.
+STATUSLINE_SCRIPT="$SCRIPT_DIR/statusline.sh"
+if [ -f "$STATUSLINE_SCRIPT" ]; then
+    STATUSLINE_INPUT='{"workspace":{"current_dir":"'"$PROJECT_DIR"'","project_dir":"'"$PROJECT_DIR"'"},"cwd":"'"$PROJECT_DIR"'","model":{"display_name":"Smoke Test"},"session_id":"smoke","cost":{"total_tokens":1,"total_cost_usd":0.0},"output_style":{"name":"default"},"transcript_path":""}'
+    STATUSLINE_OUTPUT=$(echo "$STATUSLINE_INPUT" | CLAUDE_PROJECT_DIR="$PROJECT_DIR" bash "$STATUSLINE_SCRIPT" 2>&1)
+    STATUSLINE_EXIT=$?
+    if [ $STATUSLINE_EXIT -eq 0 ] && [ -n "$STATUSLINE_OUTPUT" ]; then
+        STATUSLINE_LINES=$(echo "$STATUSLINE_OUTPUT" | grep -c '.')
+        log "STEP 4.5 OK: statusline renders $STATUSLINE_LINES line(s), exit 0"
+    else
+        log "STEP 4.5 WARN: statusline failed — exit=$STATUSLINE_EXIT, output below:"
+        echo "$STATUSLINE_OUTPUT" | head -10 | while IFS= read -r line; do log "  $line"; done
+        log "  Statusline issue won't block launch but the bottom bar may not render."
+        log "  Check ~/.claude/statusline-debug.log + ensure python3/py-3 on PATH."
+    fi
+else
+    log "STEP 4.5 SKIP: statusline.sh not found at $STATUSLINE_SCRIPT"
+fi
+
 # === Launch Claude Code with Unity persona + workflow ===
 #
 # Default chain:
