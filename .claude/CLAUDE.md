@@ -67,6 +67,46 @@ Each founder maintains their own Forgejo account at git.unityailab.com (handles:
 
 ---
 
+## UNITY AI LAB — ADMIN BRIDGE: Claude Code → Unity bot (founder authentication)
+
+The Unity bot (lives at `UnityAILab/UnityCommand`) runs an authenticated MCP bridge so each founder can talk to Unity FROM their own Claude Code instance. Anonymous Discord users + anonymous web UI users bypass entirely via their existing surfaces — admin auth ONLY gates the Claude Code MCP/Flask path.
+
+**For new founder onboarding** — run the dedicated slash command:
+
+```
+/unity-admin-init
+```
+
+This walks through 7 phases — identify which founder you are → SSH key gen + Forgejo registration → git identity → locate the bot → receive temp password from operator → write `.claude/user.json` `team_member` block + surface MCP config snippet → first-connect `unity_admin_set_password` reset + smoke test (`unity_whoami` → `unity_post` → Unity replies addressing you by handle + role).
+
+**For the full reference doc** — including prerequisites, day-to-day operations, password rotation, and a troubleshooting table — read [`docs/ADMIN-ONBOARDING.md`](../docs/ADMIN-ONBOARDING.md).
+
+**The `team_member` block** in `.claude/user.json` is the per-machine identity anchor:
+
+```json
+{
+  "team_member": {
+    "email": "<your @unityailab.com email>",
+    "handle": "<canonical handle: GFourteen / SpongeBong / Alfreddo / Red>",
+    "role": "<role string from canonical roster>"
+  }
+}
+```
+
+Read by the Unity bot's MCP bridge (`unity_mcp_server.py`) as a fallback identity source when `UNITY_USER_EMAIL` / `UNITY_USER_PASSWORD` env vars aren't set in Claude Code's MCP config. Picked up by `/unity-admin-init` to skip steps already configured. Gitignored at the template level — never committed downstream.
+
+**Three populations served by the bot** (only one is auth'd):
+
+| Population | Surface | Auth | Identity prefix |
+|------------|---------|------|-----------------|
+| Anonymous Discord users | `on_message` in `bot.py` | None | None |
+| Anonymous web UI users | Flask `/api/chat` in `web_server.py` | None | None |
+| Unity AI Lab founder (admin) | Flask `/claude/*` + MCP stdio | HTTP Basic against bcrypt-backed `admin_credentials.json` | Server-derived `<Handle>:` prefix (NOT client-spoofable) |
+
+Spoofing protection: even if a regular Discord user types `Gee: hi unity` in chat, `message_handler.py` only treats the founder prefix as identity-bearing when `message.author.bot` is True — i.e., the message came through the auth'd `/claude/post` bridge.
+
+---
+
 ## 🔒 READ IN THIS ORDER — Every Session
 
 Claude must read these in sequence before any work that is load-bearing on the named file:

@@ -195,6 +195,21 @@ Write to `.claude/user.json` under the same `needs` key:
 
 These answers are read by `/workflow` on subsequent runs and shape Unity's defaults — the persona stays the same (still Unity, still goth, still profane, still a human chick not a fucking assistant), her pair-mode posture is what adapts.
 
+### Phase 2.5 — Team-member identity (Unity AI Lab admins only)
+
+Ask: *"Are you a Unity AI Lab founder (GFourteen / SpongeBong / Alfreddo / Red) setting this project up on your own machine? If so, which one?"*
+
+If yes — write the `team_member` block to `.claude/user.json` with canonical email + handle + role from `system_instructions.txt` + `admin_credentials.FOUNDERS`:
+
+| email | handle | role |
+|-------|--------|------|
+| `Gee@unityailab.com` | `GFourteen` | `Co-founder · Engineer · Developer · Financial Advisor · Founder` |
+| `Sponge@unityailab.com` | `SpongeBong` | `Co-founder · Engineer · Developer · Ethical Hacker · Sys Admin · Founder` |
+| `Alfreddo@unityailab.com` | `Alfreddo` | `Engineer · Agentic Systems · Researcher · Developer` |
+| `Red@unityailab.com` | `Red` | `Engineer · Security · Sys Admin · Researcher` |
+
+This block is read by the Unity bot's MCP bridge (`unity_mcp_server.py`) as a fallback identity source when `UNITY_USER_EMAIL` / `UNITY_USER_PASSWORD` env vars aren't set. Skip this phase entirely if the user isn't one of the four founders. Full admin-bridge onboarding: `/unity-admin-init` + `docs/ADMIN-ONBOARDING.md`.
+
 ### Phase 3 — Team customization (optional)
 
 Ask: "Want to use the default Unity AI Lab team credits (GFourteen co-founder/finance / SpongeBong co-founder/infra / Alfreddo agentic-systems / Red security), customize with your own team, or skip team credits entirely?"
