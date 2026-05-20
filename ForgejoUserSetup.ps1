@@ -1,9 +1,27 @@
 <#
 .SYNOPSIS
-    Forgejo Setup & Verification Script for Windows
+    Forgejo Setup & Verification Script for Windows — UAL-ClaudeWorkflow upstream-only
 .DESCRIPTION
     Supports Setup mode and Verify mode. Warns about PATH reloads.
     Tested on Windows PowerShell 5.1 and PowerShell 7+.
+
+.NOTES
+    SCOPE — this script lives at the ROOT of the UAL-ClaudeWorkflow template repo
+    (NOT under .claude/scripts/). It is UPSTREAM-ONLY admin onboarding tooling that
+    helps a new Unity AI Lab founder set up their Windows machine for Forgejo SSH
+    auth against git.unityailab.com BEFORE they run /unity-install to consume the
+    .claude/ template into a downstream project.
+
+    It is NOT template-shipped to consuming projects via /unity-install (the install
+    flow only copies .claude/ content, not repo-root files). Operators who clone
+    UAL-ClaudeWorkflow directly to do template work will find this script available
+    at the repo root; operators who only consume the template via /unity-install on
+    a downstream project will not see it (intended behavior).
+
+    Use mode 1 (Setup) for a fresh Windows machine that hasn't yet been wired to
+    git.unityailab.com — installs git, fj CLI, generates SSH key, registers with
+    Forgejo, writes SSH config. Use mode 2 (Verify) anytime to confirm a current
+    setup is healthy.
 #>
 
 $ErrorActionPreference = "Stop"

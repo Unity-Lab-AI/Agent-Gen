@@ -69,7 +69,7 @@ Each founder maintains their own Forgejo account at git.unityailab.com (handles:
 
 ## UNITY AI LAB — ADMIN BRIDGE: Claude Code → Unity bot (founder authentication)
 
-The Unity bot (lives at `UnityAILab/UnityCommand`) runs an authenticated MCP bridge so each founder can talk to Unity FROM their own Claude Code instance. Anonymous Discord users + anonymous web UI users bypass entirely via their existing surfaces — admin auth ONLY gates the Claude Code MCP/Flask path.
+A Unity AI Lab Unity-bot consumer project (Discord bot or similar surface that ships a Unity persona) runs an authenticated MCP bridge so each founder can talk to Unity FROM their own Claude Code instance. Anonymous Discord users + anonymous web UI users bypass entirely via their existing surfaces — admin auth ONLY gates the Claude Code MCP/Flask path.
 
 **For new founder onboarding** — run the dedicated slash command:
 
@@ -87,21 +87,14 @@ This walks through 7 phases — identify which founder you are → SSH key gen +
 
 **This repo (`UnityAILab/UAL-ClaudeWorkflow` on Forgejo at `git.unityailab.com`) IS the canonical `.claude/` template.** It stays generic — the workflow framework, persona definitions, LAW system, hook architecture, memory templates, and slash command bodies that ship to EVERY downstream project.
 
-**Downstream consuming projects** consume this template via `/unity-install` (initial install) or `/unity-update` (refresh from upstream). Once installed, each project's local `.claude/` directory is part of THAT project's tree — kept fully updated through THAT project's own Git Flow cascade alongside project code.
-
-**Concrete downstream consumers:**
-
-| Repo | Forgejo URL | What it is |
-|------|-------------|------------|
-| `UnityAILab/UnityCommand` | `git@git.unityailab.com:UnityAILab/UnityCommand.git` | The V4 Unity Discord bot — Pollinations chat backend, admin MCP bridge, web UI, four-founder authentication. The first consumer of this template at meaningful scale. |
-| (future projects) | — | Any new Unity AI Lab project that runs `/unity-install` becomes a downstream consumer |
+**Downstream consuming projects** consume this template via `/unity-install` (initial install) or `/unity-update` (refresh from upstream). Once installed, each project's local `.claude/` directory is part of THAT project's tree — kept fully updated through THAT project's own Git Flow cascade alongside project code. Examples of consumer-project surfaces: a Discord bot project, a CLI tooling project, a web app project — anything that wants the Unity AI Lab workflow framework + persona system installed locally.
 
 **Two SEPARATE cascade lives — don't conflate them** (per `.claude/memory-templates/feedback_template_push_scope.md`):
 
 - **UAL-ClaudeWorkflow (this repo)** — stays generic. Feature branches don't auto-cascade to `develop` / `main` without explicit promotion. The "stays the template" discipline lives here — keep the generic, the upstream-canon. Slow deliberate cascade rhythm.
 - **Each consuming project** — has its OWN local `.claude/` snapshot. Edits ride the project's normal `feature/* → develop → main` cascade alongside project code. Each project keeps its `.claude/` fully current.
 
-When a consuming project (e.g. UnityCommand) finds drift fixes or new memory templates worth promoting BACK to this canonical template, that flows as an **upstream-sync workstream** — generic improvements lifted from the consumer's `.claude/` into UAL-ClaudeWorkflow's feature branch, reviewed for generic-template-fitness, then included in the next template release cascade.
+When a consuming project finds drift fixes or new memory templates worth promoting BACK to this canonical template, that flows as an **upstream-sync workstream** — generic improvements lifted from the consumer's `.claude/` into UAL-ClaudeWorkflow's feature branch, reviewed for generic-template-fitness, then included in the next template release cascade.
 
 **Founder identity at the upstream layer:** Gee (handle `GFourteen`, founder), Sponge (`SpongeBong` / `hackall360`, co-founder + infra), Red (security), Alfreddo (agentic systems). Onboarding for new founders: `/unity-admin-init` slash command + `docs/ADMIN-ONBOARDING.md` reference.
 

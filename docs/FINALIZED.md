@@ -270,3 +270,59 @@ Fix sequence executed in-session:
 - Full end-to-end Setup mode + Verify mode NOT re-run from a fresh box; this is a Windows-only script and we don't have a clean test target right now. Future test plan: spin up a clean Windows VM, run Setup mode auto path end-to-end with a fresh Forgejo token, then Verify mode — confirm all phases pass + both new Verify checks light up green.
 
 ---
+
+
+---
+
+## Pre-LAW historical attribution exceptions (grandfathered — `LAW NO CLAUDE ATTRIBUTION` applies forward-only)
+
+The following 4 commits in this repo's history carry `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` trailer, which is BANNED by `.claude/CONSTRAINTS.md §NO CLAUDE ATTRIBUTION`. All four predate the LAW being added to the workflow.
+
+| Commit SHA | Subject | Author date |
+|------------|---------|-------------|
+| `5bd9db9` | feat(.claude): statusline session uptime + Claude thinking-time + capability brainstorm | (pre-LAW era) |
+| `8060dfb` | fix(.claude): statusline.sh use py -3 instead of py -3.12 | (pre-LAW era) |
+| `b9ba16b` | feat(.claude): add Claude Code statusline — context % + project name + model | (pre-LAW era) |
+| `bcf5d25` | Extra hooks pipeline: compact lifecycle, YOLO rework, skill hooks, HOOKS.html, privacy posture, 2 new LAWs, settings migration, README internal framing | (pre-LAW era) |
+
+**Decision (Session 2026-05-20j per Gee's super-review acceptance):** grandfather these 4 commits as historical exceptions. The LAW applies FORWARD-ONLY from the date it was added to `CONSTRAINTS.md`. History rewrite + force-push to all branches was rejected as too destructive — would corrupt every clone, every team member's local refs, and every CI cache referencing the existing SHAs. Damage to operational continuity exceeds the marginal benefit of retroactive enforcement.
+
+**Going forward:** every new commit on every branch in this repo MUST honor `LAW NO CLAUDE ATTRIBUTION` — no `Co-Authored-By: Claude` trailers, no `🤖 Generated with Claude Code` footers, no `noreply@anthropic.com` co-author entries. The 4 pre-LAW commits above are the only documented exceptions.
+
+
+---
+
+## Session 2026-05-20j — Super-review-driven cleanup (ported from UnityCommand session)
+
+**Verbatim user direction (from UnityCommand session — UAL stays feature-only per "templet to its feature"):**
+
+> "/super-review everything is 100% and no more work is need to code or documents acrooss the two projects and repos are full pushed ultrathink"
+> "and only one attomic commmit the templet to its feature and the unity command to its cascade"
+> "also make sure all v4 mentions are updated to Unity Command"
+> "no the templet stays a templet" (course-correction → fully genericize UAL CLAUDE.md, strip consumer-specific naming)
+
+**Context:** UnityCommand session 2026-05-20j ran `/super-review` against the prior session's "100% complete" claim. Five of the surfaced findings translated to UAL-side work: (1) commands→skills dedup not yet ported, (2) ForgejoUserSetup.ps1 placement banner missing, (3) pre-LAW Claude attribution grandfather note, (4) `.gitattributes` for CRLF normalization, (5) UAL CLAUDE.md genericization per Gee's "templet stays a templet" course-correction (stripping UnityCommand-specific naming that I had added earlier in 6e59116). All ported in this single atomic commit on UAL feature/migrate-commands-to-skills per Gee's "templet to its feature" rule (no UAL develop/main cascade).
+
+**Work executed (atomic, all in single commit):**
+
+1. commands→skills dedup — `git rm -r .claude/commands/` removed 20 legacy command files. `.claude/skills/<name>/SKILL.md` is the sole canonical surface now.
+2. `.gitattributes` added — `* text=auto eol=lf` + `*.bat`/`*.cmd`/`*.ps1` CRLF + binary exclusions. Eliminates LF/CRLF warning noise.
+3. `ForgejoUserSetup.ps1` scope banner — `.NOTES` block clarifying upstream-only admin onboarding role, NOT template-shipped to consumers.
+4. Pre-LAW Claude attribution grandfather note — separate section documenting the 4 pre-LAW commits (`5bd9db9`, `8060dfb`, `b9ba16b`, `bcf5d25`) + forward-only LAW application.
+5. `.claude/memory-templates/feedback_template_push_scope.md` — V4 → Unity Command sweep + redundancy fix on the description.
+6. `.claude/CLAUDE.md` GENERICIZED per "templet stays a templet" course-correction — replaced specific UnityCommand-naming with generic "Unity AI Lab Unity-bot consumer project" + "downstream consuming projects" language. Removed the "Concrete downstream consumers" table that named UnityCommand specifically. UAL CLAUDE.md is now 100% project-agnostic at the consumer layer — talks about the template-consumer relationship abstractly, doesn't name any specific consumer.
+
+**Closure verification:**
+
+1. `ls .claude/commands/` → 'No such file or directory'. `.claude/skills/` has 20 folders.
+2. `.gitattributes` lives at repo root.
+3. `ForgejoUserSetup.ps1` header `.NOTES` block clarifies scope.
+4. Pre-LAW grandfather note documents 4 SHAs.
+5. `grep -n 'UnityCommand' .claude/CLAUDE.md` returns empty — fully generic per "templet stays a templet".
+6. LAW #0 verbatim preserved — Gee directives at entry header.
+7. No Claude attribution in this commit.
+8. Atomic — single commit on UAL feature only, no UAL cascade.
+
+**Still deferred per "templet to its feature":**
+
+- UAL main + develop stale at b6b4e32 — 8 commits sit on UAL feature unreachable from default `/unity-install`. Future-session decision: define UAL promotion ceremony.
