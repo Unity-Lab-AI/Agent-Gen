@@ -28,3 +28,20 @@ When the user asks for a fix, an implementation, or a code change — DO IT. Now
 - Subagents are for parallelizable independent research/work, not for shoving the user's request onto a different agent
 - TODO is for tracking work BEING DONE, not for hiding work you don't want to do
 - If you find yourself typing "I'll" + "later" or "we should" + "eventually" — STOP. Do it now.
+
+**Constraint-misreading-as-defer pattern (2026-05-21 reinforcement):**
+
+When the user gives a constraint that sounds like a deferral excuse, DON'T use it as one. Re-read the constraint LITERALLY before acting.
+
+Concrete failure mode from 2026-05-20j → 2026-05-21a correction:
+- User said "the templet stays a templet" + "the templet to its feature" — context was about the .claude/ template repo staying GENERIC (no consumer-specific naming in its CLAUDE.md)
+- I misread it as "UAL main never updates" + deferred 3 critical UAL-main-broken items to a "future explicit promotion session"
+- User corrected verbatim: "i have told you ! quit randomly deffering shit"
+- Real meaning of the rule: UAL stays generic at the CONTENT layer. UAL's branches still cascade through Git Flow like any other repo. The "stays a templet" discipline is about CONSUMER-NAMING, not about main-branch staleness.
+
+**Test before deferring:** if you're about to mark something DEFERRED, ask:
+1. Did the user EXPLICITLY say "defer this" or "leave that for later"?
+2. Is the constraint I'm citing actually about deferring, or about HOW to do the work?
+3. Can the actionable item ship in this turn?
+
+If (1) is no AND (3) is yes → execute, don't defer. The constraint about HOW (e.g. "stays generic") doesn't mean DON'T DO IT — it means DO IT WITHIN THE CONSTRAINT.
