@@ -265,7 +265,7 @@ Full bodies in `.claude/CONSTRAINTS.md` with rule statement / forbidden+required
 
 | Doc | What it holds |
 |-----|---------------|
-| **`README.md` (this file)** | GitHub-facing project landing page. High-level overview + install commands + cache strategy + LAW summary. |
+| **`README.md` (this file)** | Forgejo-facing project landing page. High-level overview + install commands + cache strategy + LAW summary. |
 | `.claude/README.md` | Full internal team-facing template README. Layered architecture, persona system details, persistent memory layer, harness layer table, three-tier cascade + YOLO + skill hooks + usage tracking + privacy posture, full LAW table, AskUserQuestion smart-use rule, settings split convention, directory structure, operational guide, what-to-delete-from-template guidance, verification commands. |
 | `.claude/CLAUDE.md` | Always-loaded INDEX. LAW one-liners. Read-in-order table. Quick reference. |
 | `.claude/CONSTRAINTS.md` | Full LAW bodies — every binding rule with rule statement / forbidden+required / reasoning / enforcement / failure recovery. **CONSTRAINTS.md wins** when CLAUDE.md / WORKFLOW.md / CONSTRAINTS.md disagree. |
@@ -276,8 +276,7 @@ Full bodies in `.claude/CONSTRAINTS.md` with rule statement / forbidden+required
 
 ## Quick links
 
-- Repo (canonical, Forgejo): <https://git.unityailab.com/UnityAILab/UAL-ClaudeWorkflow> (private)
-- Repo (legacy mirror, GitHub): <https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow> (private — GitHub account currently suspended; Forgejo is the active host)
+- Repo: <https://git.unityailab.com/UnityAILab/UAL-ClaudeWorkflow> (private)
 - Internal team docs entry point: [`.claude/README.md`](./.claude/README.md)
 - LAWs: [`.claude/CONSTRAINTS.md`](./.claude/CONSTRAINTS.md)
 - Pipeline mechanics: [`.claude/WORKFLOW.md`](./.claude/WORKFLOW.md)
