@@ -15,7 +15,7 @@ The Unity AI Lab `.claude/` template ships with a harness layer in `settings.jso
 5. `Stop` (no matcher) → `stop-session-writeup.cjs` — updates `.claude/.last-session.md` on every turn boundary; read by next session's SessionStart
 6. `PreToolUse` (matcher: `Bash`) → `pre-tool-bash-safety.cjs` — the ONLY blocking hook; exit 2 on project-root deletion, system-path deletion, or privileged commands (sudo/su/doas/runas/RunAs). Routes each to the user with a paste-ready command instead of running it inside the session.
 
-**Why:** the team needed standardized workflow execution across Linux Sponge / Windows-Git-Bash Mills / server-distro Red. Hooks are the harness layer that makes everyone's session-start, between-prompt state, memory deploys, compaction recovery, and admin delegation work the same way regardless of OS or machine. Hooks ENHANCE the existing ceremony (LAWs, TODO/FINALIZED dance, 800-line read, persona system, memory templates) — they NEVER replace any of it.
+**Why:** the team needed standardized workflow execution across Linux Sponge / Windows-Git-Bash Alfreddo / server-distro Red. Hooks are the harness layer that makes everyone's session-start, between-prompt state, memory deploys, compaction recovery, and admin delegation work the same way regardless of OS or machine. Hooks ENHANCE the existing ceremony (LAWs, TODO/FINALIZED dance, 800-line read, persona system, memory templates) — they NEVER replace any of it.
 
 **How to apply:**
 

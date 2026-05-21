@@ -3,8 +3,9 @@
 //
 // PreToolUse hook (matcher: Bash). Implements LAW — .CLAUDE WORKFLOW IP BOUNDARY
 // (see .claude/CONSTRAINTS.md). Blocks any `git add` / `git commit` / `git push`
-// that would carry `.claude/` content to a remote that is not PRIVATE on the
-// Unity-Lab-AI GitHub organization.
+// that would carry `.claude/` content to a remote that fails the two-path
+// pass-criteria — PRIMARY (Forgejo allowlist) and FALLBACK (PRIVATE under
+// `Unity-Lab-AI` org via `gh repo view`).
 //
 // Mechanism (Layer 1 + Layer 2 of the four-layer defense-in-depth):
 //   1. Parse the intercepted Bash command for git add/commit/push patterns
@@ -13,8 +14,12 @@
 //        - git commit → check `git diff --cached --name-only`
 //        - git push → check commits ahead of upstream / branch
 //   3. Read every remote from `git remote -v` (multi-remote paranoia)
-//   4. For each remote: `gh repo view --json visibility,owner` (cached 60s)
-//   5. ALLOW only when EVERY remote is visibility=PRIVATE AND owner=Unity-Lab-AI
+//   4. For each remote: PRIMARY check first — parseHost(url) against
+//        TRUSTED_PRIVATE_HOSTS allowlist (Forgejo `git.unityailab.com`).
+//        Allowlist match = synthetic-PASS, no API call, sub-ms latency.
+//      Otherwise FALLBACK check — `gh repo view --json visibility,owner`
+//        (cached 60s) requiring visibility=PRIVATE AND owner=Unity-Lab-AI.
+//   5. ALLOW only when EVERY remote satisfies PRIMARY or FALLBACK
 //   6. Otherwise exit 2 (block) with a detailed paste-ready remediation message
 //
 // Force-flag agnostic — `git push --force` does NOT bypass.
@@ -32,6 +37,25 @@ const CACHE_PATH = path.join(os.homedir(), '.claude', 'repo-visibility-cache.jso
 const CACHE_TTL_MS = 60 * 1000;
 const ALLOWED_OWNER = 'Unity-Lab-AI';
 const ALLOWED_VISIBILITY = 'PRIVATE';
+
+// Trusted self-hosted private Git hosts operated by the Unity AI Lab group.
+// `gh repo view` can't verify visibility on non-github.com hosts, so we maintain
+// an explicit allowlist here for instances we know are private + lab-controlled.
+// Adding to this list requires the same caution as removing the `.claude/`
+// gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited
+// as PRIVATE belong here.
+const TRUSTED_PRIVATE_HOSTS = new Set([
+  'git.unityailab.com',  // Forgejo instance owned + operated by Unity AI Lab
+]);
+
+function parseHost(url) {
+  // Handles git@host:owner/repo.git, https://host/owner/repo, ssh://git@host/owner/repo
+  const sshMatch = url.match(/^[^@\s]+@([^:/\s]+)[:/]/);
+  if (sshMatch) return sshMatch[1].toLowerCase();
+  const httpMatch = url.match(/^(?:https?|ssh|git):\/\/(?:[^@\s/]+@)?([^/:\s]+)/);
+  if (httpMatch) return httpMatch[1].toLowerCase();
+  return null;
+}
 
 function readStdin() {
   try { return fs.readFileSync(0, 'utf8'); } catch (e) { return ''; }
@@ -135,6 +159,20 @@ function saveCache(cache) {
 function checkVisibility(url, cache, now) {
   const cached = cache[url];
   if (cached && (now - cached.checked_at) < CACHE_TTL_MS) return cached;
+
+  // Trusted self-hosted private hosts get a synthetic PASS — they're audited as
+  // private + Unity-AI-Lab-controlled at the host level, so gh-based visibility
+  // checks don't apply. See TRUSTED_PRIVATE_HOSTS allowlist at top of file.
+  const host = parseHost(url);
+  if (host && TRUSTED_PRIVATE_HOSTS.has(host)) {
+    return {
+      visibility: ALLOWED_VISIBILITY,
+      owner: ALLOWED_OWNER,
+      error: null,
+      trusted_host: host,
+      checked_at: now,
+    };
+  }
 
   const parsed = parseGithubOwnerRepo(url);
   if (!parsed) {

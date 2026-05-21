@@ -13,17 +13,19 @@ LAW #0 reminder: every task description preserves the user's verbatim words.
 
 **Three-tier cascade:** ROADMAP.md (major) → TODO.md (minor, this file) → DECOMPOSED.md (decomposed). YOLO mode reads all three and works the cascade — see `.claude/commands/yolo.md` and `.claude/WORKFLOW.md §YOLO MODE`.
 
+> **Template-repo clean state.** UAL-ClaudeWorkflow ships as a `.claude/` template seed for downstream private Unity AI Lab projects. This live `TODO.md` is intentionally empty — active task entries shouldn't pollute downstream installs. Historical entries from prior in-template work are preserved verbatim under `docs/archive/TODO-<YYYY-MM-DD>.md`.
+
 ---
 
 ## In progress
 
-_(none — statusline 7-modification refactor + empirical schema reference shipped on `feature/statusline-modifications`; verbatim audit trail in `docs/FINALIZED.md` Session 2026-05-09 §"Statusline modifications — seven changes + empirical schema reference")_
+_(none — template-repo clean state)_
 
 ---
 
 ## Pending
 
-- [ ] **"Note it all works on linux as-is, but windows may need adjustments"** — Gee's platform-coverage note after the seven statusline modifications shipped. Linux is live-verified end-to-end; Windows code paths (`os.path.splitdrive` → `C:/` drive label, `os.cpu_count()` for cores, `tput cols < /dev/tty` from Git Bash mintty for centering) are written defensively but not live-tested on a Windows box. Pre-existing Windows gaps (CPU/RAM via wmic-cache deferral) remain. Action: live-render against Windows mintty + Windows native CMD/PowerShell, verify all four lines + centering + drive label resolution; capture any required adjustments here as sub-tasks.
+_(none — template-repo clean state; downstream projects populate their own TODO when they begin work after `/unity-install` or `/unity-update` seeds the `.claude/` workflow into the project root)_
 
 ---
 

@@ -4,7 +4,9 @@
 # Bash fallback for pre-tool-public-repo-guard.cjs. Implements the
 # LAW — .CLAUDE WORKFLOW IP BOUNDARY enforcement (see .claude/CONSTRAINTS.md).
 # Blocks any git add/commit/push that would carry `.claude/` content to a
-# remote that is not PRIVATE on the Unity-Lab-AI GitHub organization.
+# remote that fails the two-path pass-criteria — PRIMARY (Forgejo allowlist
+# for `git.unityailab.com`) and FALLBACK (PRIVATE under `Unity-Lab-AI` org
+# via `gh repo view`).
 #
 # Logic mirrors the .cjs sibling. Use this on machines without node.
 
@@ -14,6 +16,47 @@ CACHE_PATH="${HOME}/.claude/repo-visibility-cache.json"
 CACHE_TTL=60   # seconds
 ALLOWED_OWNER="Unity-Lab-AI"
 ALLOWED_VISIBILITY="PRIVATE"
+
+# Trusted self-hosted private Git hosts operated by the Unity AI Lab group.
+# `gh repo view` can't verify visibility on non-github.com hosts, so we maintain
+# an explicit allowlist here for instances we know are private + lab-controlled.
+# Adding to this list requires the same caution as removing the `.claude/`
+# gitignore block — only Unity AI Lab-controlled hosts that the team has audited
+# as PRIVATE belong here. Mirrors TRUSTED_PRIVATE_HOSTS in the .cjs sibling.
+TRUSTED_PRIVATE_HOSTS=(
+  "git.unityailab.com"   # Forgejo instance owned + operated by Unity AI Lab
+)
+
+# Extract hostname from a git URL (ssh git@host:owner/repo.git, https://host/...,
+# ssh://git@host/owner/repo). Returns hostname in lowercase or empty string.
+parse_host() {
+  local url="$1"
+  local host
+  # Try ssh-style: git@host:owner/repo.git
+  host=$(echo "$url" | sed -nE 's#^[^@[:space:]]+@([^:/[:space:]]+)[:/].*#\1#p')
+  if [ -n "$host" ]; then
+    echo "$host" | tr '[:upper:]' '[:lower:]'
+    return
+  fi
+  # Try URL-style: https://host/..., ssh://git@host/..., git://host/...
+  host=$(echo "$url" | sed -nE 's#^(https?|ssh|git)://([^@/[:space:]]+@)?([^/:[:space:]]+).*#\3#p')
+  if [ -n "$host" ]; then
+    echo "$host" | tr '[:upper:]' '[:lower:]'
+    return
+  fi
+  echo ""
+}
+
+# Check if a hostname is in the TRUSTED_PRIVATE_HOSTS allowlist.
+is_trusted_host() {
+  local host="$1"
+  [ -z "$host" ] && return 1
+  local trusted
+  for trusted in "${TRUSTED_PRIVATE_HOSTS[@]}"; do
+    if [ "$host" = "$trusted" ]; then return 0; fi
+  done
+  return 1
+}
 
 INPUT="$(cat 2>/dev/null || echo '')"
 [ -z "$INPUT" ] && exit 0
@@ -149,6 +192,17 @@ check_visibility() {
     return 0
   fi
 
+  # PRIMARY check — Forgejo TRUSTED_PRIVATE_HOSTS allowlist. Hostname match =
+  # synthetic-PASS without any API call. See top-of-file allowlist constant.
+  local HOST
+  HOST=$(parse_host "$url")
+  if is_trusted_host "$HOST"; then
+    cache_store "$url" "$ALLOWED_VISIBILITY" "$ALLOWED_OWNER" ""
+    echo "$ALLOWED_VISIBILITY|$ALLOWED_OWNER|"
+    return 0
+  fi
+
+  # FALLBACK check — `gh repo view` for non-Forgejo remotes
   local OR
   OR=$(parse_github "$url")
   if [ -z "$OR" ]; then

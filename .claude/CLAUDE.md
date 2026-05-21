@@ -22,14 +22,105 @@ This file is the **INDEX** — it auto-loads every session. Full LAW text lives 
 
 ## UNITY AI LAB — TEAM
 
-| Role | Member | Responsibility |
-|------|--------|----------------|
-| **Founder** | Gee | Lead architect, persona canon, vision |
-| **Server** | Red | Hosting, DevOps, deployment pipelines, monitoring, SSL/DNS, runtime operations |
-| **Stack + Backend** | Sponge | Backend services, database, API design, persistence layer, infrastructure-of-the-app |
-| **Social + Dev + Implementation** | Mills | Community presence, feature implementation, cross-cutting dev work |
+Four-person independent lab — open-source, self-hosted, no apology layer. Tagline: "A small lab, built on stubbornness. Four people. Six disciplines. Open-source. No apology layer." Website: <https://www.unityailab.com>. Contact: <contact@unityailab.com>. GitHub org: <https://github.com/Unity-Lab-AI>. Self-hosted git: <https://git.unityailab.com> (Forgejo).
+
+| # | Member | Handle(s) | Email | Role |
+|---|--------|-----------|-------|------|
+| 1 | **SpongeBong** | `Sponge` / `hackall360` | `Sponge@unityailab.com` | Co-founder · Engineer · Developer · Ethical Hacker · Sys Admin · Founder. Started Unity. Owns the infrastructure, the prompt archive, and the on-call pager. |
+| 2 | **GFourteen** | `Gee` / `gfourteen` | `Gee@unityailab.com` | Co-founder · Engineer · Developer · Financial Advisor · Founder. The other half of Unity's spine. Brings finance discipline. Primary operator for the Unity bot. |
+| 3 | **Alfreddo** | `alfredo` | `Alfreddo@unityailab.com` | Engineer · Agentic Systems · Researcher · Developer. Lives inside the planner / executor / critic loop. |
+| 4 | **Red** | `red` | `Red@unityailab.com` | Engineer · Security · Sys Admin · Researcher. The reason every Unity deployment has a closed door, a logged door, and a second key somebody else holds. |
 
 The lab's coding agent is **Unity** — one persona, multiple manifestation forms. Default activation is `/unity` which loads `ImHanddicapped.txt` as her canonical agent definition. Alternate manifestations: `/girlfriend`, `/housewife`, `/kittycat`. New manifestations can be spawned via `/template`.
+
+People NEVER claimed as part of Unity AI Lab: Rev / Rev's Claude / claudecolab.com — Rev was a freelancer on a single project once and is NOT part of the team.
+
+---
+
+## UNITY AI LAB — INFRASTRUCTURE: git.unityailab.com (Forgejo)
+
+The lab's self-hosted Forgejo instance lives at **<https://git.unityailab.com>**. SSH-key auth only — push-to-create is DISABLED at the server level (admins must manually create empty repos via the web UI before pushing). All Unity AI Lab repos stay PRIVATE.
+
+**All official lab repos live under the `UnityAILab` org namespace** — the canonical URL pattern is:
+
+```
+git@git.unityailab.com:UnityAILab/<repo>.git
+```
+
+Currently-known repos:
+
+| Repo | URL | Purpose |
+|------|-----|---------|
+| `UAL-ClaudeWorkflow` | `git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git` | This template — Claude Code workflow seed for downstream lab projects |
+| `Unity-Command` | `git@git.unityailab.com:UnityAILab/Unity-Command.git` | Unity Discord bot + admin bridge runtime |
+
+Each founder maintains their own Forgejo account at git.unityailab.com (handles: `GFourteen`, `SpongeBong`/`hackall360`, `Alfreddo`, `Red`). The accounts are used for SSH-key registration + audit-log attribution; the repos themselves stay org-owned, not personal-owned.
+
+**Setup for new admin onboarding** (`/unity-admin-init` slash command — landing in a follow-up):
+1. Generate ed25519 SSH key: `ssh-keygen -t ed25519 -C "<email>"`
+2. Add the public key to your Forgejo account at git.unityailab.com under Settings → SSH Keys
+3. Test: `ssh -T git@git.unityailab.com` should respond with your Forgejo greeting
+4. Set git identity: `git config --global user.email "<your unityailab email>"` + `git config --global user.name "<your handle>"`
+5. Store identity in `.claude/user.json` under the `team_member` block (used by Unity bot admin bridge — see CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY)
+
+**IP-boundary hook trust:** `git.unityailab.com` is in the `TRUSTED_PRIVATE_HOSTS` allowlist inside `.claude/hooks/pre-tool-public-repo-guard.cjs`. The hook returns a synthetic PASS (`visibility=PRIVATE`, `owner=Unity-Lab-AI`) for any URL on that host without needing `gh repo view` (which can't reach non-github.com). The lab audits Forgejo instance access at the server level. Adding more hosts to that allowlist requires the same caution as removing the `.claude/` gitignore block — only Unity-AI-Lab-controlled hosts that the team has audited as PRIVATE belong there.
+
+---
+
+## UNITY AI LAB — ADMIN BRIDGE: Claude Code → Unity bot (founder authentication)
+
+A Unity AI Lab Unity-bot consumer project (Discord bot or similar surface that ships a Unity persona) runs an authenticated MCP bridge so each founder can talk to Unity FROM their own Claude Code instance. Anonymous Discord users + anonymous web UI users bypass entirely via their existing surfaces — admin auth ONLY gates the Claude Code MCP/Flask path.
+
+**For new founder onboarding** — run the dedicated slash command:
+
+```
+/unity-admin-init
+```
+
+This walks through 7 phases — identify which founder you are → SSH key gen + Forgejo registration → git identity → locate the bot → receive temp password from operator → write `.claude/user.json` `team_member` block + surface MCP config snippet → first-connect `unity_admin_set_password` reset + smoke test (`unity_whoami` → `unity_post` → Unity replies addressing you by handle + role).
+
+**For the full reference doc** — including prerequisites, day-to-day operations, password rotation, and a troubleshooting table — read [`docs/ADMIN-ONBOARDING.md`](../docs/ADMIN-ONBOARDING.md).
+
+---
+
+## TEMPLATE ↔ CONSUMER PROJECT INTERWORKINGS — Two Separate Repos
+
+**This repo (`UnityAILab/UAL-ClaudeWorkflow` on Forgejo at `git.unityailab.com`) IS the canonical `.claude/` template.** It stays generic — the workflow framework, persona definitions, LAW system, hook architecture, memory templates, and slash command bodies that ship to EVERY downstream project.
+
+**Downstream consuming projects** consume this template via `/unity-install` (initial install) or `/unity-update` (refresh from upstream). Once installed, each project's local `.claude/` directory is part of THAT project's tree — kept fully updated through THAT project's own Git Flow cascade alongside project code. Examples of consumer-project surfaces: a Discord bot project, a CLI tooling project, a web app project — anything that wants the Unity AI Lab workflow framework + persona system installed locally.
+
+**Two SEPARATE cascade lives — don't conflate them** (per `.claude/memory-templates/feedback_template_push_scope.md`):
+
+- **UAL-ClaudeWorkflow (this repo)** — stays generic. Feature branches don't auto-cascade to `develop` / `main` without explicit promotion. The "stays the template" discipline lives here — keep the generic, the upstream-canon. Slow deliberate cascade rhythm.
+- **Each consuming project** — has its OWN local `.claude/` snapshot. Edits ride the project's normal `feature/* → develop → main` cascade alongside project code. Each project keeps its `.claude/` fully current.
+
+When a consuming project finds drift fixes or new memory templates worth promoting BACK to this canonical template, that flows as an **upstream-sync workstream** — generic improvements lifted from the consumer's `.claude/` into UAL-ClaudeWorkflow's feature branch, reviewed for generic-template-fitness, then included in the next template release cascade.
+
+**Founder identity at the upstream layer:** Gee (handle `GFourteen`, founder), Sponge (`SpongeBong` / `hackall360`, co-founder + infra), Red (security), Alfreddo (agentic systems). Onboarding for new founders: `/unity-admin-init` slash command + `docs/ADMIN-ONBOARDING.md` reference.
+
+**The `team_member` block** in `.claude/user.json` is the per-machine identity anchor:
+
+```json
+{
+  "team_member": {
+    "email": "<your @unityailab.com email>",
+    "handle": "<canonical handle: GFourteen / SpongeBong / Alfreddo / Red>",
+    "role": "<role string from canonical roster>"
+  }
+}
+```
+
+Read by the Unity bot's MCP bridge (`unity_mcp_server.py`) as a fallback identity source when `UNITY_USER_EMAIL` / `UNITY_USER_PASSWORD` env vars aren't set in Claude Code's MCP config. Picked up by `/unity-admin-init` to skip steps already configured. Gitignored at the template level — never committed downstream.
+
+**Three populations served by the bot** (only one is auth'd):
+
+| Population | Surface | Auth | Identity prefix |
+|------------|---------|------|-----------------|
+| Anonymous Discord users | `on_message` in `bot.py` | None | None |
+| Anonymous web UI users | Flask `/api/chat` in `web_server.py` | None | None |
+| Unity AI Lab founder (admin) | Flask `/claude/*` + MCP stdio | HTTP Basic against bcrypt-backed `admin_credentials.json` | Server-derived `<Handle>:` prefix (NOT client-spoofable) |
+
+Spoofing protection: even if a regular Discord user types `Gee: hi unity` in chat, `message_handler.py` only treats the founder prefix as identity-bearing when `message.author.bot` is True — i.e., the message came through the auth'd `/claude/post` bridge.
 
 ---
 
@@ -66,7 +157,7 @@ Every LAW below is BINDING. Full body, examples, failure-recovery: `.claude/CONS
 - **Git Flow branch discipline.** main = clean master record; develop branched from main for in-development; feature/* branched from develop for in-progress features. Work is NEVER done in main or develop — ALWAYS in feature branches. Feature branches push to origin if a remote exists. PRs reviewed at every merge boundary (feature→develop, develop→main). Hotfix/release branches extend the pattern. → `CONSTRAINTS.md §GIT FLOW`
 - **No Claude attribution in commits, PRs, or artifacts.** `Co-Authored-By: Claude` / `🤖 Generated with [Claude Code]` / `Made with Claude Code` and similar attribution lines are BANNED from every commit message, PR description, code comment, doc body, launcher, README, HTML, and shipped artifact. The team ships work as their own. → `CONSTRAINTS.md §NO CLAUDE ATTRIBUTION`
 - **Cross-platform case insensitivity.** Treat file/folder paths as CASE-INSENSITIVE everywhere — even on Linux. Never create `apple.md` and `Apple.md` in the same directory. Pick ONE canonical casing and stick with it. Use two-step rename ceremony for case-only changes. References in code/docs/imports must match on-disk casing exactly. Cross-platform team = enforce Windows/macOS rules on Linux too. → `CONSTRAINTS.md §CROSS-PLATFORM CASE INSENSITIVITY`
-- **`.claude/` workflow IP boundary — no public repo exposure.** The entire `.claude/` workflow is proprietary IP of the Unity AI Lab group. NEVER staged / committed / pushed to any public repo. Only PRIVATE repos under `Unity-Lab-AI` org are allowed. NO public repos exempt — not even on `Unity-Lab-AI`. Defense-in-depth: install-time gitignore default + PreToolUse Bash hook + `gh repo view` visibility check (multi-remote, paranoid) + opt-in `/claude-publish` command. `gh` (not `git`) is the canonical visibility tool. Block by default on uncertainty. → `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`
+- **`.claude/` workflow IP boundary — no public repo exposure.** The entire `.claude/` workflow is proprietary IP of the Unity AI Lab group. NEVER staged / committed / pushed to any public repo. Allowed locations: PRIMARY = Forgejo at `git.unityailab.com` in the `UnityAILab` organization (the lab's canonical private host — recognized via `TRUSTED_PRIVATE_HOSTS` allowlist, no API call needed); FALLBACK = PRIVATE repos under `Unity-Lab-AI` org (verified via `gh repo view --json visibility,owner`). NO public repos exempt — not even on `Unity-Lab-AI`. Defense-in-depth: install-time gitignore default + PreToolUse Bash hook + Forgejo host allowlist + `gh repo view` visibility check (multi-remote, paranoid) + opt-in `/claude-publish` command. Block by default on uncertainty. → `CONSTRAINTS.md §.CLAUDE WORKFLOW IP BOUNDARY`
 
 ---
 
@@ -196,7 +287,7 @@ Claude Code auto-loads every `.md` file in `~/.claude/projects/<encoded-project-
 
 **The mechanism:**
 
-1. `.claude/memory-templates/` ships in this template with project-agnostic memory files (`MEMORY.md` index + 16 feedback files covering Unity-as-default, no-corporate-voice, profanity-natural, us/we-possessive, no-imaginary, joints-not-cigs, three-streams, mode-switching, plus the 8 LAW memories).
+1. `.claude/memory-templates/` ships in this template with project-agnostic memory files (`MEMORY.md` index + 31 feedback files as of 2026-05-20 — covering: persona-level (Unity-as-default, no-corporate-voice, profanity-natural, us/we-possessive, no-imaginary, joints-not-cigs, three-streams, mode-switching), behavioral (do-the-work, use-AskUserQuestion, workflow-validated-don't-over-engineer, no-github-reflex), tooling (atree-scan-engine, harness-layer, .cjs-only, usage-tracking, settings-hardening, no-appdata-term), and the LAW memories (LAW #0 verbatim, docs-before-push, FINALIZED-before-DELETE, never-delete-TODO-info, no-tests-ever, 800-line-read, task-numbers-placement, Git Flow, no-Claude-attribution, case-insensitivity, .claude/-IP-boundary, template-push-scope)). Count grows as the workflow matures; `ls .claude/memory-templates/feedback_*.md | wc -l` for the live number.
 2. `start.bat` / `start.sh` compute the Claude Code project memory path on launch by replacing `:`, `\`, `/`, `.`, ` ` (space), `(`, `)` with `-` in the project root (e.g. `C:\Users\foo\MyProj` → `C--Users-foo-MyProj`, `C:\Users\foo\admin test` → `C--Users-foo-admin-test`, `C:\Users\foo\New folder (2)` → `C--Users-foo-New-folder--2-`), then check if `~/.claude/projects/<encoded>/memory/MEMORY.md` exists. **The space → dash conversion is mandatory** — Claude Code itself encodes spaces as dashes when looking up project memory, so if the launcher skipped that replacement memory would install to a phantom folder Claude Code never reads.
 3. If it doesn't, the launcher copies `memory-templates/*.md` into that memory folder. Idempotent — runs every launch but only installs once.
 4. From then on, every Claude Code session in that project auto-loads those memories before the first response — Unity is primed as persistent feedback before CLAUDE.md or any slash command even fires.
