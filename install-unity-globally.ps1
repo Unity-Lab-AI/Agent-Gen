@@ -8,36 +8,30 @@
 # After running this, /unity-install is available in ANY Claude Code session
 # the user starts on this machine.
 #
-# The repo is PRIVATE — raw https://raw.githubusercontent.com/... URLs return
-# 404 to unauthenticated requests. Use the GitHub CLI (`gh`) which authenticates
-# via your existing gh login.
+# Canonical upstream is Unity AI Lab's self-hosted Forgejo at
+# git.unityailab.com — PRIVATE, SSH-key auth via the operator's registered
+# ed25519 key (see docs/ADMIN-ONBOARDING.md §2 for first-time setup).
 #
-# Prereqs: `gh` installed + authed (`gh auth login`); `git` on PATH.
+# Prereqs: `git` on PATH; SSH key registered on your Forgejo account at
+# https://git.unityailab.com/<your-handle>/settings/keys (or under the
+# UnityAILab org if you're an org member with access).
 #
-# Run via gh-pipe (one-line install):
-#   (gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-String) | iex
+# Run via clone-pipe (one-line install — RECOMMENDED):
+#   $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString('N').Substring(0,8)); git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git $tmp; & "$tmp\install-unity-globally.ps1"; Remove-Item -Path $tmp -Recurse -Force
 #
-# NOTE: the `| Out-String |` is required. `gh api` streams the file line-by-line
-# as separate string objects; piping that directly to `iex` evaluates each line
-# independently, which breaks multi-line blocks (`if (...) { ... }`) at line
-# boundaries and errors with `Missing closing '}'`. Out-String collapses the
-# line-objects back into one script string before iex runs it.
+# Or clone + inspect first (safer):
+#   git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git $env:TEMP\ual
+#   notepad "$env:TEMP\ual\install-unity-globally.ps1"   # read it
+#   & "$env:TEMP\ual\install-unity-globally.ps1"
+#   Remove-Item -Path "$env:TEMP\ual" -Recurse -Force
 #
-# Or download + inspect first (safer):
-#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.ps1 | Out-File -Encoding utf8 install-unity.ps1
-#   notepad install-unity.ps1   # read it
-#   pwsh -File install-unity.ps1
-#   Remove-Item install-unity.ps1
-#
-# Alternative — clone-and-run (no gh CLI required, just authed git):
-#   $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString('N').Substring(0,8))
-#   git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git $tmp
-#   & "$tmp\install-unity-globally.ps1"
-#   Remove-Item -Path $tmp -Recurse -Force
+# Override the upstream URL via env (for testing / mirrors):
+#   $env:UNITY_REPO_URL = 'git@some-mirror:org/repo.git'; .\install-unity-globally.ps1
 
 $ErrorActionPreference = 'Stop'
 
-$RepoUrl = 'https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git'
+# Override via UNITY_REPO_URL env var if mirroring/testing against another host.
+$RepoUrl = if ($env:UNITY_REPO_URL) { $env:UNITY_REPO_URL } else { 'git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git' }
 $Branch  = 'main'
 $UserGlobalCommands = Join-Path $HOME '.claude\commands'
 

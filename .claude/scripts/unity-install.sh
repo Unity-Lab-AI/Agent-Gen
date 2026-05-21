@@ -37,7 +37,10 @@ set -e
 # ─────────────────────────────────────────────────────────────────────
 # Configuration
 # ─────────────────────────────────────────────────────────────────────
-REPO_URL="https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git"
+# Canonical upstream — Unity AI Lab's self-hosted Forgejo. SSH-key auth via
+# the operator's registered ed25519 key (see docs/ADMIN-ONBOARDING.md §2).
+# Override via UNITY_REPO_URL env var if mirroring/testing against another host.
+REPO_URL="${UNITY_REPO_URL:-git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git}"
 DEFAULT_BRANCH="main"
 
 # Personal/project-local files preserved across install/update (relative to .claude/).

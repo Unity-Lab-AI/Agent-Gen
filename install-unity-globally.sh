@@ -8,29 +8,29 @@
 # After running this, /unity-install is available in ANY Claude Code session
 # the user starts on this machine.
 #
-# The repo is PRIVATE — raw https://raw.githubusercontent.com/... URLs return
-# 404 to unauthenticated requests. Use the GitHub CLI (`gh`) which authenticates
-# via your existing gh login.
+# Canonical upstream is Unity AI Lab's self-hosted Forgejo at
+# git.unityailab.com — PRIVATE, SSH-key auth via the operator's registered
+# ed25519 key (see docs/ADMIN-ONBOARDING.md §2 for first-time setup).
 #
-# Prereqs: `gh` installed + authed (`gh auth login`); `git` on PATH.
+# Prereqs: `git` on PATH; SSH key registered on your Forgejo account at
+# https://git.unityailab.com/<your-handle>/settings/keys (or under the
+# UnityAILab org if you're an org member with access).
 #
-# Run via gh-pipe (one-line install):
-#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh | bash
+# Run via clone-pipe (one-line install — RECOMMENDED):
+#   TMP=$(mktemp -d) && git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git "$TMP/repo" && bash "$TMP/repo/install-unity-globally.sh" && rm -rf "$TMP"
 #
-# Or download + inspect first (safer):
-#   gh api -H 'Accept: application/vnd.github.raw' repos/Unity-Lab-AI/UAL-ClaudeWorkflow/contents/install-unity-globally.sh > install-unity.sh
-#   less install-unity.sh   # read it
-#   bash install-unity.sh
-#   rm install-unity.sh
+# Or clone + inspect first (safer):
+#   git clone --depth 1 git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git /tmp/ual && less /tmp/ual/install-unity-globally.sh && bash /tmp/ual/install-unity-globally.sh && rm -rf /tmp/ual
 #
-# Alternative — clone-and-run (no gh CLI required, just authed git):
-#   TMP=$(mktemp -d) && git clone --depth 1 https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git "$TMP/repo" && bash "$TMP/repo/install-unity-globally.sh" && rm -rf "$TMP"
+# Override the upstream URL via env (for testing / mirrors):
+#   UNITY_REPO_URL=git@some-mirror:org/repo.git bash install-unity-globally.sh
 #
 # .ps1 sibling: install-unity-globally.ps1
 
 set -e
 
-REPO_URL="https://github.com/Unity-Lab-AI/UAL-ClaudeWorkflow.git"
+# Override via UNITY_REPO_URL env var if mirroring/testing against another host.
+REPO_URL="${UNITY_REPO_URL:-git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git}"
 BRANCH="main"
 USER_GLOBAL_COMMANDS="$HOME/.claude/commands"
 
