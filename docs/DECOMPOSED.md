@@ -16,16 +16,16 @@ LAW #0 reminder: every decomposed task preserves the source minor task's verbati
 ## How the three tiers cascade
 
 ```
-ROADMAP.md (major)         "Implement YOLO rework with skill hooks"
+ROADMAP.md (major)         "<major milestone — multi-session / multi-PR goal>"
        ↓ decomposed into
-TODO.md (minor)            "Rewrite /yolo skill body for lead-dev posture"
-                           "Add UserPromptExpansion hook for skill-level state"
-                           "Bootstrap ROADMAP.md and DECOMPOSED.md"
+TODO.md (minor)            "<minor task 1 — day-to-day work grain>"
+                           "<minor task 2>"
+                           "<minor task 3>"
        ↓ decomposed into
-DECOMPOSED.md (this file)  "Read existing /yolo skill file"
-                           "Draft new /yolo skill body with three-tier cascade"
-                           "Verify wake-word ScheduleWakeup pattern is documented"
-                           "Run syntax check on new skill body"
+DECOMPOSED.md (this file)  "<smallest unit 1 — single file edit / command / verify step>"
+                           "<smallest unit 2>"
+                           "<smallest unit 3>"
+                           "<smallest unit 4>"
 ```
 
 YOLO mode picks the next decomposed task in cascade order — current minor's pending decomposed → next decomposed → escalate to next minor when current minor's decomposed list is empty → escalate to next major when current minor list is empty.

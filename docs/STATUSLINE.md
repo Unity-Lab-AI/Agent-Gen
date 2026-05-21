@@ -2,7 +2,7 @@
 
 How the bot's status line (e.g. `[OSLO] | [######-------] 57% | O4.7 | ░▒▓ | FREE`) is wired in and rendered.
 
-This is for anyone (Gee, future maintainers) who wants to understand the mechanism so they can build their own or modify ours.
+This is for anyone who wants to understand the mechanism so they can build their own or modify ours.
 
 ---
 
@@ -661,22 +661,14 @@ When implementing the multi-space padding (`[████            ]`), the ba
 
 ---
 
-## 8.14 Statusline modifications shipped 2026-05-09 (`feature/statusline-modifications`)
+## 8.14 Cross-platform polish — drive labels, core suffix, prefixes, reset countdowns, centering
 
-Seven modifications shipped together on `feature/statusline-modifications` from a single empirical-capture session against CC 2.1.138. Verbatim brief from Gee (six core + one follow-on):
+Seven features that round out the statusline render: cross-platform drive label resolution, CPU core-count suffix on the cpu segment, `CTX` prefix on the context bar, time-to-reset countdowns on the 5h/7d rate-limit labels, dynamic centering across all four lines, and split-coloring on the drive free-space segment.
 
-> "Drive on windows would say C:/ F:/ ext instead of drive, linux it would go off the label for the drive (example on my system is HDD 1 or External or SSD, the install drive would just say /), this would make it easier to see WHAT drive, isntead of relying on the project pathing to understand what drive."
-> "cpu with is percentage is good, but a little x-cores after the cpu% would show the core count at a glace"
-> "The context bar should say CTX infront of it, before the bar"
-> "The bar for session usage instead of 5h should show the time remaining until the session usage resets"
-> "The bar for the 7d usage, the 7d should be the time reamining until the 7d window resets"
-> "If it is possible for a dynamic centering that would look nice as well"
-> "Extra thing: for the drive free space thing I would like gigabytes / gigabytes free with the whole gigabyte / gigabytes being colored but 'free' being the cyan the rest of the normal text is"
-
-### Visual diff
+### Visual breakdown
 
 ```
-BEFORE                                                AFTER
+Without these features                                With them
 [Label] | up · think | Model | branch                 [Label] | up · think | Model | branch
 [ctx] N% | 5h [..] N% | 7d [..] N%                    CTX [ctx] N% | 4h12m [..] N% | 5d03h [..] N%
 cpu N% | ram U/T G | drive NG free                        cpu N% ×16 | ram U/T G | SSD FG / TG free
@@ -685,32 +677,30 @@ gpu1 U/T 0% | gpu2 U/T 0%                                       gpu1 U/T 0% | gp
 left-aligned                                          dynamically centered (each line independently)
 ```
 
-### What changed (1:1 with verbatim spec)
+### Feature reference
 
-| # | Spec | Implementation | Verified against |
-|---|------|----------------|-------------------|
-| 1 | Drive label per-platform | `os.path.splitdrive` on Windows; `findmnt -no LABEL` then `findmnt -no TARGET` fallback on POSIX. New `_get_drive_label()` helper; result feeds the cyan label slot of the drive segment in `_sys_seg(...)`. | `SSD` rendered for `/mnt/0C38...` partition (live) |
-| 2 | `×cores` after cpu% | `os.cpu_count()` already loaded; new `cores_suffix` cyan-colored `×K` appended via `_sys_seg(...)`'s new `suffix` parameter. Self-omits when `cpu_count()` returns None. | `×12` rendered (live) |
-| 3 | `CTX` prefix on context bar | `ctx_str` f-string prepends cyan `CTX` matching the rate-limit / sys-stat / uptime cyan-label palette. | `CTX [bar] 14%` (live) |
-| 4 | 5h label → time-to-reset | New `_reset_label('5h', resets_at, now_ts)` formats `resets_at - time.time()` with the same time ladder as `_fmt_ms`. Falls back to literal `5h` when reset is missing or in the past. | `3h03m` rendered (live) |
-| 5 | 7d label → time-to-reset | Same `_reset_label('7d', ...)` helper. | `3d07h` rendered (live) |
-| 6 | Dynamic centering (best-effort) | `tput cols < /dev/tty` from bash → `TERM_COLS` env → python `_center()` strips ANSI via the precompiled `ANSI_RE`, prepends `(cols - visible) // 2` spaces. Each line centers independently. Fallback ladder: `tput` → `$COLUMNS` → 80; negative pad clamps to 0 (left-align). | 18-space leading pad on line 3 / 22-space on line 4 (live, 80-col mintty) |
-| 7 | Drive `<free>G / <total>G free` with split coloring | New `disk_total_gb_val` computed alongside existing `disk_free_gb` from `shutil.disk_usage('.').total`. `disk_val` rebuilt as `f'{free}G / {total}G'` (gradient via `_sys_seg`). New `free_suffix = ' \033[36mfree\033[0m'` passed as `_sys_seg`'s suffix slot so the cyan word lands AFTER the gradient block's `\033[0m` reset. Self-omits when disk metrics unavailable. | `SSD 261G / 954G free` (live) — `SSD` cyan, `261G / 954G` orange (73% used → §8.12 orange-600 stop), `free` cyan |
+| # | Feature | Implementation |
+|---|---------|----------------|
+| 1 | Drive label per-platform | `os.path.splitdrive` on Windows; `findmnt -no LABEL` then `findmnt -no TARGET` fallback on POSIX. `_get_drive_label()` helper feeds the cyan label slot of the drive segment in `_sys_seg(...)`. |
+| 2 | `×cores` after cpu% | `os.cpu_count()` provides the core count; `cores_suffix` cyan-colored `×K` appended via `_sys_seg(...)`'s `suffix` parameter. Self-omits when `cpu_count()` returns None. |
+| 3 | `CTX` prefix on context bar | `ctx_str` f-string prepends cyan `CTX` matching the rate-limit / sys-stat / uptime cyan-label palette. |
+| 4 | 5h label → time-to-reset | `_reset_label('5h', resets_at, now_ts)` formats `resets_at - time.time()` with the same time ladder as `_fmt_ms`. Falls back to literal `5h` when reset is missing or in the past. |
+| 5 | 7d label → time-to-reset | Same `_reset_label('7d', ...)` helper. |
+| 6 | Dynamic centering (best-effort) | `tput cols < /dev/tty` from bash → `TERM_COLS` env → python `_center()` strips ANSI via the precompiled `ANSI_RE`, prepends `(cols - visible) // 2` spaces. Each line centers independently. Fallback ladder: `tput` → `$COLUMNS` → 80; negative pad clamps to 0 (left-align). |
+| 7 | Drive `<free>G / <total>G free` with split coloring | `disk_total_gb_val` computed alongside `disk_free_gb` from `shutil.disk_usage('.').total`. `disk_val` rebuilt as `f'{free}G / {total}G'` (gradient via `_sys_seg`). `free_suffix = ' \033[36mfree\033[0m'` passed as `_sys_seg`'s suffix slot so the cyan word lands AFTER the gradient block's `\033[0m` reset. Self-omits when disk metrics unavailable. Example render: `SSD 261G / 954G free` — `SSD` cyan, `261G / 954G` orange (73% used → §8.12 orange-600 stop), `free` cyan. |
 
-### Implementation refactor (composition moved to Python)
+### Implementation note — composition in Python
 
-To keep dynamic centering inside the existing single python subprocess (avoiding a second python startup that would push the render past the sub-100ms budget), all four lines are now composed in Python rather than bash:
+To keep dynamic centering inside the existing single python subprocess (avoiding a second python startup that would push the render past the sub-100ms budget), all four lines compose in Python rather than bash:
 
 - Bash still computes `GIT_PART` (cheap git shell-outs) and `TERM_COLS`.
 - Both pass into Python as env vars (`GIT_PART_RAW`, `TERM_COLS`).
 - Python composes line 1's conditional UPTIME fallback (`if uptime_part: ... else: ...`), centers each line via `_center()` (uses the precompiled `ANSI_RE`), and emits `LINE1="..." LINE2="..." LINE3="..." LINE4="..."`.
 - Bash `eval`s the four assignments and `echo -e`s each (with `[ -n "$LINEN" ]` guards on lines 2-4 for the exception fallback path).
 
-The pre-§8.14 per-segment env-var pattern (`CTX="..." RATE5H="..." MODEL="..."` etc.) is gone. If you're reading commits older than 2026-05-09, expect that earlier shape.
-
 ### Source-of-truth for `resets_at`
 
-Verified via temp-tee debug (`echo "$input" > /tmp/sl-debug.json` between `input=$(cat)` and the heredoc) on 2026-05-09 against CC 2.1.138:
+Empirically verified shape (capture via temp-tee debug — `echo "$input" > /tmp/sl-debug.json` between `input=$(cat)` and the heredoc):
 
 ```json
 "rate_limits": {
@@ -723,7 +713,7 @@ Verified via temp-tee debug (`echo "$input" > /tmp/sl-debug.json` between `input
 
 ### Centering edge cases
 
-- **Terminal narrower than line content** → negative pad clamps to 0; line renders left-aligned and overflows the right edge (same as pre-§8.14).
+- **Terminal narrower than line content** → negative pad clamps to 0; line renders left-aligned and overflows the right edge.
 - **No `/dev/tty`** (sandboxed env, container without TTY) → `tput cols` fails; `${COLUMNS:-80}` fallback; centering lands on a virtual 80-column width which still produces a reasonable visual on most terminals.
 - **Windows + Git Bash mintty** → `tput cols < /dev/tty` works; mintty exposes a TIOCGWINSZ-compatible ioctl.
 - **Multi-byte unicode** (block-fill glyphs, `×`, `—`) → counted by Python `len()` which counts code points (not bytes). The block-fill chars are 1 column wide so `len()` matches visual width. For wider unicode (CJK, emoji) we'd need `wcwidth` — not currently a dependency, would require a follow-up if such characters ever entered a label.

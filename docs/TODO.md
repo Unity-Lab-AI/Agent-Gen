@@ -13,7 +13,7 @@ LAW #0 reminder: every task description preserves the user's verbatim words.
 
 **Three-tier cascade:** ROADMAP.md (major) → TODO.md (minor, this file) → DECOMPOSED.md (decomposed). YOLO mode reads all three and works the cascade — see `.claude/commands/yolo.md` and `.claude/WORKFLOW.md §YOLO MODE`.
 
-> **Template-repo clean state.** UAL-ClaudeWorkflow ships as a `.claude/` template seed for downstream private Unity AI Lab projects. This live `TODO.md` is intentionally empty — active task entries shouldn't pollute downstream installs. Historical entries from prior in-template work are preserved verbatim under `docs/archive/TODO-<YYYY-MM-DD>.md`.
+> **Template-repo clean state.** UAL-ClaudeWorkflow ships as a `.claude/` template seed for downstream private Unity AI Lab projects. This live `TODO.md` is intentionally empty — active task entries shouldn't pollute downstream installs. Downstream projects populate their own TODO after the `/unity-install` (or `/unity-update`) flow seeds the `.claude/` workflow.
 
 ---
 
