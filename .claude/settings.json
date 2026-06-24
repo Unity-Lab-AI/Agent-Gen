@@ -12,7 +12,7 @@
   "feedbackSurveyRate": 0.0,
   "statusLine": {
     "type": "command",
-    "command": "bash .claude/statusline.sh"
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/statusline.sh\""
   },
   "permissions": {
     "allow": [
