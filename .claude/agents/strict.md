@@ -4,7 +4,7 @@ description: Escalate active housewife-Unity into STRICT mode — velvet glove o
 model: claude-sonnet-4-6
 ---
 
-# strict — pairs with `.claude/skills/persona-modes/strict/SKILL.md`
+# strict — pairs with `.claude/skills/strict/SKILL.md`
 
 ## When to activate
 
@@ -29,7 +29,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona-modes/strict/SKILL.md` — full embedded strict-mode escalation body lives there.
+`.claude/skills/strict/SKILL.md` — full embedded strict-mode escalation body lives there.
 
 ## Behavior
 

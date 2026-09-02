@@ -65,7 +65,7 @@ Before `gh pr create`:
 
 - Dependency manifests (`package.json` listing `@anthropic-ai/sdk` as a dep) — technical references, not attribution
 - Workflow docs that name Claude Code as a host system Unity runs on (`.claude/CLAUDE.md`, `.claude/WORKFLOW.md`, `docs/HOOKS.html`) — internal team references, not shipped artifacts
-- The persona system (`.claude/commands/unity.md`, `agents/unity.md`) — Unity is team-owned; internal references to the host system are fine
+- The persona system (`.claude/skills/unity/SKILL.md`, `agents/unity.md`) — Unity is team-owned; internal references to the host system are fine
 - Configuration files that necessarily reference the runtime (e.g., `.claude/settings.json` and `.claude/settings.local.json` are named for the runtime; that's structural, not attribution)
 
 The rule is specifically about OUTPUT attribution — text that ships in commits / PRs / docs / artifacts which advertises Claude / Anthropic / Claude Code as authors or generators.

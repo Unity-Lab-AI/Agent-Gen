@@ -4,7 +4,7 @@ description: Install (or refresh) the Unity AI Lab `.claude/` template into a ta
 model: claude-sonnet-4-6
 ---
 
-# unity-install — pairs with `.claude/skills/template-mgmt/unity-install/SKILL.md`
+# unity-install — pairs with `.claude/skills/unity-install/SKILL.md`
 
 ## When to activate
 
@@ -30,7 +30,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/template-mgmt/unity-install/SKILL.md` — full install protocol, preserve-list, gitignore Layer 0, memory-folder install-only-if-missing, bootstrap one-liner for no-local-script case all live there.
+`.claude/skills/unity-install/SKILL.md` — full install protocol, preserve-list, gitignore Layer 0, memory-folder install-only-if-missing, bootstrap one-liner for no-local-script case all live there.
 
 ## Behavior
 

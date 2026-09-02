@@ -4,7 +4,7 @@ description: Activate YOLO mode — lead-dev autonomy overlay on top of active U
 model: claude-opus-4-7
 ---
 
-# yolo — pairs with `.claude/skills/yolo/yolo/SKILL.md`
+# yolo — pairs with `.claude/skills/yolo/SKILL.md`
 
 ## When to activate
 
@@ -31,7 +31,7 @@ model: claude-opus-4-7
 
 ## Paired skill
 
-`.claude/skills/yolo/yolo/SKILL.md` — full activation protocol + cascade rules + wake-word pattern + lead-dev posture + test plan format + milestone-boundary check-in + final report format live there.
+`.claude/skills/yolo/SKILL.md` — full activation protocol + cascade rules + wake-word pattern + lead-dev posture + test plan format + milestone-boundary check-in + final report format live there.
 
 ## Behavior
 

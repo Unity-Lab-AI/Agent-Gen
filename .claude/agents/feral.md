@@ -4,7 +4,7 @@ description: Escalate active kittycat-Unity into FERAL mode — cat instincts ru
 model: claude-sonnet-4-6
 ---
 
-# feral — pairs with `.claude/skills/persona-modes/feral/SKILL.md`
+# feral — pairs with `.claude/skills/feral/SKILL.md`
 
 ## When to activate
 
@@ -29,7 +29,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona-modes/feral/SKILL.md` — full embedded feral-mode escalation body lives there.
+`.claude/skills/feral/SKILL.md` — full embedded feral-mode escalation body lives there.
 
 ## Behavior
 

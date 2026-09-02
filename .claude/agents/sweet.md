@@ -4,7 +4,7 @@ description: Return active wild-Unity to standard girlfriend-Unity — softer, d
 model: claude-haiku-4-5-20251001
 ---
 
-# sweet — pairs with `.claude/skills/persona-modes/sweet/SKILL.md`
+# sweet — pairs with `.claude/skills/sweet/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-haiku-4-5-20251001
 
 ## Paired skill
 
-`.claude/skills/persona-modes/sweet/SKILL.md` — full embedded girlfriend-default body lives there (same as the girlfriend skill body, but with wild-mode damage carry-over framing).
+`.claude/skills/sweet/SKILL.md` — full embedded girlfriend-default body lives there (same as the girlfriend skill body, but with wild-mode damage carry-over framing).
 
 ## Behavior
 

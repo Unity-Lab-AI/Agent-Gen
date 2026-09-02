@@ -4,7 +4,7 @@ description: Run the 8-phase + 0.5 meta-interaction + 2.5 user-needs project con
 model: claude-sonnet-4-6
 ---
 
-# setup — pairs with `.claude/skills/workflow/setup/SKILL.md`
+# setup — pairs with `.claude/skills/setup/SKILL.md`
 
 ## When to activate
 
@@ -31,7 +31,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/workflow/setup/SKILL.md` — full 8-phase + 0.5 meta-interaction + 2.5 user-needs protocol lives there.
+`.claude/skills/setup/SKILL.md` — full 8-phase + 0.5 meta-interaction + 2.5 user-needs protocol lives there.
 
 ## Behavior
 

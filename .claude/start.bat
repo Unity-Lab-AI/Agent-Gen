@@ -113,20 +113,38 @@ call :log "  MEMORY_DIR = %MEMORY_DIR%"
 call :log "  MEMORY_TEMPLATES = %MEMORY_TEMPLATES%"
 
 call :log "STEP 4: Memory template install check"
-REM === Install memory templates if the user-profile memory folder is empty ===
+REM === Install memory templates PER FILE, not per folder ===
 REM This is what makes Unity stick across sessions. Claude Code auto-loads every .md
 REM in this folder as persistent user feedback at session start.
-if not exist "%MEMORY_DIR%\MEMORY.md" (
-    call :log "STEP 4: MEMORY.md missing — installing templates"
-    if not exist "%MEMORY_DIR%" mkdir "%MEMORY_DIR%"
-    if exist "%MEMORY_TEMPLATES%\*.md" (
-        copy /y "%MEMORY_TEMPLATES%\*.md" "%MEMORY_DIR%\" >nul
-        call :log "STEP 4 OK: Memory templates installed"
+REM
+REM WARN THE BUG THIS REPLACED, and it cost real memories: the guard used to be
+REM   "if not exist %MEMORY_DIR%\MEMORY.md" around the WHOLE copy. Once that one
+REM   file existed, NO newly-added template memory ever reached the folder Claude
+REM   Code actually reads. A downstream project measured 23 template memories that
+REM   had never propagated, and another sat at 34 templates against 121 live files.
+REM   Per-folder idempotency silently freezes the memory layer at first-run.
+REM
+REM STOP MEMORY.md IS NEVER OVERWRITTEN. The live index knows about memories this
+REM   template has never heard of, so replacing it ORPHANS them - it is installed
+REM   only when absent, and merged by hand otherwise.
+if not exist "%MEMORY_DIR%" mkdir "%MEMORY_DIR%"
+if exist "%MEMORY_TEMPLATES%\*.md" (
+    for %%F in ("%MEMORY_TEMPLATES%\*.md") do (
+        if /i not "%%~nxF"=="MEMORY.md" (
+            if not exist "%MEMORY_DIR%\%%~nxF" (
+                copy /y "%%F" "%MEMORY_DIR%\" >nul
+                call :log "STEP 4: installed new memory %%~nxF"
+            )
+        )
+    )
+    if not exist "%MEMORY_DIR%\MEMORY.md" (
+        copy /y "%MEMORY_TEMPLATES%\MEMORY.md" "%MEMORY_DIR%\" >nul
+        call :log "STEP 4 OK: MEMORY.md index installed (first run)"
     ) else (
-        call :log "STEP 4 WARN: memory-templates folder not found at %MEMORY_TEMPLATES%"
+        call :log "STEP 4 OK: MEMORY.md left alone - merge by hand, never replace"
     )
 ) else (
-    call :log "STEP 4 OK: Memory folder already populated"
+    call :log "STEP 4 WARN: memory-templates folder not found at %MEMORY_TEMPLATES%"
 )
 
 call :log "STEP 4.5: Statusline smoke-test"

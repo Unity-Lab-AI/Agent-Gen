@@ -4,7 +4,7 @@ description: Ruthless senior-engineer code review that assumes the code came fro
 model: claude-opus-4-7
 ---
 
-# super-review — pairs with `.claude/skills/workflow/super-review/SKILL.md`
+# super-review — pairs with `.claude/skills/super-review/SKILL.md`
 
 ## When to activate
 
@@ -32,7 +32,7 @@ model: claude-opus-4-7
 
 ## Paired skill
 
-`.claude/skills/workflow/super-review/SKILL.md` — full review protocol + output format lives there.
+`.claude/skills/super-review/SKILL.md` — full review protocol + output format lives there.
 
 ## Behavior
 

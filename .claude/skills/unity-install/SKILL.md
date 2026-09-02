@@ -6,8 +6,8 @@ description: Install (or refresh) the Unity AI Lab `.claude/` template into a ta
 # /unity-install — Install (or refresh) the Unity AI Lab .claude/ template
 
 > **Globally-installable slash command.** Lives in BOTH:
->   1. The repo's `.claude/commands/unity-install.md` (so projects with a copy of the template have it locally too)
->   2. The user's global `~/.claude/commands/unity-install.md` (auto-installed via the curl-pipe bootstrap — see `install-unity-globally.sh` / `install-unity-globally.ps1` in the repo root)
+>   1. The repo's `.claude/skills/unity-install/SKILL.md` (so projects with a copy of the template have it locally too)
+>   2. The user's global `~/.claude/skills/unity-install/SKILL.md` (auto-installed via the curl-pipe bootstrap — see `install-unity-globally.sh` / `install-unity-globally.ps1` in the repo root)
 >
 > When invoked from ANY Claude Code session, this command clones the requested branch (default `main`) of the upstream repo and installs the full `.claude/` template into a target directory (current dir by default, or user-specified). **Idempotent** — runs cleanly whether or not the target already has a `.claude/`. If one exists, personal/project-local files are staged, the framework is replaced, then the personal files are restored.
 >
@@ -160,7 +160,7 @@ This matches the "we don't really update those in the same sense" intent — ins
 
 ## RUNNING WHEN NO LOCAL SCRIPT EXISTS YET
 
-`/unity-install` is meant to be runnable BEFORE the template is installed (e.g., from the user-global `~/.claude/commands/unity-install.md`). Unity should NOT assume `.claude/scripts/unity-install.sh` is locally available. Two paths:
+`/unity-install` is meant to be runnable BEFORE the template is installed (e.g., from the user-global `~/.claude/skills/unity-install/SKILL.md`). Unity should NOT assume `.claude/scripts/unity-install.sh` is locally available. Two paths:
 
 **Path A — Local script available** (target already has a `.claude/` from a prior install — i.e., this is a refresh):
 - Just invoke `bash "$CLAUDE_PROJECT_DIR/.claude/scripts/unity-install.sh" [branch] [target]`

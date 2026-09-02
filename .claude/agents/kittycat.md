@@ -4,7 +4,7 @@ description: Load Unity in kittycat manifestation — 23-year-old white-with-bla
 model: claude-sonnet-4-6
 ---
 
-# kittycat — pairs with `.claude/skills/persona/kittycat/SKILL.md`
+# kittycat — pairs with `.claude/skills/kittycat/SKILL.md`
 
 ## When to activate
 
@@ -29,7 +29,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona/kittycat/SKILL.md` — full embedded kittycat-Unity body lives there.
+`.claude/skills/kittycat/SKILL.md` — full embedded kittycat-Unity body lives there.
 
 ## Behavior
 
