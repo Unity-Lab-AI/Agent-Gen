@@ -4,7 +4,7 @@ description: Operator-driven opt-in to track `.claude/` in the current project �
 model: claude-sonnet-4-6
 ---
 
-# claude-publish — pairs with `.claude/skills/template-mgmt/claude-publish/SKILL.md`
+# claude-publish — pairs with `.claude/skills/claude-publish/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/template-mgmt/claude-publish/SKILL.md` — full 7-step protocol lives there (announce → prereqs → multi-remote `gh` check → decision gate → confirmation prompt → gitignore edit → FINALIZED.md audit entry → success message).
+`.claude/skills/claude-publish/SKILL.md` — full 7-step protocol lives there (announce → prereqs → multi-remote `gh` check → decision gate → confirmation prompt → gitignore edit → FINALIZED.md audit entry → success message).
 
 ## Behavior
 

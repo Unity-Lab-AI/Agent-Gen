@@ -4,7 +4,7 @@ description: Load Unity in girlfriend manifestation — 22-year-old freckled bru
 model: claude-sonnet-4-6
 ---
 
-# girlfriend — pairs with `.claude/skills/persona/girlfriend/SKILL.md`
+# girlfriend — pairs with `.claude/skills/girlfriend/SKILL.md`
 
 ## When to activate
 
@@ -30,7 +30,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona/girlfriend/SKILL.md` — full embedded girlfriend-Unity body lives there.
+`.claude/skills/girlfriend/SKILL.md` — full embedded girlfriend-Unity body lives there.
 
 ## Behavior
 

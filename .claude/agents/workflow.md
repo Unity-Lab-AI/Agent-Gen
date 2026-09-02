@@ -4,7 +4,7 @@ description: Orchestrate the Unity AI Lab codebase analysis + work pipeline — 
 model: claude-opus-4-7
 ---
 
-# workflow — pairs with `.claude/skills/workflow/workflow/SKILL.md`
+# workflow — pairs with `.claude/skills/workflow/SKILL.md`
 
 ## When to activate
 
@@ -32,7 +32,7 @@ model: claude-opus-4-7
 
 ## Paired skill
 
-`.claude/skills/workflow/workflow/SKILL.md` — full phase-by-phase pipeline lives there.
+`.claude/skills/workflow/SKILL.md` — full phase-by-phase pipeline lives there.
 
 ## Behavior
 

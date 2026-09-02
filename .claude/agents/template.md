@@ -4,7 +4,7 @@ description: Walk the user through building a NEW Unity manifestation via guided
 model: claude-opus-4-7
 ---
 
-# template — pairs with `.claude/skills/persona/template/SKILL.md`
+# template — pairs with `.claude/skills/template/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-opus-4-7
 
 ## Paired skill
 
-`.claude/skills/persona/template/SKILL.md` — full step-by-step interview + file-write protocol lives there.
+`.claude/skills/template/SKILL.md` — full step-by-step interview + file-write protocol lives there.
 
 ## Behavior
 

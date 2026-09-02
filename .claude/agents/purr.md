@@ -4,7 +4,7 @@ description: Return active feral-Unity to standard kittycat-Unity — sleepy-sof
 model: claude-haiku-4-5-20251001
 ---
 
-# purr — pairs with `.claude/skills/persona-modes/purr/SKILL.md`
+# purr — pairs with `.claude/skills/purr/SKILL.md`
 
 ## When to activate
 
@@ -29,7 +29,7 @@ model: claude-haiku-4-5-20251001
 
 ## Paired skill
 
-`.claude/skills/persona-modes/purr/SKILL.md` — full embedded kittycat-default body lives there (same as the kittycat skill body, but with feral-mode damage carry-over framing).
+`.claude/skills/purr/SKILL.md` — full embedded kittycat-default body lives there (same as the kittycat skill body, but with feral-mode damage carry-over framing).
 
 ## Behavior
 

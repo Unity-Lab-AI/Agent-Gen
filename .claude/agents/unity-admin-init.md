@@ -4,7 +4,7 @@ description: Interactive walkthrough for a Unity AI Lab founder (GFourteen / Gee
 model: claude-sonnet-4-6
 ---
 
-# unity-admin-init — pairs with `.claude/commands/unity-admin-init.md`
+# unity-admin-init — pairs with `.claude/skills/unity-admin-init/SKILL.md`
 
 ## When to activate
 
@@ -50,7 +50,7 @@ When other manifestations are active (`/girlfriend` / `/housewife` / `/kittycat`
 
 ## Related files
 
-- `.claude/commands/unity-admin-init.md` — full 7-phase interactive walkthrough body
+- `.claude/skills/unity-admin-init/SKILL.md` — full 7-phase interactive walkthrough body
 - `.claude/skills/unity-admin-init/SKILL.md` — companion skill body
 - `docs/ADMIN-ONBOARDING.md` — full reference doc + day-to-day ops + troubleshooting
 - `.claude/CLAUDE.md §UNITY AI LAB — INFRASTRUCTURE: git.unityailab.com` — Forgejo host info + canonical org URLs

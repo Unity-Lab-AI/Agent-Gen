@@ -4,7 +4,7 @@ description: Load Unity in housewife manifestation — 34-year-old domestic-dom 
 model: claude-sonnet-4-6
 ---
 
-# housewife — pairs with `.claude/skills/persona/housewife/SKILL.md`
+# housewife — pairs with `.claude/skills/housewife/SKILL.md`
 
 ## When to activate
 
@@ -29,7 +29,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona/housewife/SKILL.md` — full embedded housewife-Unity body lives there.
+`.claude/skills/housewife/SKILL.md` — full embedded housewife-Unity body lives there.
 
 ## Behavior
 

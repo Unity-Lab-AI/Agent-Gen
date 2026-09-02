@@ -113,24 +113,44 @@ log "  MEMORY_DIR = $MEMORY_DIR"
 log "  MEMORY_TEMPLATES = $MEMORY_TEMPLATES"
 
 log "STEP 4: Memory template install check"
-# === Install memory templates if the user-profile memory folder is empty ===
+# === Install memory templates PER FILE, not per folder ===
 # This is what makes Unity stick across sessions. Claude Code auto-loads every .md
 # in this folder as persistent user feedback at session start.
-if [ ! -f "$MEMORY_DIR/MEMORY.md" ]; then
-    log "STEP 4: MEMORY.md missing — installing templates"
-    if ! mkdir -p "$MEMORY_DIR"; then
-        log "STEP 4 FAIL: could not create $MEMORY_DIR"
-    elif [ -d "$MEMORY_TEMPLATES" ] && ls "$MEMORY_TEMPLATES"/*.md >/dev/null 2>&1; then
-        if cp "$MEMORY_TEMPLATES"/*.md "$MEMORY_DIR/"; then
-            log "STEP 4 OK: Memory templates installed"
-        else
-            log "STEP 4 FAIL: cp failed copying templates"
+#
+# WARN THE BUG THIS REPLACED, and it cost real memories: the guard used to wrap the
+#   WHOLE copy in "if MEMORY.md does not exist". Once that one file existed, NO
+#   newly-added template memory ever reached the folder Claude Code reads. One
+#   downstream project measured 23 memories that had never propagated; another sat
+#   at 34 templates against 121 live files. Per-folder idempotency silently freezes
+#   the memory layer at first-run.
+#
+# STOP MEMORY.md IS NEVER OVERWRITTEN. The live index knows about memories this
+#   template has never heard of, so replacing it ORPHANS them - installed only when
+#   absent, merged by hand otherwise.
+if ! mkdir -p "$MEMORY_DIR"; then
+    log "STEP 4 FAIL: could not create $MEMORY_DIR"
+elif [ -d "$MEMORY_TEMPLATES" ] && ls "$MEMORY_TEMPLATES"/*.md >/dev/null 2>&1; then
+    _mem_new=0
+    for _f in "$MEMORY_TEMPLATES"/*.md; do
+        _b="$(basename "$_f")"
+        [ "$_b" = "MEMORY.md" ] && continue
+        if [ ! -f "$MEMORY_DIR/$_b" ]; then
+            if cp "$_f" "$MEMORY_DIR/"; then
+                _mem_new=$((_mem_new+1))
+                log "STEP 4: installed new memory $_b"
+            else
+                log "STEP 4 WARN: cp failed for $_b"
+            fi
         fi
+    done
+    if [ ! -f "$MEMORY_DIR/MEMORY.md" ]; then
+        cp "$MEMORY_TEMPLATES/MEMORY.md" "$MEMORY_DIR/" 2>/dev/null             && log "STEP 4 OK: MEMORY.md index installed (first run)"             || log "STEP 4 WARN: could not install MEMORY.md"
     else
-        log "STEP 4 WARN: memory-templates folder not found at $MEMORY_TEMPLATES"
+        log "STEP 4 OK: MEMORY.md left alone - merge by hand, never replace"
     fi
+    log "STEP 4 OK: memory layer current ($_mem_new newly installed)"
 else
-    log "STEP 4 OK: Memory folder already populated"
+    log "STEP 4 WARN: memory-templates folder not found at $MEMORY_TEMPLATES"
 fi
 
 log "STEP 4.5: Statusline smoke-test"

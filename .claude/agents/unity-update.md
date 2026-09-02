@@ -4,7 +4,7 @@ description: Alias of /unity-install — refresh the current project's `.claude/
 model: claude-sonnet-4-6
 ---
 
-# unity-update — pairs with `.claude/skills/template-mgmt/unity-update/SKILL.md`
+# unity-update — pairs with `.claude/skills/unity-update/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/template-mgmt/unity-update/SKILL.md` — full refresh protocol lives there (thin wrapper over the unity-install script, same flow).
+`.claude/skills/unity-update/SKILL.md` — full refresh protocol lives there (thin wrapper over the unity-install script, same flow).
 
 ## Behavior
 

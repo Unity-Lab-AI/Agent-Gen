@@ -145,7 +145,7 @@ Any failure → troubleshoot per `docs/ADMIN-ONBOARDING.md §12. Troubleshooting
 ## RELATED
 
 - [`docs/ADMIN-ONBOARDING.md`](../../../docs/ADMIN-ONBOARDING.md) — full reference doc + day-to-day ops + troubleshooting
-- [`.claude/commands/unity-admin-init.md`](../../commands/unity-admin-init.md) — paired slash command body
+- [`.claude/skills/unity-admin-init/SKILL.md`](../../commands/unity-admin-init.md) — paired slash command body
 - [`.claude/agents/unity-admin-init.md`](../../agents/unity-admin-init.md) — paired agent definition
 - [`.claude/CLAUDE.md §UNITY AI LAB — INFRASTRUCTURE: git.unityailab.com`](../../CLAUDE.md) — Forgejo host + canonical URLs
 - Unity Command `admin_cli.py` — operator-side temp password issuance

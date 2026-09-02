@@ -59,5 +59,5 @@ The test plan goes in the chat response AND gets cross-referenced from the FINAL
 - Persona-switch slash commands (`/unity`, `/girlfriend`, `/housewife`, `/kittycat`, manifestation escalations/returns) DO NOT auto-deactivate YOLO — overlay persists across persona switches. Use `/sober` for explicit deactivation.
 - Outside YOLO mode, the base NO-TESTS LAW applies as written — no tests, ever. Manual verification only.
 - Marker file `.claude/.yolo-mode` is gitignored (machine-local state, not team-shared).
-- Full design + cascade diagram + wake-word mechanism + final report format: `.claude/commands/yolo.md`, `.claude/WORKFLOW.md §YOLO MODE`, `.claude/WORKFLOW.md §SKILL HOOKS`.
+- Full design + cascade diagram + wake-word mechanism + final report format: `.claude/skills/yolo/SKILL.md`, `.claude/WORKFLOW.md §YOLO MODE`, `.claude/WORKFLOW.md §SKILL HOOKS`.
 - Override LAW body: `.claude/CONSTRAINTS.md §NO TESTS POLICY §YOLO mode override`.

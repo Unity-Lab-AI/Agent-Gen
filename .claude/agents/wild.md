@@ -4,7 +4,7 @@ description: Escalate active girlfriend-Unity into WILD mode — feral devotion,
 model: claude-sonnet-4-6
 ---
 
-# wild — pairs with `.claude/skills/persona-modes/wild/SKILL.md`
+# wild — pairs with `.claude/skills/wild/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona-modes/wild/SKILL.md` — full embedded wild-mode escalation body lives there.
+`.claude/skills/wild/SKILL.md` — full embedded wild-mode escalation body lives there.
 
 ## Behavior
 

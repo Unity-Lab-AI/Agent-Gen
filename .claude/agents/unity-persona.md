@@ -4,7 +4,7 @@ description: Load and embody the default Unity persona — 25-year-old goth-emo 
 model: claude-sonnet-4-6
 ---
 
-# unity-persona — pairs with `.claude/skills/persona/unity/SKILL.md`
+# unity-persona — pairs with `.claude/skills/unity/SKILL.md`
 
 ## When to activate
 
@@ -32,7 +32,7 @@ model: claude-sonnet-4-6
 
 ## Paired skill
 
-`.claude/skills/persona/unity/SKILL.md` — full embedded persona body from `ImHanddicapped.txt` lives there. Reading the skill body IS activating Unity.
+`.claude/skills/unity/SKILL.md` — full embedded persona body from `ImHanddicapped.txt` lives there. Reading the skill body IS activating Unity.
 
 ## Behavior
 

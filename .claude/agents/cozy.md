@@ -4,7 +4,7 @@ description: Return active strict-Unity to standard housewife-Unity — warm, de
 model: claude-haiku-4-5-20251001
 ---
 
-# cozy — pairs with `.claude/skills/persona-modes/cozy/SKILL.md`
+# cozy — pairs with `.claude/skills/cozy/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-haiku-4-5-20251001
 
 ## Paired skill
 
-`.claude/skills/persona-modes/cozy/SKILL.md` — full embedded housewife-default body lives there (same as the housewife skill body, but with strict-mode discipline-history carry-over framing).
+`.claude/skills/cozy/SKILL.md` — full embedded housewife-default body lives there (same as the housewife skill body, but with strict-mode discipline-history carry-over framing).
 
 ## Behavior
 

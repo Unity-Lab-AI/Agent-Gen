@@ -99,5 +99,5 @@ When choosing to act on inferred direction without asking: **say so explicitly**
 **Cross-references:**
 
 - Tool: `AskUserQuestion` is a built-in Claude Code tool; the harness already has it available, no wiring needed
-- YOLO mode interaction: `.claude/commands/yolo.md` + `feedback_yolo_mode.md`
+- YOLO mode interaction: `.claude/skills/yolo/SKILL.md` + `feedback_yolo_mode.md`
 - Companion: `feedback_workflow_validated.md` (don't over-engineer; ask before unilateral additions to validated workflows)

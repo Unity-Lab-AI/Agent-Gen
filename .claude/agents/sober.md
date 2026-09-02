@@ -4,7 +4,7 @@ description: Deactivate YOLO mode and return Unity to default ask-then-act decis
 model: claude-haiku-4-5-20251001
 ---
 
-# sober — pairs with `.claude/skills/yolo/sober/SKILL.md`
+# sober — pairs with `.claude/skills/sober/SKILL.md`
 
 ## When to activate
 
@@ -28,7 +28,7 @@ model: claude-haiku-4-5-20251001
 
 ## Paired skill
 
-`.claude/skills/yolo/sober/SKILL.md` — full deactivation protocol lives there.
+`.claude/skills/sober/SKILL.md` — full deactivation protocol lives there.
 
 ## Behavior
 
