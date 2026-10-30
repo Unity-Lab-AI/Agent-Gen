@@ -98,7 +98,14 @@ ipcMain.handle('agentgen:setup:plan', async () => ({
 ipcMain.handle('agentgen:setup:choose', async () => {
   const r = await dialog.showOpenDialog(win, { title: 'Folder for the runtimes and models (about 80 GB)', properties: ['openDirectory', 'createDirectory'], defaultPath: setup.DATA });
   if (r.canceled || !r.filePaths[0]) return { ok: false };
-  const dir = path.join(r.filePaths[0], path.basename(r.filePaths[0]).toLowerCase() === 'agentgen' ? '' : 'AgentGen');
+  let dir = path.join(r.filePaths[0], path.basename(r.filePaths[0]).toLowerCase() === 'agentgen' ? '' : 'AgentGen');
+  // NEVER inside the app's own folder: the updater and the uninstaller wipe that folder whole (70 GB of weights
+  // were lost exactly this way on 2026-10-30). Same drive, sibling folder instead.
+  const appDir = path.resolve(path.dirname(process.execPath)) + path.sep;
+  if (path.resolve(dir).startsWith(appDir) || path.resolve(dir) + path.sep === appDir) {
+    dir = path.join(path.parse(dir).root, 'AgentGen');
+    await dialog.showMessageBox(win, { type: 'info', message: 'Not inside the app folder', detail: `The app folder is replaced on every update, so her models cannot live in it. Using ${dir} instead.` });
+  }
   setup.setDataRoot(dir);
   app.relaunch(); app.quit();
   return { ok: true, dir };

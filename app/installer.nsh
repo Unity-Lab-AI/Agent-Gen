@@ -23,6 +23,13 @@
   ${If} $R0 != ""
     ReadRegStr $R1 HKCU "${UNINSTALL_REGISTRY_KEY}" "InstallLocation"
     !insertmacro agentgenDataDir
+    ; the update replaces the whole install folder: refuse to proceed if her data folder is inside it
+    StrLen $R5 $R1
+    StrCpy $R6 $R2 $R5
+    ${If} $R6 == $R1
+      MessageBox MB_OK|MB_ICONSTOP "Her data folder ($R2) is inside the app folder ($R1). Updating would delete it. Move it out first (the app's first-run screen has a Change folder button), then run this setup again."
+      Quit
+    ${EndIf}
     MessageBox MB_YESNOCANCEL|MB_ICONQUESTION "Agent Gen is already installed.$\r$\n$\r$\nYES    update it (keeps her models, runtimes and settings)$\r$\nNO     uninstall everything, including the models in$\r$\n            $R2$\r$\nCANCEL leave it alone" IDYES agentgenUpdate IDNO agentgenRemoveAll
     Quit
   agentgenRemoveAll:

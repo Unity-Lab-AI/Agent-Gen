@@ -34,7 +34,7 @@ A 12 GB card runs her face and brain but not the big motion engine. AMD and Inte
 
 ## Install
 
-Run `AgentGen-Setup-<version>.exe`. First launch installs what's missing into `%LOCALAPPDATA%\AgentGen`: a Python runtime, PyTorch, the model weights (about 80 GB: two video engines, the face, looks, hearing), a private Ollama and her brain. Nothing touches PATH or the registry. Running a newer setup over an older install replaces the app and keeps that folder. Uninstall from Windows as usual; it asks whether to take that folder with it. The in-app **Uninstall everything** button does the same.
+Run `AgentGen-Setup-<version>.exe`. First launch installs what's missing into a data folder (`%LOCALAPPDATA%\AgentGen` by default; pick another drive with the Change folder button, never inside the app's own folder, which every update replaces): a Python runtime, PyTorch, the model weights (about 80 GB: two video engines, the face, looks, hearing), a private Ollama and her brain. Nothing touches PATH or the registry. Running a newer setup over an older install replaces the app and keeps that folder. Uninstall from Windows as usual; it asks whether to take that folder with it. The in-app **Uninstall everything** button does the same.
 
 ## Run from source
 
