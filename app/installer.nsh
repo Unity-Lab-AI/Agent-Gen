@@ -14,6 +14,17 @@
   Sleep 1500
 !macroend
 
+; electron-builder's own check stops any process whose path starts with the install folder and then complains it
+; "cannot be closed" when a child (her face engine runs from <folder>\data\venvs\face) outlives the window. Ours:
+; the app tree by image name, then anything still running from the folder, no dialog, no retry loop.
+!macro customCheckAppRunning
+  nsExec::Exec 'taskkill /IM "Agent Gen.exe" /T /F'
+  Pop $R9
+  nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -C "Get-CimInstance Win32_Process | ? { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith('$INSTDIR', 'CurrentCultureIgnoreCase') } | % { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }"`
+  Pop $R9
+  Sleep 1500
+!macroend
+
 !macro customInit
   !insertmacro agentgenStopApp
   ; an existing per-user install registers its uninstaller and its folder
