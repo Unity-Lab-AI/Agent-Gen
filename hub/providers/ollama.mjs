@@ -28,8 +28,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /** Async generator of content deltas. `messages` is the full chat (system first). `purpose` is logged;
  *  `background` calls wait while a clip renders. */
-export async function* chatStream(messages, { signal, model, numPredict, purpose = 'reply', background = false } = {}) {
+export async function* chatStream(messages, { signal, model, numPredict, purpose = 'reply', background = false, waitRenderMs = 0 } = {}) {
   if (background) while (gpu.rendering > 0 && !signal?.aborted) await sleep(500);
+  // a reply: the render was just cancelled; give it until its next step to let go of the card
+  for (const until = Date.now() + waitRenderMs; gpu.rendering > 0 && Date.now() < until && !signal?.aborted;) await sleep(250);
   console.log(new Date().toISOString().slice(11, 19), `brain: ${purpose}${gpu.rendering ? ' (a clip is rendering)' : ''}`);
   const m = model || await pickModel();
   const body = {

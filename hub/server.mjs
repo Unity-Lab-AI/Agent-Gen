@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { cfg, REPO } from './config.mjs';
-import { chatStream, chatOnce, health as brainHealth } from './providers/ollama.mjs';
+import { chatStream, chatOnce, health as brainHealth, gpu } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
 import { TagFilter, unstaged } from './voice/tags.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
@@ -153,7 +153,10 @@ class Session {
 
   async respond(userText) {
     if (this.busy) this.interrupt('new-input');
-    if (this.reelBusy) { video.cancel(); face.resume(); }   // her lips come first; the idle clip dies at its next step
+    // the operator always wins: any clip rendering now (idle or asked for) is cancelled and the reply waits until
+    // the render has really stopped, so the brain never shares the card with Wan (that jam crawled for minutes).
+    // The cancelled job releases the face itself; the look it made is already on her face.
+    if (gpu.rendering > 0) video.cancel();
     const epoch = ++this.epoch;
     this.queue.epoch = epoch;
     const ac = new AbortController();
@@ -176,7 +179,7 @@ class Session {
     let full = '';
     this.send({ type: 'status', stage: 'thinking', epoch });
     try {
-      for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}` })) {
+      for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}`, waitRenderMs: 30000 })) {
         if (epoch !== this.epoch) return;
         full += delta;
         this.send({ type: 'delta', epoch, text: delta });
@@ -281,6 +284,7 @@ class Session {
           if (f2?.ok) await this.extendReel(c.path, prompt, lookId);
         }
       } catch (e) {
+        if (/cancelled/.test(e.message)) { this.log('look clip cancelled: the operator spoke'); return; }   // the look itself is live
         this.log('look failed', e.message);
         this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
       } finally {
