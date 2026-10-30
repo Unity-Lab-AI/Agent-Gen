@@ -176,7 +176,7 @@ class Session {
     let full = '';
     this.send({ type: 'status', stage: 'thinking', epoch });
     try {
-      for await (const delta of chatStream(messages, { signal: ac.signal })) {
+      for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}` })) {
         if (epoch !== this.epoch) return;
         full += delta;
         this.send({ type: 'delta', epoch, text: delta });
@@ -393,7 +393,7 @@ class Session {
     if (!this.idleActions?.length) {
       try {
         const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} big physical things you do next with your whole body (bounce, jump, dance, spin, stretch, pose, strut, play with your hair, whatever you feel like), never just standing or small movements, one per line, present tense, third person "she", staying in frame with your face toward the camera, no words spoken, no numbering, no commentary.`;
-        const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }]);
+        const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }], { purpose: 'idle plan' });
         if (this.lookSeq !== lookId) return cfg.reelMotions[0];
         // one per line is what we asked for; an 8B model sometimes answers in a paragraph, so split on sentences too
         this.idleActions = text.replace(/\[\[.*?\]\]/g, '').split(/\n|(?<=[.!?])\s+(?=[A-Z])/).map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/<[^>]+>/g, '').trim()).filter(s => s.length > 8 && s.length < 200);

@@ -15,8 +15,18 @@ export async function makeRoom() {
   try {
     const { pickModel } = await import('../providers/ollama.mjs');
     const model = await pickModel();
-    await fetch(`${cfg.ollamaUrl}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, keep_alive: 0 }), signal: AbortSignal.timeout(10000) });
+    // ask, then make sure: a brain left on the card (9 GB) next to Wan filled the 16 GB and the render sat at step 0
+    for (let i = 0; i < 15; i++) {
+      await fetch(`${cfg.ollamaUrl}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, keep_alive: 0 }), signal: AbortSignal.timeout(10000) });
+      const ps = await (await fetch(`${cfg.ollamaUrl}/api/ps`, { signal: AbortSignal.timeout(5000) })).json();
+      if (!(ps.models || []).length) break;
+      for (const m of ps.models) {              // whatever is loaded goes, not just the model the hub picked
+        await fetch(`${cfg.ollamaUrl}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: m.name, keep_alive: 0 }), signal: AbortSignal.timeout(10000) }).catch(() => {});
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
   } catch {}
 }
 
@@ -27,6 +37,12 @@ export async function cancel() {
 
 /** Render a clip from `lookFile` acting out `prompt`. Returns the sidecar's answer ({path, seconds, ...}). */
 export async function clip(lookFile, prompt, { frames, seed, fromClip, engine } = {}) {
+  const { gpu } = await import('../providers/ollama.mjs');
+  gpu.rendering++;                                 // background brain calls wait until this render is done
+  try { return await clipRender(lookFile, prompt, { frames, seed, fromClip, engine }); }
+  finally { gpu.rendering--; }
+}
+async function clipRender(lookFile, prompt, { frames, seed, fromClip, engine } = {}) {
   const image_b64 = fromClip ? undefined : fs.readFileSync(lookFile).toString('base64');
   // node:http, not fetch: fetch gives up waiting for response headers after 5 minutes ("fetch failed"), and a Wan
   // clip on a fresh look takes longer than that. The render itself is capped by the sidecar; 15 minutes here.

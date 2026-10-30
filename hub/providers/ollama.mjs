@@ -19,8 +19,18 @@ export async function pickModel() {
   return _model;
 }
 
-/** Async generator of content deltas. `messages` is the full chat (system first). */
-export async function* chatStream(messages, { signal, model, numPredict } = {}) {
+// The GPU gate. A brain call that lands while a video clip renders reloads the 9 GB brain next to Wan, the 16 GB
+// card fills, and both crawl (a render sat at step 0 for minutes). Unloading cannot fix it mid-request: Ollama
+// finishes the request first. So background calls wait for the render to end; her replies to the operator cancel
+// the clip first (hub respond), so they never wait here.
+export const gpu = { rendering: 0 };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/** Async generator of content deltas. `messages` is the full chat (system first). `purpose` is logged;
+ *  `background` calls wait while a clip renders. */
+export async function* chatStream(messages, { signal, model, numPredict, purpose = 'reply', background = false } = {}) {
+  if (background) while (gpu.rendering > 0 && !signal?.aborted) await sleep(500);
+  console.log(new Date().toISOString().slice(11, 19), `brain: ${purpose}${gpu.rendering ? ' (a clip is rendering)' : ''}`);
   const m = model || await pickModel();
   const body = {
     model: m, stream: true, messages, keep_alive: cfg.keepAlive,
@@ -54,9 +64,9 @@ export async function* chatStream(messages, { signal, model, numPredict } = {}) 
 }
 
 /** One whole reply, no streaming, for side questions (e.g. what she does next while idle). */
-export async function chatOnce(messages, { numPredict = 300, signal } = {}) {
+export async function chatOnce(messages, { numPredict = 300, signal, purpose = 'side question', background = true } = {}) {
   let out = '';
-  for await (const d of chatStream(messages, { signal, numPredict })) out += d;
+  for await (const d of chatStream(messages, { signal, numPredict, purpose, background })) out += d;
   return out;
 }
 

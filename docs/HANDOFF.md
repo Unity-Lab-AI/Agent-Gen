@@ -133,3 +133,10 @@ Operator: "she keeps witch back and forthe between the original and other images
 ## 2026-10-30 ~13:10 — she never did anything on her own (0.5.19)
 
 Operator: "all she ever does is sit ther and blink, never saw her do anything, and i never sent her an input". The idle reel only started after a look or motion clip landed, so a fresh start (or a reset) left her on the bust portrait blinking forever. Each session now has a watchdog (`idleCheck`, every 5 s): with no reply in progress, no look/picture/clip job in flight (`jobs`, counted by `queueJob`) and nothing for `idleStartMs` (20 s), `startIdle()` films her current look (her default `lookBase` on a fresh start, described by `idleLookPrompt`) doing something her brain picks, then runs the open-ended reel. Any message, look or reset preempts it.
+
+## 2026-10-30 ~13:15 — the GPU jam (0.5.20)
+
+0.5.19's idle routine started (plan: bounce, spin, stretch) and then jammed: Wan sat at step 0 for minutes, the face crawled at 12 s per frame, the card full (15.5 / 16 GB). Causes:
+- Her 9 GB brain was back in VRAM: the hub unloaded it at 12:38:52, but a brain request (her full 10k-token persona) started at 12:39:23 while the clip rendered, reloaded it, and crawled on the contested card. Unloading cannot evict a model mid-request (Ollama finishes the request first; `done_reason: unload` comes back while `/api/ps` still lists it). The request's caller was not logged; no second hub, no ghost runners (system Ollama on 11434 empty), the mic heard nothing.
+- The face was not paused: `face.pause()` only fired if something had polled `/health` in the last 15 s, and the idle routine never does.
+Fixes: a GPU gate (`gpu.rendering` in `hub/providers/ollama.mjs`, counted by `video.clip`): background brain calls (idle plans) wait while a clip renders; replies to the operator cancel reel clips first. Every brain call logs its purpose (`brain: idle plan`, `brain: reply to: …`). Face commands check the sidecar's health when stale instead of skipping. `makeRoom` checks `/api/ps` and unloads whatever is loaded, up to 15 tries.
