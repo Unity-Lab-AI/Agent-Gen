@@ -172,10 +172,12 @@ def write_mp4(frames, path, fps):
 
 
 def stabilize(frames):
-    """Pin the room to the first frame so only she moves. The video models pan and zoom on their own, and the face
-    plays a clip forward and back, so any camera drift reads as the whole scene wobbling. The camera's motion is
-    the dominant similarity transform of features tracked in the frame's edge bands (the room around her, not her
-    body), chained frame to frame and undone by warping each frame back onto the first."""
+    """Pin the room to the first frame so only she moves. The video models drift the camera on their own, and the face
+    plays a clip forward and back, so camera drift reads as the whole scene wobbling. Features tracked in the frame's
+    edge bands give the camera's slide from frame to frame, which is undone. Guarded, because her body can fill those
+    bands (a lunge at the camera): a full similarity correction then spun the frame until she tumbled out of it.
+    So only sliding is corrected (no rotation, no zoom); a step counts only when most tracked points agree on it and
+    it is small; and past 8% of the frame in total the clip is returned as rendered. Worst case = the raw clip."""
     import cv2
     import numpy as np
     arr = [np.asarray(f) for f in frames]
@@ -185,20 +187,26 @@ def stabilize(frames):
     bw, bh = max(8, w // 5), max(8, h // 6)
     mask[:, :bw] = 255; mask[:, w - bw:] = 255; mask[:bh, :] = 255
     gray = [cv2.cvtColor(a, cv2.COLOR_RGB2GRAY) for a in arr]
-    acc = np.eye(3)                                   # frame i -> frame 0
-    out = [arr[0]]
+    step_max, total_max = 0.03 * w, 0.08 * w
+    tx = ty = 0.0                                      # frame i -> frame 0
+    shifts = [(0.0, 0.0)]
     for i in range(1, len(arr)):
+        dx = dy = 0.0
         pts = cv2.goodFeaturesToTrack(gray[i - 1], 300, 0.01, 6, mask=mask)
-        m = None
         if pts is not None and len(pts) >= 12:
             nxt, st, _ = cv2.calcOpticalFlowPyrLK(gray[i - 1], gray[i], pts, None)
             good = st.ravel() == 1
             if good.sum() >= 10:
-                m, _ = cv2.estimateAffinePartial2D(nxt[good], pts[good], method=cv2.RANSAC, ransacReprojThreshold=2.0)
-        step = np.vstack([m, [0, 0, 1]]) if m is not None else np.eye(3)
-        acc = acc @ step
-        out.append(cv2.warpAffine(arr[i], acc[:2], (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE))
-    return out
+                m, inl = cv2.estimateAffinePartial2D(nxt[good], pts[good], method=cv2.RANSAC, ransacReprojThreshold=2.0)
+                if m is not None and inl is not None and inl.mean() >= 0.6 and abs(m[0, 2]) < step_max and abs(m[1, 2]) < step_max:
+                    dx, dy = float(m[0, 2]), float(m[1, 2])
+        tx += dx; ty += dy
+        if abs(tx) > total_max or abs(ty) > total_max:
+            return arr                                 # not a camera drift it can trust: leave the clip as rendered
+        shifts.append((tx, ty))
+    return [a if (sx, sy) == (0.0, 0.0) else
+            cv2.warpAffine(a, np.float32([[1, 0, sx], [0, 1, sy]]), (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            for a, (sx, sy) in zip(arr, shifts)]
 
 
 def release_gpu(pipe):

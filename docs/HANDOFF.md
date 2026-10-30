@@ -85,3 +85,7 @@ Motion (0.5.7): the hub never passed `engine` to the video sidecar, so every cli
 
 - Hue splatter / melting by the clip's end came from the 0.5.7 push prompt ("big full-body movement…", locked-camera words, camera negatives). A/B on Wan, same look and seed: the plain prompt measured the same motion (12.55 vs 12.3) with clean colour; the push prompt went from saturation 54 to 85 and melted her face. Both are back to plain (`clipPrefix`, `motionPush` empty, NEG as before). Wan for all motion, the idle plans asking for real actions, and `stabilize()` stay.
 - Looks landed in `resources\.run\looks` (an update wipes them): the hub never got `AGENTGEN_RUN`. `app/supervisor.js` passes it to the hub now.
+
+## 2026-10-30 ~11:05 — the tumbling clip (0.5.11)
+
+Basketball clip: halfway through, the whole frame rotated and stretched until she fell out of it. Cause: `stabilize()` (0.5.7) corrected a full similarity transform from the frame's edge bands; when she lunged at the camera her body filled those bands and the chained correction spun the frame. Now slide only (no rotation, no zoom); a step counts only with ≥60% RANSAC inliers and under 3% of the width; past 8% in total the clip is kept as rendered.
