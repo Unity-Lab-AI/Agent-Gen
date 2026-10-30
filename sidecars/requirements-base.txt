@@ -8,6 +8,7 @@ transformers==4.57.6
 accelerate>=1.0
 safetensors
 sentencepiece
+ftfy            # Wan's text encoder cleans prompts with it
 opencv-python
 pillow
 numpy>=2.0,<2.3
