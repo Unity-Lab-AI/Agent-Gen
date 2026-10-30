@@ -2,7 +2,7 @@
 # Kills Agent Gen.exe, anything whose exe lives under the folder (her runtimes and venvs in <folder>\data), python/ollama
 # started with the folder on their command line, her brain server on :11435, and everything those started; waits until they are gone and the app's
 # files can be written. Never touches the setup or uninstaller running this. Log: <folder>\data\logs\setup.log
-param([Parameter(Mandatory = $true)][string]$Dir)
+param([Parameter(Mandatory = $true)][string]$Dir, [switch]$Clean)
 $ErrorActionPreference = 'SilentlyContinue'
 $Dir = $Dir.TrimEnd('\')
 $root = $Dir + '\'
@@ -59,3 +59,26 @@ foreach ($f in @((Join-Path $Dir 'Agent Gen.exe'), (Join-Path $Dir 'resources\ap
   }
 }
 L 'stop: done'
+if (-not $Clean) { exit 0 }
+# After the old version's uninstaller: a folder it deleted while something still had it open stays "delete pending"
+# (listed, empty, nothing can be created in it) until that handle closes, and the setup's copy then fails with
+# "cannot be closed". Remove what is left of the old app ourselves and wait until it is really gone.
+# Only the app's own names are touched; data and anything else in the folder are never touched.
+$names = @('Agent Gen.exe', 'Uninstall Agent Gen.exe', 'uninstallerIcon.ico', 'resources', 'locales', 'resources.pak',
+  'chrome_100_percent.pak', 'chrome_200_percent.pak', 'icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin',
+  'LICENSE.electron.txt', 'LICENSES.chromium.html', 'd3dcompiler_47.dll', 'ffmpeg.dll', 'libEGL.dll', 'libGLESv2.dll',
+  'vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll')
+L "clean: $Dir"
+for ($i = 0; $i -lt 120; $i++) {
+  $left = @($names | Where-Object { Test-Path -LiteralPath (Join-Path $Dir $_) })
+  if ($left.Count -eq 0) { break }
+  foreach ($n in $left) {
+    $p = Join-Path $Dir $n
+    if ($i % 10 -eq 0) { L "remove $p" }
+    Remove-Item -LiteralPath $p -Recurse -Force
+  }
+  Start-Sleep -Milliseconds 500
+}
+$left = @($names | Where-Object { Test-Path -LiteralPath (Join-Path $Dir $_) })
+foreach ($n in $left) { L "STILL THERE $(Join-Path $Dir $n)" }
+L ('clean: done after {0:N1} s' -f ($i * 0.5))

@@ -12,13 +12,31 @@
 ; anything still holds a file. installer-stop.ps1 kills the whole lot, waits until the app's files can be written,
 ; and logs what it killed to <folder>\data\logs\setup.log. 64-bit PowerShell (sysnative) so it sees every process.
 !macro agentgenStop DIR
+  !insertmacro agentgenStopScript "${DIR}" ""
+!macroend
+
+!macro agentgenStopScript DIR FLAGS
   InitPluginsDir
   File "/oname=$PLUGINSDIR\agentgen-stop.ps1" "${PROJECT_DIR}\installer-stop.ps1"
   StrCpy $R8 "$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe"
   IfFileExists "$R8" +2 0
     StrCpy $R8 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
-  nsExec::Exec '"$R8" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\agentgen-stop.ps1" -Dir "${DIR}"'
+  nsExec::Exec '"$R8" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\agentgen-stop.ps1" -Dir "${DIR}" ${FLAGS}'
   Pop $R9
+!macroend
+
+; runs after the old version's uninstaller and before the new files are copied in (electron-builder's
+; handleUninstallResult hook, which replaces its own check). The old uninstaller's result is logged, never fatal:
+; whatever it left behind, or left "delete pending", is removed and waited out here, so the copy lands in a clean
+; folder. A missing old uninstaller (an interrupted earlier setup) is the same case.
+!macro customUnInstallCheck
+  ${If} ${Errors}
+    DetailPrint "The previous version's uninstaller could not be started; its files are cleared here."
+  ${ElseIf} $R0 != 0
+    DetailPrint "The previous version's uninstaller returned $R0; its files are cleared here."
+  ${EndIf}
+  ClearErrors
+  !insertmacro agentgenStopScript "$INSTDIR" "-Clean"
 !macroend
 
 !macro customCheckAppRunning
