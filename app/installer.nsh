@@ -6,7 +6,16 @@
 ; on first run. An update replaces the app files but spares data (customRemoveFiles). A plain uninstall asks whether
 ; data goes too. Running the setup over an existing install asks: update, uninstall everything, or cancel.
 
+; the hub runs as a second "Agent Gen.exe" (Electron in node mode) and the sidecars are its children: closing the
+; window is not enough for the "app is running" check, so take the whole tree down, hidden, before anything else
+!macro agentgenStopApp
+  nsExec::Exec 'taskkill /IM "Agent Gen.exe" /T /F'
+  Pop $R9
+  Sleep 1500
+!macroend
+
 !macro customInit
+  !insertmacro agentgenStopApp
   ; an existing per-user install registers its uninstaller and its folder
   ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
   ${If} $R0 != ""
@@ -48,6 +57,10 @@
 !macroend
 
 ; a real uninstall (not the update's internal one) offers to take her data with it
+!macro customUnInit
+  !insertmacro agentgenStopApp
+!macroend
+
 !macro customUnInstall
   ${ifNot} ${isUpdated}
     MessageBox MB_YESNO|MB_ICONQUESTION "Also remove everything Agent Gen downloaded for itself?$\r$\n$\r$\n$INSTDIR\data$\r$\n(Python runtime, model weights, her brain's models, logs; tens of gigabytes. Cannot be undone.)" /SD IDNO IDNO agentgenKeepData
