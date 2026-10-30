@@ -113,3 +113,12 @@ Done:
 - Verified: hub runs with the face down (health `face: false`, voice loop unaffected, first audio 610 ms on this run).
 
 Blocked: executing the cloned Ditto code (the offline `inference.py` and the live sidecar) is refused by this session's auto-mode classifier. The operator runs `scripts\face-smoke.bat` once (writes `.run\ditto-test.mp4`), then `scripts\dev.bat` brings the face up with the rest.
+
+### M3 — lag, image line, reel — 2026-10-30
+
+Operator words this pass, verbatim: "is it normal for it to be so laggy and her face only changeing 1 time ever like 10 seconds?"; "restart her fresh and clear the gpu before you run her again" / "after u fix"; "you are the only one running shit so whats on the GPU you put ther"; "wtf.. she didnt do it:connected / take that top off / <excited> Sure thing! *top removed*"; "there shouldnbt be a filter of rules that block, ive told you this already"; "and something im seeing is her movemments are jsut played out loops not real live action constantly changing"; "welll test it out and see what the gpu can handle".
+
+Done:
+- Lag: face sidecar `/pause` + `/resume`; hub holds her frame for every image and clip render; clip budget 448x640 x 73 frames. Measured: clip 15 s held vs 253 s live (face 2.8 fps meanwhile).
+- Image line: persona rule rewritten so any change to what she wears / does / holds / where she is requires the `[[img: ...]]` line first, with a worked example; legacy "avoid cussing and flagged words" prompt rule deleted; tag filter turns an asterisk stage direction into the look when no image line was written. Verified in the app: "take that top off" rendered the look, swapped her face, clip in 15 s, clip live on her.
+- Reel: video sidecar `from_clip` (continue from a clip's last frame); face sidecar `extend_source` appends clip frames to Ditto's live source lists without a worker restart; hub `extendReel` chains `reelClips` idle-motion clips per look while she is idle, preempted by a newer look. ARCHITECTURE.md §Appearance engine updated with the budget numbers.

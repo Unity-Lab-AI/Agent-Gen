@@ -9,7 +9,8 @@ offloads to CPU between layers so the brain and the face keep their room on the 
 
 API (127.0.0.1 only)
   GET  /health   -> {"ok", "loaded", "device", "model_present", "busy"}
-  POST /i2v      {"image_b64", "prompt", "negative"?, "frames"? (default 97 ≈ 4 s), "fps"? 25, "width"? 768, "height"? 512,
+  POST /i2v      {"image_b64" | "from_clip" (path: continue from that clip's last frame), "prompt", "negative"?,
+                  "frames"? (default 97 ≈ 4 s), "fps"? 25, "width"? 768, "height"? 512,
                   "steps"? 8, "guidance"? 1.0, "seed"?} -> {"ok", "path", "seconds", "frames", "fps", "seed"}
   POST /unload   -> frees the GPU
 The clip is written as mp4 (25 fps) under .run/clips/ and the path returned; the face sidecar takes that
@@ -116,8 +117,23 @@ def i2v(req):
     from PIL import Image
     from diffusers.utils import export_to_video
     pipe = load()
-    raw = base64.b64decode(req["image_b64"].split(",", 1)[1] if str(req["image_b64"]).startswith("data:") else req["image_b64"])
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    if req.get("from_clip") and not req.get("image_b64"):
+        # continue a clip: its last frame is the new start, so her motion chains instead of restarting
+        import cv2
+        cap = cv2.VideoCapture(req["from_clip"])
+        last = None
+        while True:
+            ok, fr = cap.read()
+            if not ok:
+                break
+            last = fr
+        cap.release()
+        if last is None:
+            raise ValueError("from_clip has no frames: %s" % req["from_clip"])
+        img = Image.fromarray(cv2.cvtColor(last, cv2.COLOR_BGR2RGB))
+    else:
+        raw = base64.b64decode(req["image_b64"].split(",", 1)[1] if str(req["image_b64"]).startswith("data:") else req["image_b64"])
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
     w = round32(req.get("width") or 768)
     h = round32(req.get("height") or 512)
     # keep her aspect: fit the requested box
@@ -179,8 +195,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "unloaded": unload()})
         if path != "/i2v":
             return self._json({"error": "unknown endpoint"}, 404)
-        if not req.get("image_b64"):
-            return self._json({"error": "image_b64 required"}, 422)
+        if not req.get("image_b64") and not req.get("from_clip"):
+            return self._json({"error": "image_b64 or from_clip required"}, 422)
         try:
             with _lock:
                 _state["busy"] = True

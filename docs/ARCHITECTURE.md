@@ -164,6 +164,12 @@ So the face is not a still portrait with moving lips. It is a generative rendere
 
 What this costs: image-to-video on one 16 GB card is seconds-to-minutes per clip, never instant. Local options are the small Wan / LTX-class models; the cloud option is the Pollinations video API already vendored (veo, wan, ltx). Real-time free-form body generation is not available at this scale today; the clip engine is how "trillions of options" become reachable without pretending otherwise.
 
+**GPU budget, measured 2026-10-30 (4070 Ti SUPER, 16 GB).** Operator: *"is it normal for it to be so laggy and her face only changeing 1 time ever like 10 seconds?"* and *"her movemments are jsut played out loops not real live action constantly changing"*. A 352x640 x 73-frame LTX clip renders in 15 s when the live face is held, and in 253 s when the face keeps running (face median 2.8 fps meanwhile, card at 15.7 GB / 100%). The live face and the video engine cannot share the card, so:
+
+- The face **holds its last frame** (`POST /pause`, `/resume` on the face sidecar) for every image render and clip render, and resumes on the new look. The brain is unloaded (`keep_alive: 0`) before each clip.
+- **Reel instead of loop.** After a look's first clip is on her, and only while she is idle (not thinking, not speaking), the hub chains `reelClips` more clips from the previous clip's last frame (`from_clip` on the video sidecar), each with a different small motion from `reelMotions`, and appends each one to her live reel (`/appearance` with `extend: true`: the face sidecar registers the new frames into Ditto's per-frame source lists without restarting its workers). Ditto mirror-plays the whole reel, so the body has 9+ s of distinct, chained motion per look instead of one 3 s loop, with no hard seam. A newer look preempts the reel after at most one clip.
+- Truly continuous new motion needs a second card (local or rented) running the video engine while this one runs the face. Not built; the hooks above are where it would plug in.
+
 ## Ports (planned, all loopback)
 
 | Port | Service | Origin |

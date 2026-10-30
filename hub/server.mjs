@@ -62,6 +62,7 @@ class Session {
     this.queue = new SpeechQueue(m => this.send(m));
     this.queue.onSpoken = t => this.echo.remember(t);
     this.busy = false;
+    this.lookSeq = 0;
   }
   send(obj) { if (this.ws.readyState === 1) this.ws.send(JSON.stringify(obj)); }
   log(...a) { console.log(new Date().toISOString().slice(11, 19), `[${this.id}]`, ...a); }
@@ -140,6 +141,7 @@ class Session {
     if (!prompt) return;
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
+    const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
     const job = (async () => {
       try {
         // every look evolves from the current one (her likeness photo at first), so she stays herself
@@ -165,6 +167,7 @@ class Session {
           this.currentClip = c.path;
           const f2 = await face.appearance(c.path);
           this.send({ type: 'look', stage: f2?.ok ? 'moving' : 'clip-only', kind: tag.kind, prompt, clip: { seconds: c.seconds, frames: c.frames }, face: f2, epoch });
+          if (f2?.ok) await this.extendReel(c.path, prompt, lookId);
         }
       } catch (e) {
         this.log('look failed', e.message);
@@ -174,6 +177,33 @@ class Session {
       }
     })();
     this.looks = (this.looks || Promise.resolve()).then(() => job);
+  }
+
+  /** While she is idle, grow the current look's reel: more clips chained from the last frame, each a different
+   *  small motion, appended to her live face. Stays in the GPU chain, so a newer look preempts it after at most
+   *  one clip; waits while she is thinking or speaking so her face is never held mid-sentence. */
+  async extendReel(clipPath, prompt, lookId) {
+    let last = clipPath;
+    for (let i = 0; i < cfg.reelClips; i++) {
+      while (this.busy && !this.closed && this.lookSeq === lookId) await new Promise(r => setTimeout(r, 1000));
+      if (this.closed || this.lookSeq !== lookId) return;
+      const motion = cfg.reelMotions[i % cfg.reelMotions.length];
+      try {
+        await face.pause();
+        await video.makeRoom();
+        const c = await video.clip(null, `${prompt}, ${motion}`, { fromClip: last });
+        if (this.closed || this.lookSeq !== lookId) return;
+        const f = await face.appearance(c.path, { extend: true });
+        if (!f?.ok) { this.log('reel append failed', f?.error); return; }
+        last = c.path;
+        this.send({ type: 'look', stage: 'reel', prompt, clip: { seconds: c.seconds, frames: c.frames }, reel: f.reel_frames, epoch: this.epoch });
+      } catch (e) {
+        this.log('reel failed', e.message);
+        return;
+      } finally {
+        await face.resume();
+      }
+    }
   }
 
   async onMessage(raw) {

@@ -37,12 +37,12 @@ export async function resume() {
   try { await fetch(`${cfg.faceUrl}/resume`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
 }
 
-/** Make an image file her live face. Returns the sidecar's answer or null. */
-export async function appearance(file) {
+/** Make an image or clip file her live face; `extend` appends a clip to her current reel instead. Returns the sidecar's answer or null. */
+export async function appearance(file, { extend = false } = {}) {
   if (!isLive()) return null;
   try {
     const r = await fetch(`${cfg.faceUrl}/appearance`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: file }), signal: AbortSignal.timeout(60000) });
+      body: JSON.stringify({ path: file, extend }), signal: AbortSignal.timeout(60000) });
     return r.ok ? await r.json() : { ok: false, error: (await r.json().catch(() => ({}))).error || `face ${r.status}` };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }

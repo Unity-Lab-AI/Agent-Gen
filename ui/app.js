@@ -73,6 +73,7 @@ function onMsg(m) {
       else if (m.stage === 'animating') { setState('animating…'); addMsg('sys', 'rendering her moving…'); }
       else if (m.stage === 'moving') { setState('idle'); diagLine(`clip ${m.clip?.frames} frames in ${m.clip?.seconds}s, live on her`); }
       else if (m.stage === 'clip-only') { setState('idle'); diagLine(`clip rendered; face swap: ${m.face?.error || 'face down'}`); }
+      else if (m.stage === 'reel') { diagLine(`reel +${m.clip?.frames} frames in ${m.clip?.seconds}s (${m.reel} frames of motion now)`); }
       break;
     }
     case 'image': {

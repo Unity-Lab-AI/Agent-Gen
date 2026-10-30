@@ -36,6 +36,10 @@ export const cfg = {
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
   clipWidth: Number(process.env.CLIP_WIDTH || 448),
   clipHeight: Number(process.env.CLIP_HEIGHT || 640),
+  // after a look's clip lands, while she is idle, this many more clips are chained from its last frame and
+  // appended to her live reel, each a different small motion, so the body is not one short loop
+  reelClips: Number(process.env.REEL_CLIPS || 2),
+  reelMotions: (process.env.REEL_MOTIONS || 'she shifts her weight and breathes, small natural movement|she brushes her hair back and glances to the side, then back at the camera|she sways a little, adjusts her posture, slow blink').split('|'),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.
