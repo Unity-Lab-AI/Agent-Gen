@@ -20,12 +20,18 @@ export const cfg = {
   facePlayLocal: ['1', 'true', 'yes'].includes(String(process.env.FACE_PLAY_LOCAL || '').toLowerCase()),
 
   ollamaUrl: process.env.OLLAMA_URL || process.env.OLLAMA_HOST || 'http://127.0.0.1:11434',
-  // Preference order; the first one Ollama actually has is used.
-  brainModels: (process.env.BRAIN_MODEL || 'unity-brain,unity-local,dolphin3:8b,llama3.1:8b').split(',').map(s => s.trim()).filter(Boolean),
+  // Preference order; the first one Ollama actually has is used. unity-local (dolphin3 base, her Modelfile,
+  // uncensored by design) leads for conversation; unity-brain is the RimWorld stream model on a Qwen base
+  // and refuses on its own ("I don't do that kind of request"), so it is last.
+  brainModels: (process.env.BRAIN_MODEL || 'unity-local,huihui_ai/qwen3-abliterated:8b,dolphin3:8b,unity-brain').split(',').map(s => s.trim()).filter(Boolean),
   numCtx: Number(process.env.BRAIN_NUM_CTX || 32768),
   keepAlive: process.env.BRAIN_KEEP_ALIVE || '30m',
+  // her Modelfile's sampling: temperature 1.05, top_p 0.95, repeat_penalty 1.08
+  temperature: Number(process.env.BRAIN_TEMPERATURE || 1.05),
+  topP: Number(process.env.BRAIN_TOP_P || 0.95),
+  repeatPenalty: Number(process.env.BRAIN_REPEAT_PENALTY || 1.08),
 
-  personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'default.txt'),
+  personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'unity.txt'),
   defaultEmotion: process.env.DEFAULT_EMOTION || 'warm',
   // Empty = no wake word; the VAD endpoint is the trigger. Set e.g. "unity,hey unity" to require it.
   wakeWord: (process.env.WAKE_WORD || '').split(',').map(s => s.trim()).filter(Boolean),

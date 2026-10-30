@@ -160,8 +160,11 @@ class FrameSink:
                 next_t = time.time()
 
     def wait_frame(self, last_idx, timeout=1.0):
+        # Block until a NEW frame exists. Before the first frame is published this must wait too, or a viewer
+        # that connects at startup spins here holding the GIL and starves the motion thread (seen as a
+        # minutes-long stall at 0 fps whenever the app connected before the first clip rendered).
         with self.cond:
-            if self.latest_idx == last_idx:
+            if self.latest is None or self.latest_idx == last_idx:
                 self.cond.wait(timeout)
             return self.latest, self.latest_idx
 
@@ -518,6 +521,7 @@ class Handler(BaseHTTPRequestHandler):
                 while True:
                     jpg, idx = FACE.sink.wait_frame(last)
                     if jpg is None or idx == last:
+                        time.sleep(0.01)     # never busy-loop on the GIL
                         continue
                     last = idx
                     # X-Frame-Index lets a remote player start its audio exactly on /speak's start_frame

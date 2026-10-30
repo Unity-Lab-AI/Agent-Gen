@@ -35,10 +35,10 @@ function createWindow() {
 function front() {
   // A window opened by a process that is not in the foreground is not brought forward by Windows; insist.
   if (!win || win.isDestroyed()) return;
-  win.show(); win.restore(); win.focus();
-  win.setAlwaysOnTop(true, 'screen-saver'); win.moveTop();
+  win.show(); win.restore();
+  // toggle on-top once: raises the window above everything, then releases it so other windows can take focus
+  win.setAlwaysOnTop(true); win.moveTop(); win.focus(); win.setAlwaysOnTop(false);
   app.focus({ steal: true });
-  setTimeout(() => { if (win && !win.isDestroyed()) win.setAlwaysOnTop(false); }, 2500);
 }
 
 function bootHtml() {
