@@ -57,7 +57,8 @@ _state = {"pipe": None, "engine": None, "device": None, "busy": False, "last_err
 # per-engine defaults: LTX wants 8k+1 frames at 25 fps and no guidance (distilled); Wan wants 4k+1 at 24 fps
 ENGINES = {
     "ltx": {"present": lambda: SINGLE.exists(), "frames": 73, "fps": 25, "steps": 8, "guidance": 1.0, "frame_step": 8, "max_frames": 257},
-    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 81, "fps": 24, "steps": 30, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
+    # measured on the 4070 Ti SUPER: ~0.6 s a step warm at 352x640, so 49 frames x 20 steps is about a minute
+    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 49, "fps": 24, "steps": 20, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
 }
 NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text, static, still image")
@@ -107,7 +108,7 @@ def load(engine):
         if not (WAN_DIR / "model_index.json").exists():
             raise FileNotFoundError(f"Wan weights not found: {WAN_DIR}")
         log("loading Wan 2.2 TI2V-5B on", dev)
-        pipe = WanImageToVideoPipeline.from_pretrained(str(WAN_DIR), torch_dtype=dtype)
+        pipe = WanImageToVideoPipeline.from_pretrained(str(WAN_DIR), dtype=dtype)   # diffusers >= 0.41: Wan 2.2 TI2V through the image pipeline
     else:
         from diffusers import LTXImageToVideoPipeline, AutoencoderKLLTXVideo, LTXVideoTransformer3DModel
         from transformers import T5EncoderModel, T5Tokenizer   # model_index expects the slow T5Tokenizer class

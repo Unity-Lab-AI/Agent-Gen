@@ -75,11 +75,19 @@ async function ghAsset(repo, test) {
 function fmt(n) { return n > 1e9 ? (n / 1e9).toFixed(2) + ' GB' : (n / 1e6).toFixed(0) + ' MB'; }
 
 // what the voice, speech, image and video sidecars import (face has its own venv and its own requirements)
-const PROBE_IMPORTS = ['torch', 'torchaudio', 'numpy', 'soundfile', 'misaki', 'numba', 'faster_whisper', 'diffusers', 'transformers', 'accelerate', 'safetensors', 'sentencepiece', 'ftfy', 'cv2', 'PIL', 'huggingface_hub'];
+const PROBE_IMPORTS = ['torch', 'torchaudio', 'numpy', 'soundfile', 'misaki.en', 'numba', 'faster_whisper', 'diffusers', 'transformers', 'accelerate', 'safetensors', 'sentencepiece', 'ftfy', 'cv2', 'PIL', 'huggingface_hub', 'packaging'];
 
-/** Can this interpreter import all of these? */
+// minimum versions the sidecars are written against (Wan 2.2 needs diffusers 0.41 / transformers 5): when these
+// move, the installer upgrades the interpreter it uses, whether that is its own runtime or the machine's Python
+const PROBE_VERSIONS = { diffusers: '0.41', transformers: '5.20', huggingface_hub: '1.0' };
+
+/** Can this interpreter import all of these, at or above the pinned versions? */
 function probe(pyExe, mods) {
-  return run(pyExe, ['-c', 'import ' + mods.join(', ')], {}).then(() => true, () => false);
+  const checks = Object.entries(PROBE_VERSIONS).filter(([m]) => mods.includes(m))
+    .map(([m, v]) => `assert V(${m}.__version__) >= V('${v}'), '${m} too old'`);
+  const code = `import importlib; ${mods.map(m => `importlib.import_module('${m}')`).join('; ')}; ` +
+    (checks.length ? `from packaging.version import Version as V; import ${Object.keys(PROBE_VERSIONS).filter(m => mods.includes(m)).join(', ')}; ${checks.join('; ')}` : 'pass');
+  return run(pyExe, ['-c', code], {}).then(() => true, () => false);
 }
 
 /** Does the Ollama on `port` (if any) have `name`? */
