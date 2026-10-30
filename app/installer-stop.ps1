@@ -27,6 +27,16 @@ function Targets {
         (($p.Name -in 'python.exe', 'pythonw.exe', 'ollama.exe', 'ollama_llama_server.exe') -and $p.CommandLine -and
           $p.CommandLine.IndexOf($root, [StringComparison]::OrdinalIgnoreCase) -ge 0)) { $hit[$p.ProcessId] = $p }
   }
+  # an Ollama model runner whose server was killed keeps running on its own, still sitting in the folder its server
+  # started in (the old app's resources): it pins that folder and the update's copy fails. Runners of a live server
+  # (the operator's own Ollama) are left alone.
+  $live = @{}; foreach ($p in $all) { $live[$p.ProcessId] = $p }
+  foreach ($p in $all) {
+    if ($p.Name -in 'llama-server.exe', 'ollama_llama_server.exe' -and -not (Spared $p)) {
+      $par = $live[$p.ParentProcessId]
+      if (-not $par -or $par.CreationDate -gt $p.CreationDate) { $hit[$p.ProcessId] = $p }
+    }
+  }
   # and everything they started (sidecars, brain runners, consoles), never a setup or uninstaller
   do {
     $grew = $false
@@ -39,7 +49,21 @@ function Targets {
   } while ($grew)
   $hit.Values
 }
+# a File Explorer window open on the folder (or anything in it) holds the folder open, so the old app's folders
+# cannot be removed and the copy fails with "cannot be closed": close those windows first
+function CloseExplorer {
+  try {
+    foreach ($w in @((New-Object -ComObject Shell.Application).Windows())) {
+      $path = $null
+      try { $path = $w.Document.Folder.Self.Path } catch {}
+      if ($path -and ($path -eq $Dir -or $path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))) {
+        L "close explorer window: $path"; $w.Quit()
+      }
+    }
+  } catch { L "explorer windows: $($_.Exception.Message)" }
+}
 L "stop: $Dir"
+CloseExplorer
 for ($i = 0; $i -lt 60; $i++) {
   $t = @(Targets)
   if ($t.Count -eq 0) { break }
@@ -68,9 +92,20 @@ $names = @('Agent Gen.exe', 'Uninstall Agent Gen.exe', 'uninstallerIcon.ico', 'r
   'chrome_100_percent.pak', 'chrome_200_percent.pak', 'icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin',
   'LICENSE.electron.txt', 'LICENSES.chromium.html', 'd3dcompiler_47.dll', 'ffmpeg.dll', 'libEGL.dll', 'libGLESv2.dll',
   'vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll')
+# A folder that something outside the app still has open (a search indexer, an antivirus scan, a window) cannot be
+# removed, but if it is empty and new files can be written into it, the copy works: that counts as clean. A folder
+# that is "delete pending" refuses new files and is waited out.
+function Usable($p) {
+  if (-not (Test-Path -LiteralPath $p -PathType Container)) { return $false }
+  if (@(Get-ChildItem -LiteralPath $p -Force).Count -gt 0) { return $false }
+  $probe = Join-Path $p ('.agentgen-probe-' + $PID)
+  try { [IO.File]::WriteAllText($probe, ''); Remove-Item -LiteralPath $probe -Force; return $true } catch { return $false }
+}
+function Left { @($names | Where-Object { $p = Join-Path $Dir $_; (Test-Path -LiteralPath $p) -and -not (Usable $p) }) }
 L "clean: $Dir"
+CloseExplorer
 for ($i = 0; $i -lt 120; $i++) {
-  $left = @($names | Where-Object { Test-Path -LiteralPath (Join-Path $Dir $_) })
+  $left = @(Left)
   if ($left.Count -eq 0) { break }
   foreach ($n in $left) {
     $p = Join-Path $Dir $n
@@ -79,6 +114,6 @@ for ($i = 0; $i -lt 120; $i++) {
   }
   Start-Sleep -Milliseconds 500
 }
-$left = @($names | Where-Object { Test-Path -LiteralPath (Join-Path $Dir $_) })
-foreach ($n in $left) { L "STILL THERE $(Join-Path $Dir $n)" }
+foreach ($n in $names) { $p = Join-Path $Dir $n; if (Test-Path -LiteralPath $p) { if (Usable $p) { L "kept empty, writable: $p" } } }
+foreach ($n in @(Left)) { L "STILL THERE $(Join-Path $Dir $n)" }
 L ('clean: done after {0:N1} s' -f ($i * 0.5))
