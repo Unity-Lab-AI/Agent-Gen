@@ -40,6 +40,7 @@ class Supervisor {
     // every sidecar finds its weights through these, wherever the installer put them
     const modelEnv = {
       AGENTGEN_MODELS: P.models,
+      AGENTGEN_RUN: path.join(P.DATA, 'run'),          // looks and clips she renders (an uninstall removes them)
       DITTO_MODELS: path.join(P.models, 'ditto'), DITTO_DIR: P.ditto,
       UNITY_VOICE_DIR: path.join(P.models, 'unity-voice-v2'),
       UNITY_VIDEO_MODEL_DIR: path.join(P.models, 'ltx-video'),

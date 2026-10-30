@@ -56,4 +56,4 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
   return { file, url: `/looks/look-${id}.png`, seed: Number(r.headers.get('x-seed')), seconds: Number(r.headers.get('x-seconds')), prompt: full };
 }
 
-export const looksDir = OUT;
+export const looksDir = process.env.AGENTGEN_RUN ? join(process.env.AGENTGEN_RUN, 'looks') : OUT;   // the app keeps renders in its data root

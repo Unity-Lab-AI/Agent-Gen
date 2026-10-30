@@ -13,24 +13,86 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.unityailab.agentgen",
     "productName": "Agent Gen",
-    "directories": { "output": "../dist" },
-    "files": ["main.js", "preload.js", "supervisor.js", "setup.js", "setup.html", "paths.js", "icon.png"],
-    "extraResources": [
-      { "from": "../hub", "to": "hub", "filter": ["**/*", "!node_modules/.cache/**"] },
-      { "from": "../ui", "to": "ui" },
-      { "from": "../sidecars", "to": "sidecars", "filter": ["**/*", "!**/__pycache__/**", "!**/.venv/**"] },
-      { "from": "../assets", "to": "assets" },
-      { "from": "../scripts", "to": "scripts", "filter": ["**/*", "!**/__pycache__/**"] },
-      { "from": "../third_party/ditto-talkinghead", "to": "third_party/ditto-talkinghead", "filter": ["**/*", "!.git/**", "!**/__pycache__/**"] },
-      { "from": "../vendor/local-unity-ollama", "to": "vendor/local-unity-ollama" },
-      { "from": "../models/unity-voice-v2", "to": "models/unity-voice-v2", "filter": ["**/*", "!**/__pycache__/**"] }
+    "directories": {
+      "output": "../dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "supervisor.js",
+      "setup.js",
+      "setup.html",
+      "paths.js",
+      "icon.png"
     ],
-    "win": { "target": ["nsis", "portable"], "icon": "icon.png" },
+    "extraResources": [
+      {
+        "from": "../hub",
+        "to": "hub",
+        "filter": [
+          "**/*",
+          "!node_modules/.cache/**"
+        ]
+      },
+      {
+        "from": "../ui",
+        "to": "ui"
+      },
+      {
+        "from": "../sidecars",
+        "to": "sidecars",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/.venv/**"
+        ]
+      },
+      {
+        "from": "../assets",
+        "to": "assets"
+      },
+      {
+        "from": "../scripts",
+        "to": "scripts",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**"
+        ]
+      },
+      {
+        "from": "../third_party/ditto-talkinghead",
+        "to": "third_party/ditto-talkinghead",
+        "filter": [
+          "**/*",
+          "!.git/**",
+          "!**/__pycache__/**"
+        ]
+      },
+      {
+        "from": "../vendor/local-unity-ollama",
+        "to": "vendor/local-unity-ollama"
+      },
+      {
+        "from": "../models/unity-voice-v2",
+        "to": "models/unity-voice-v2",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.png"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -39,6 +101,8 @@
       "shortcutName": "Agent Gen",
       "uninstallDisplayName": "Agent Gen"
     },
-    "portable": { "artifactName": "AgentGen-portable.exe" }
+    "portable": {
+      "artifactName": "AgentGen-portable.exe"
+    }
   }
 }
