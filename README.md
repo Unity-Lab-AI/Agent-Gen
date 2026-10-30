@@ -13,15 +13,28 @@ Unity, live, in one window. Her face moves when she talks, her voice is her own,
 | Ears | faster-whisper | 5125 |
 | Live face | Ditto talking-head over her current look or clip | 5126 |
 | Looks | Stable Diffusion 1.5 + IP-Adapter face lock | 5124 |
-| Motion | LTX-Video image-to-video, clips chained from each other | 5127 |
+| Motion | Wan 2.2 5B for what you tell her (real body physics), LTX 2B for the idle reel, clips chained from each other | 5127 |
 | Hub | Node: the conversation loop, sentence splitter, looks and reel | 4646 |
 | App | Electron window + supervisor + first-run installer | |
 
 Everything talks over 127.0.0.1. Full design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Minimum system
+
+| | Minimum | What it buys |
+|---|---|---|
+| OS | Windows 11, 64-bit | the installer, the hidden-console process model |
+| GPU | NVIDIA, 16 GB VRAM, Ampere or newer (RTX 30/40/50) | brain + live face at once; one video engine at a time |
+| RAM | 32 GB | the video engines stream their layers through system RAM |
+| Disk | 120 GB free on C: | about 80 GB of weights, PyTorch, runtimes, room for her clips |
+| Audio | speakers or headphones, a microphone to talk | her voice, your voice |
+| Network | once, for the first-run download | nothing after that |
+
+A 12 GB card runs her face and brain but not the big motion engine. AMD and Intel GPUs are not supported.
+
 ## Install
 
-Needs Windows 11 and an NVIDIA card with 16 GB. Run `AgentGen-Setup-<version>.exe`. First launch installs what's missing into `%LOCALAPPDATA%\AgentGen`: a Python runtime, PyTorch, the model weights (about 45 GB), a private Ollama and her brain. Nothing touches PATH or the registry. Uninstall from Windows as usual; it asks whether to take that folder with it. The in-app **Uninstall everything** button does the same.
+Run `AgentGen-Setup-<version>.exe`. First launch installs what's missing into `%LOCALAPPDATA%\AgentGen`: a Python runtime, PyTorch, the model weights (about 80 GB: two video engines, the face, looks, hearing), a private Ollama and her brain. Nothing touches PATH or the registry. Running a newer setup over an older install replaces the app and keeps that folder. Uninstall from Windows as usual; it asks whether to take that folder with it. The in-app **Uninstall everything** button does the same.
 
 ## Run from source
 

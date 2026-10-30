@@ -268,7 +268,8 @@ class Session {
         const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} short physical things you do next, whatever you feel like, one per line, present tense, third person "she", staying in frame with your face toward the camera, no words spoken, no numbering, no commentary.`;
         const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }]);
         if (this.lookSeq !== lookId) return cfg.reelMotions[0];
-        this.idleActions = text.split('\n').map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/\[\[.*?\]\]/g, '').trim()).filter(s => s.length > 8 && s.length < 200);
+        // one per line is what we asked for; an 8B model sometimes answers in a paragraph, so split on sentences too
+        this.idleActions = text.replace(/\[\[.*?\]\]/g, '').split(/\n|(?<=[.!?])\s+(?=[A-Z])/).map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/<[^>]+>/g, '').trim()).filter(s => s.length > 8 && s.length < 200);
         this.log(`idle plan (${this.idleActions.length}): ${this.idleActions.slice(0, 3).join(' | ')}`);
       } catch (e) { this.log('idle plan failed', e.message); }
       if (!this.idleActions?.length) this.idleActions = [...cfg.reelMotions];

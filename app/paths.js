@@ -7,6 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const exists = p => { try { return !!p && fs.existsSync(p); } catch { return false; } };
+// a half-downloaded model folder keeps *.incomplete parts under .cache; it is not present until those are gone
+const hasIncomplete = dir => { try { return fs.readdirSync(path.join(dir, '.cache', 'huggingface', 'download'), { recursive: true }).some(f => String(f).endsWith('.incomplete')); } catch { return false; } };
 const DATA = process.env.AGENTGEN_DATA || path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'AgentGen');
 const RUNTIME = path.join(DATA, 'runtime');
 
@@ -26,7 +28,7 @@ function resolve(root) {
     have: {
       ditto: exists(path.join(models, 'ditto', 'ditto_cfg')) && exists(ditto),
       ltx: exists(path.join(models, 'ltx-video', 'ltxv-2b-0.9.8-distilled.safetensors')),
-      wan: exists(path.join(models, 'wan2.2-ti2v-5b', 'model_index.json')),   // optional: commanded-motion engine
+      wan: exists(path.join(models, 'wan2.2-ti2v-5b', 'model_index.json')) && exists(path.join(models, 'wan2.2-ti2v-5b', 'transformer')) && !hasIncomplete(path.join(models, 'wan2.2-ti2v-5b')),
       voice: exists(path.join(models, 'unity-voice-v2', 'acoustic.pt')),
       sd: !!sdCkpt,
       // Ollama's store moved layouts in 2026 (manifests-v2/ollama.com); accept either

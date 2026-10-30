@@ -57,7 +57,7 @@ _state = {"pipe": None, "engine": None, "device": None, "busy": False, "last_err
 # per-engine defaults: LTX wants 8k+1 frames at 25 fps and no guidance (distilled); Wan wants 4k+1 at 24 fps
 ENGINES = {
     "ltx": {"present": lambda: SINGLE.exists(), "frames": 73, "fps": 25, "steps": 8, "guidance": 1.0, "frame_step": 8, "max_frames": 257},
-    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists(), "frames": 81, "fps": 24, "steps": 30, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
+    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 81, "fps": 24, "steps": 30, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
 }
 NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text, static, still image")
