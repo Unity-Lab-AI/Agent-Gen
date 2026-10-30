@@ -47,9 +47,8 @@ DEFAULT_CKPT = next((p for p in (
     os.path.join(_REPO, "models", "sd", "realistic-vision-v51.safetensors"))
 FACE_REPO, FACE_SUBFOLDER, FACE_WEIGHTS = "h94/IP-Adapter", "models", "ip-adapter-plus-face_sd15.safetensors"
 
-# quality negatives only; what the picture shows is the prompt's business
-NEG = ("lowres, blurry, out of focus, deformed, bad anatomy, extra fingers, extra limbs, missing fingers, "
-       "mutated hands, watermark, text, signature, cartoon, anime, 3d render, oversaturated, jpeg artifacts")
+# no default negative: the caller sends what it needs (the hub sends only the adult-age terms)
+NEG = ""
 
 CKPT = DEFAULT_CKPT
 DEVICE_ARG = "auto"

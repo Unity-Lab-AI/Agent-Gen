@@ -36,3 +36,16 @@ The operator tests visibly on their own desktop, with speakers, through the inst
 - Face at 0 fps showing the **old** look while the video rendered: the face swap carries the old sink's last picture and the hub paused the face before it drew the new look. Fix: `face.settle()` (`hub/face/client.mjs`) waits for ~12 new frames after a look goes live, before the video render pauses it (`hub/server.mjs`). 0 fps during a render is by design (the face holds a frame while Wan owns the GPU).
 - "look failed: fetch failed" after ~4–5 min of "rendering her moving": Node fetch gives up waiting for response headers at 300 s; a Wan clip on a fresh look runs longer. `hub/video/client.mjs` posts with node:http and a 15 min cap.
 - 0.5.2 built and reinstalled with these; dress + slap rerun → `.run/test052/`.
+
+## 2026-10-30 ~09:30 — operator report on 0.5.2, and 0.5.3
+
+Operator: no movement or action at all, voice not aligning to her lips, the whole scene wobbly where before only she moved, pink irises. Causes found:
+- Wan 2.2 clips run ~34 s/step x 20 steps (10+ min) on the 4070 Ti SUPER, so nothing moves for minutes; the face holds its frame (0 fps) the whole time while her voice keeps playing, which is the lip mismatch.
+- Since the reel, her face is drawn over generated video, and the video model moves the whole frame (camera and background), so the scene wobbles.
+- Pink irises: "pink streaks" in every prompt bled into the eyes; no eye colour was set.
+
+0.5.3 (prompts only, motion untouched):
+- `lookPrefix` says "pale grey-blue eyes" (her reference photo).
+- Operator: no negative prompts. Anatomy and quality negatives removed from `hub/image/client.mjs`; the image sidecar's default negative is empty (`sidecars/image/server.py`). Only the adult-age terms remain (`child, teen, underage, childlike, young girl`), kept on purpose: the checkpoint's safety checker is off and the app renders sexual looks.
+
+Still open: motion fix not chosen yet — A (still portrait, Ditto only), B (LTX for motion, locked-camera prompt, face live during renders), or C (A now, B behind a switch).

@@ -25,12 +25,8 @@ export async function health() {
  * Render a look. prompt = what she wrote in the tag; her identity anchors are prepended so the picture is her.
  * Returns {file, url, seed, seconds, prompt} or throws.
  */
-const NEG = 'child, teen, underage, childlike, young girl, ' +
-  'extra arms, extra hands, extra limbs, extra fingers, missing fingers, fused fingers, three hands, deformed, ' +
-  'bad anatomy, bad proportions, mutated, disfigured, two heads, duplicate, clone, cropped head, lowres, blurry, ' +
-  'watermark, text, signature, cartoon, anime, 3d render, jpeg artifacts';
-// No content gate here. Operator: "the model handels all the safties already we dont need to double up",
-// "dont want gates hitting gates there is no reason to double up on code". What she renders is her persona's call.
+// adult-age terms only; anatomy and quality negatives removed
+const NEG = 'child, teen, underage, childlike, young girl';
 
 export async function render(prompt, { width, height, seed, strength, sourceFile } = {}) {
   const full = `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`.replace(/\s+/g, ' ').trim();

@@ -18,7 +18,7 @@ export const cfg = {
   // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
   lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
-  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, an adult emo goth woman, long black hair with pink streaks, winged eyeliner, fair skin,',
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, an emo goth young adult chick, long black hair with pink streaks, pale grey-blue eyes, winged eyeliner, fair skin,',
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
   lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
