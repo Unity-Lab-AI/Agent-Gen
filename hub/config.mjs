@@ -34,12 +34,13 @@ export const cfg = {
   // locked camera: Wan pans and zooms on its own (measured up to 100 px background swing), and the face plays the
   // clip back and forth, so a moving camera reads as the whole room wobbling
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman, static camera on a tripod, the background and room stay perfectly still,',
-  // which video engine films what. LTX 2B (~15 s a clip) holds the scene still; Wan 2.2 5B (~3 min a clip) moves
-  // bodies more but drifts the camera and freezes her face for the whole render, so it is opt-in (MOTION_ENGINE=wan).
-  motionEngine: process.env.MOTION_ENGINE || 'ltx',
-  reelEngine: process.env.REEL_ENGINE || 'ltx',
-  // appended to every [[do]] motion: LTX 2B needs to be pushed to move a body (measured +40% motion energy)
-  motionPush: process.env.MOTION_PUSH || 'large fast clear movement, energetic, her whole upper body moves, hair swings',
+  // which video engine films what. Wan 2.2 5B moves her whole body (bounces, jumps, dances) and holds together;
+  // LTX 2B is fast but only makes micro movements and melts when pushed. The sidecar stabilizes every clip so
+  // Wan's camera drift does not wobble the room. LTX stays selectable (MOTION_ENGINE / REEL_ENGINE=ltx).
+  motionEngine: process.env.MOTION_ENGINE || 'wan',
+  reelEngine: process.env.REEL_ENGINE || 'wan',
+  // appended to every motion and reel clip: the video models default to near-still bodies unless told otherwise
+  motionPush: process.env.MOTION_PUSH || 'big full-body movement, her arms, hips, legs, chest and hair all move with real weight and bounce, she changes position',
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
   // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
@@ -51,7 +52,7 @@ export const cfg = {
   reelClips: Number(process.env.REEL_CLIPS ?? 0),
   reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
   reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
-  reelMotions: (process.env.REEL_MOTIONS || 'she shifts her weight and breathes, small natural movement|she brushes her hair back and glances to the side, then back at the camera|she sways a little, adjusts her posture, slow blink').split('|'),
+  reelMotions: (process.env.REEL_MOTIONS || 'she bounces on her toes and laughs, hair and chest bouncing|she dances, swinging her hips and raising her arms over her head|she jumps up and down excitedly, then grins at the camera|she spins around once and strikes a pose|she stretches both arms high overhead and arches her back').split('|'),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.

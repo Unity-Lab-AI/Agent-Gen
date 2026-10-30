@@ -171,6 +171,36 @@ def write_mp4(frames, path, fps):
         vw.release()
 
 
+def stabilize(frames):
+    """Pin the room to the first frame so only she moves. The video models pan and zoom on their own, and the face
+    plays a clip forward and back, so any camera drift reads as the whole scene wobbling. The camera's motion is
+    the dominant similarity transform of features tracked in the frame's edge bands (the room around her, not her
+    body), chained frame to frame and undone by warping each frame back onto the first."""
+    import cv2
+    import numpy as np
+    arr = [np.asarray(f) for f in frames]
+    arr = [(np.clip(a, 0, 1) * 255).astype(np.uint8) if a.dtype != np.uint8 else a for a in arr]
+    h, w = arr[0].shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+    bw, bh = max(8, w // 5), max(8, h // 6)
+    mask[:, :bw] = 255; mask[:, w - bw:] = 255; mask[:bh, :] = 255
+    gray = [cv2.cvtColor(a, cv2.COLOR_RGB2GRAY) for a in arr]
+    acc = np.eye(3)                                   # frame i -> frame 0
+    out = [arr[0]]
+    for i in range(1, len(arr)):
+        pts = cv2.goodFeaturesToTrack(gray[i - 1], 300, 0.01, 6, mask=mask)
+        m = None
+        if pts is not None and len(pts) >= 12:
+            nxt, st, _ = cv2.calcOpticalFlowPyrLK(gray[i - 1], gray[i], pts, None)
+            good = st.ravel() == 1
+            if good.sum() >= 10:
+                m, _ = cv2.estimateAffinePartial2D(nxt[good], pts[good], method=cv2.RANSAC, ransacReprojThreshold=2.0)
+        step = np.vstack([m, [0, 0, 1]]) if m is not None else np.eye(3)
+        acc = acc @ step
+        out.append(cv2.warpAffine(arr[i], acc[:2], (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE))
+    return out
+
+
 def release_gpu(pipe):
     """After a run the offload hooks leave the last modules parked on the card; send everything back and
     return the cached blocks, so the live face and the brain get the room back immediately."""
@@ -238,6 +268,8 @@ def i2v(req):
     finally:
         release_gpu(pipe)
     path = OUT / ("clip-%d-%s.mp4" % (int(time.time() * 1000), seed))
+    if req.get("stabilize", True):
+        out = stabilize(out)
     write_mp4(out, path, fps)
     return {"ok": True, "path": str(path), "seconds": round(time.time() - t0, 1), "frames": frames, "fps": fps,
             "seed": seed, "width": w, "height": h, "prompt": prompt, "engine": engine}

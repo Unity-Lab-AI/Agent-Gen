@@ -239,7 +239,7 @@ class Session {
       try {
         await face.pause();
         await video.makeRoom();
-        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
+        const c = await video.clip(null, `${prompt}, ${motion}, ${cfg.motionPush}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
         if (this.closed || this.lookSeq !== lookId) return;
         const f = await face.appearance(c.path, { extend: true });
         if (!f?.ok) {
@@ -266,7 +266,7 @@ class Session {
   async nextIdleAction(prompt, lookId) {
     if (!this.idleActions?.length) {
       try {
-        const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} short physical things you do next, whatever you feel like, one per line, present tense, third person "she", staying in frame with your face toward the camera, no words spoken, no numbering, no commentary.`;
+        const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} big physical things you do next with your whole body (bounce, jump, dance, spin, stretch, pose, strut, play with your hair, whatever you feel like), never just standing or small movements, one per line, present tense, third person "she", staying in frame with your face toward the camera, no words spoken, no numbering, no commentary.`;
         const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }]);
         if (this.lookSeq !== lookId) return cfg.reelMotions[0];
         // one per line is what we asked for; an 8B model sometimes answers in a paragraph, so split on sentences too
