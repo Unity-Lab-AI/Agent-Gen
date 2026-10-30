@@ -1,0 +1,4 @@
+torch>=2.1
+numpy
+soundfile==0.13.1
+misaki[en]==0.9.4

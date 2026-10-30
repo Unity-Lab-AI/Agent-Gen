@@ -221,6 +221,32 @@ class LiveCtrl(dict):
 
 
 # --- the live avatar ----------------------------------------------------------------------------------------
+def cv2_load_video(video_path, n_frames=-1, max_dim=-1):
+    """Ditto reads source videos through imageio-ffmpeg, which starts an ffmpeg child process each time (a
+    console flash on Windows). Same frames through OpenCV, in-process."""
+    import core.atomic_components.loader as loader
+    cap = cv2.VideoCapture(str(video_path))
+    out, rsz = [], None
+    try:
+        while True:
+            ok, bgr = cap.read()
+            if not ok or (n_frames > 0 and len(out) >= n_frames):
+                break
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            if rsz is None:
+                h, w = rgb.shape[:2]
+                rsz = loader.check_resize(h, w, max_dim)
+            new_h, new_w, flag = rsz
+            if flag:
+                rgb = cv2.resize(rgb, (new_w, new_h))
+            out.append(rgb)
+    finally:
+        cap.release()
+    if not out:
+        raise ValueError("no frames in %s" % video_path)
+    return out
+
+
 def robust_source2info(source2info):
     """Ditto's registrar crashes on any frame where face-mesh finds no face (gloves up, a turn, motion blur):
     one bad frame would kill a whole clip. A frame with no face holds the previous frame's crop and features
@@ -256,6 +282,8 @@ class LiveFace:
         data_root = str(MODELS / ("ditto_trt_Ampere_Plus" if backend == "trt" else "ditto_pytorch"))
         cfg_pkl = str(MODELS / "ditto_cfg" / ("v0.4_hubert_cfg_trt_online.pkl" if backend == "trt" else "v0.4_hubert_cfg_pytorch.pkl"))
         t0 = time.time()
+        import core.atomic_components.loader as _loader
+        _loader.load_video = cv2_load_video                     # no ffmpeg child processes
         self.sdk = spo.StreamSDK(cfg_pkl, data_root)
         self.sdk.avatar_registrar.source2info = robust_source2info(self.sdk.avatar_registrar.source2info)
         self.ctrl = LiveCtrl()

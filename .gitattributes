@@ -11,14 +11,11 @@
 # Windows PowerShell native convention.
 #
 # Binary files are explicitly marked so Git doesn't try to text-normalize them.
-
 * text=auto eol=lf
-
 # Windows-native scripts — keep CRLF
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
-
 # Binary files — never normalize (Unity AI Lab atree binary etc.)
 *.png binary
 *.jpg binary
@@ -33,3 +30,4 @@
 *.so binary
 *.dylib binary
 atree binary
+models/unity-voice-v2/*.pt filter=lfs diff=lfs merge=lfs -text

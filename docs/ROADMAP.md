@@ -38,7 +38,7 @@ _(none)_
 - [ ] **M5 — Her hands.** "websearch and playwrite and coding shit all of it" — web search, Playwright browser tool, code / files / shell tools with containment, system tools, image generation tool, so "she ... does things ytou telleher to do".
 - [ ] **M6 — Any AI connected.** "allows any ai connected to use it fully and completely all features we have ever built" — one tool registry exposed as MCP server, OpenAI- and Anthropic-compatible HTTP gateway, and native loop for local unity-brain; provider adapters for Pollinations, Ollama, Anthropic, OpenAI-compatible.
 - [ ] **M7 — Memory, persona, emotion.** persona loader + style gate, emotion state driving voice delivery, embedding memory and fact store.
-- [ ] **M8 — Launcher and packaging.** supervisor that brings sidecars and hub up with health and dep checks, installers, app-window / OBS / Android shells.
+- [~] **M8 — Launcher and packaging.** "this all needs to work as one sole .exe"; "the .exe has to install all things it needs to run with option to uninstall oall things also if wanted"; "the .exe prperly runs everything without fucking cmd windows poping open and closed all the fucking time". Electron exe + in-process supervisor (done), private brain server with hidden consoles (done), first-run installer into %LOCALAPPDATA%\AgentGen with per-step capability checks (built, not yet exercised on a clean machine), NSIS installer + uninstaller with data-root removal (built, not yet exercised), age gate (open), OBS / Android shells (open).
 
 ---
 

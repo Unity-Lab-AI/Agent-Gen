@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent Gen · setup</title>
+<style>
+  body{margin:0;background:#0b0b0f;color:#e8e6f0;font:15px system-ui,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh}
+  .box{width:640px}h1{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:#8c8aa0;margin:0 0 6px}
+  p{color:#8c8aa0;margin:0 0 14px;font-size:13px}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #262633}
+  .ok{color:#39d98a}.bad{color:#ff5c5c}.wait{color:#8c8aa0}.run{color:#ff4fa3}
+  pre{font:11px ui-monospace,monospace;color:#8c8aa0;height:170px;overflow:auto;white-space:pre-wrap;background:#0f0f15;border:1px solid #262633;border-radius:8px;padding:8px;margin:12px 0}
+  .bar{height:4px;background:#262633;border-radius:2px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;width:0;background:#ff4fa3}
+  button{background:#22222e;color:#e8e6f0;border:1px solid #262633;border-radius:8px;padding:9px 14px;cursor:pointer;margin-right:8px}
+  button.primary{border-color:#ff4fa3;color:#ff4fa3}button:disabled{opacity:.4}
+  .where{font:11px ui-monospace,monospace;color:#8c8aa0}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Agent Gen · first run</h1>
+  <p>She needs a few things on this machine before she can wake up. Everything goes into one folder and can be removed in one go.</p>
+  <p class="where" id="where"></p>
+  <div id="rows"></div>
+  <div class="bar"><i id="bar"></i></div>
+  <pre id="log"></pre>
+  <button id="go" class="primary">Install what's missing</button>
+  <button id="quit">Quit</button>
+  <button id="rm" title="Removes the data folder: runtimes, model weights, her brain's models">Uninstall everything</button>
+</div>
+<script>
+  const rows = document.getElementById('rows'), log = document.getElementById('log'), bar = document.getElementById('bar');
+  function row(s) {
+    rows.insertAdjacentHTML('beforeend', `<div class="row"><span>${s.title}</span><span id="s-${s.id}" class="${s.done ? 'ok' : 'wait'}">${s.done ? 'ready' : 'missing'}</span></div>`);
+  }
+  window.agentgen.setup.plan().then(p => { document.getElementById('where').textContent = p.data; p.steps.forEach(row); });
+  window.agentgen.setup.onEvent(ev => {
+    const e = document.getElementById('s-' + ev.step); if (!e) return;
+    if (ev.status === 'running') { e.textContent = ev.got ? Math.round(100 * ev.got / (ev.total || 1)) + '%' : 'installing…'; e.className = 'run'; }
+    if (ev.status === 'done') { e.textContent = 'ready'; e.className = 'ok'; }
+    if (ev.status === 'failed') { e.textContent = 'failed'; e.className = 'bad'; document.getElementById('go').disabled = false; }
+    if (ev.got) bar.style.width = Math.round(100 * ev.got / (ev.total || 1)) + '%';
+    if (ev.line) { log.textContent = (log.textContent + '\n' + ev.line).slice(-12000); log.scrollTop = log.scrollHeight; }
+  });
+  document.getElementById('go').onclick = () => { document.getElementById('go').disabled = true; window.agentgen.setup.start(); };
+  document.getElementById('quit').onclick = () => window.agentgen.quit();
+  document.getElementById('rm').onclick = () => window.agentgen.uninstall();
+</script>
+</body>
+</html>
