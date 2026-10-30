@@ -74,6 +74,14 @@ async function ghAsset(repo, test) {
 
 function fmt(n) { return n > 1e9 ? (n / 1e9).toFixed(2) + ' GB' : (n / 1e6).toFixed(0) + ' MB'; }
 
+// what the voice, speech, image and video sidecars import (face has its own venv and its own requirements)
+const PROBE_IMPORTS = ['torch', 'torchaudio', 'numpy', 'soundfile', 'misaki', 'numba', 'faster_whisper', 'diffusers', 'transformers', 'accelerate', 'safetensors', 'sentencepiece', 'ftfy', 'cv2', 'PIL', 'huggingface_hub'];
+
+/** Can this interpreter import all of these? */
+function probe(pyExe, mods) {
+  return run(pyExe, ['-c', 'import ' + mods.join(', ')], {}).then(() => true, () => false);
+}
+
 /** Does the Ollama on `port` (if any) have `name`? */
 function tagsHave(port, name) {
   return new Promise(res => {
@@ -108,11 +116,13 @@ function plan(root) {
     },
     {
       id: 'base', title: 'PyTorch (CUDA 11.8) and the voice, speech, image and video requirements',
-      done: () => !!py() && (readState().base === py() || !py().startsWith(RUNTIME)),
+      // a real probe, not a marker: every library the four sidecars import must load in that interpreter,
+      // so a machine with its own Python (a dev box) gets missing pieces installed too (ftfy taught us that)
+      done: async () => !!py() && await probe(py(), PROBE_IMPORTS),
       async run(log) {
         const p = py();
         await run(p, ['-m', 'pip', 'install', '--upgrade', 'pip', 'wheel'], { log });
-        await run(p, ['-m', 'pip', 'install', ...TORCH], { log });
+        if (!(await probe(p, ['torch']))) await run(p, ['-m', 'pip', 'install', ...TORCH], { log });
         await run(p, ['-m', 'pip', 'install', '-r', path.join(root, 'sidecars', 'requirements-base.txt')], { log });
         writeState({ base: p });
       },
