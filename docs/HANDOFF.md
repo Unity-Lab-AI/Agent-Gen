@@ -157,3 +157,7 @@ Fixes: a GPU gate (`gpu.rendering` in `hub/providers/ollama.mjs`, counted by `vi
 - `video.stopRender()` (`hub/video/client.mjs`): cancel, and if the render has not stopped within 3 s, `POST /abort` — the video sidecar exits on the spot (`os._exit`), its VRAM goes with it. A clip that dies that way reads as "cancelled", not a failure.
 - `app/supervisor.js` restarts an engine that exits while the app runs (1 s delay; more than 5 exits in 2 min stops the retries).
 - respond awaits `stopRender` before her brain loads. Clip jobs wait up to 60 s for the video engine to come back (`video.ready()`).
+
+## 2026-10-30 ~14:30 — "take ur top off" gave a different girl (0.5.24)
+
+Operator: "i just wanted an action from the default girl". Her persona writes `[[img]]` for clothing changes, and since 0.5.12 every look was a fresh txt2img with only a light face lock, so a new girl came back. A look that keeps who she is now edits her current picture (img2img from `currentLook`, else `lookBase`, strength 0.75, face lock 0.4): same girl, body, pose and room, only what was asked changes. Tested on her default picture: bikini → sweater and jeans, same girl and room. Restyles ("become …", hair colour, ethnicity) and `[[pic]]` still render fresh.
