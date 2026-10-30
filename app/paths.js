@@ -20,8 +20,7 @@ function resolve(root) {
   const models = exists(path.join(DATA, 'models')) ? path.join(DATA, 'models') : path.join(root, 'models');
   const ollamaModels = exists(path.join(DATA, 'ollama-models')) ? path.join(DATA, 'ollama-models') : null;
   const ditto = path.join(root, 'third_party', 'ditto-talkinghead');
-  const sdCkpt = [path.join(models, 'sd', 'realistic-vision-v51.safetensors'),
-    path.join(os.homedir(), 'Desktop', 'Unity 3D Equational Model', 'Unity 18+', 'models', 'realistic-vision-v51.safetensors')].find(exists) || null;
+  const sdCkpt = [path.join(models, 'sd', 'realistic-vision-v51.safetensors')].find(exists) || null;
   return {
     DATA, RUNTIME, pythonExe, facePy, ollamaExe, models, ollamaModels, ditto, sdCkpt,
     hf: path.join(models, 'hf'),

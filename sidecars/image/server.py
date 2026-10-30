@@ -40,12 +40,11 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_LEGACY_CKPT = os.path.expanduser(r"~\Desktop\Unity 3D Equational Model\Unity 18+\models\realistic-vision-v51.safetensors")
-# installed location first (the app's data root or the repo's models/), the lab's original file as a fallback
+# the installed location (the app's data root) or the repo's models/; scripts/fetch-models.py puts it there
 DEFAULT_CKPT = next((p for p in (
     os.path.join(os.environ.get("AGENTGEN_MODELS") or os.path.join(_REPO, "models"), "sd", "realistic-vision-v51.safetensors"),
-    os.path.join(_REPO, "models", "sd", "realistic-vision-v51.safetensors"),
-    _LEGACY_CKPT) if os.path.exists(p)), os.path.join(_REPO, "models", "sd", "realistic-vision-v51.safetensors"))
+    os.path.join(_REPO, "models", "sd", "realistic-vision-v51.safetensors")) if os.path.exists(p)),
+    os.path.join(_REPO, "models", "sd", "realistic-vision-v51.safetensors"))
 FACE_REPO, FACE_SUBFOLDER, FACE_WEIGHTS = "h94/IP-Adapter", "models", "ip-adapter-plus-face_sd15.safetensors"
 
 # quality negatives only; what the picture shows is the prompt's business
