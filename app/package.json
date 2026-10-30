@@ -18,6 +18,7 @@
   "build": {
     "appId": "com.unityailab.agentgen",
     "productName": "Agent Gen",
+    "toolsets": { "nsis": "1.2.1" },
     "directories": {
       "output": "../dist"
     },
