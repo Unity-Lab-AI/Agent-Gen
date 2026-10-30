@@ -221,6 +221,29 @@ class LiveCtrl(dict):
 
 
 # --- the live avatar ----------------------------------------------------------------------------------------
+def robust_source2info(source2info):
+    """Ditto's registrar crashes on any frame where face-mesh finds no face (gloves up, a turn, motion blur):
+    one bad frame would kill a whole clip. A frame with no face holds the previous frame's crop and features
+    instead; only a clip whose first frame has no face is rejected."""
+    state = {"last": None, "held": 0}
+
+    def call(rgb, last_lmk, **kw):
+        if last_lmk is None:                       # first frame of a registration
+            state["last"], state["held"] = None, 0
+        try:
+            info = source2info(rgb, last_lmk, **kw)
+            state["last"] = info
+            return info
+        except Exception as e:
+            if state["last"] is None:
+                raise RuntimeError("no face in the first frame: %s" % e)
+            state["held"] += 1
+            if state["held"] == 1:
+                print("face: no face on a frame, holding the previous one", flush=True)
+            return state["last"]
+    return call
+
+
 class LiveFace:
     SR = 16000
     STEP = 3200          # 5 frames * 640 samples = 200 ms per chunk
@@ -234,6 +257,7 @@ class LiveFace:
         cfg_pkl = str(MODELS / "ditto_cfg" / ("v0.4_hubert_cfg_trt_online.pkl" if backend == "trt" else "v0.4_hubert_cfg_pytorch.pkl"))
         t0 = time.time()
         self.sdk = spo.StreamSDK(cfg_pkl, data_root)
+        self.sdk.avatar_registrar.source2info = robust_source2info(self.sdk.avatar_registrar.source2info)
         self.ctrl = LiveCtrl()
         self.emo = parse_emo(ARGS.emo)
         import tempfile
