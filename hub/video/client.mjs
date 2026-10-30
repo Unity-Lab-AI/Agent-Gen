@@ -19,6 +19,11 @@ export async function makeRoom() {
   } catch {}
 }
 
+/** Stop the clip in flight at its next step; its clip() call rejects with "cancelled". */
+export async function cancel() {
+  try { await fetch(`${cfg.videoUrl}/cancel`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
+}
+
 /** Render a clip from `lookFile` acting out `prompt`. Returns the sidecar's answer ({path, seconds, ...}). */
 export async function clip(lookFile, prompt, { frames, seed, fromClip } = {}) {
   const image_b64 = fromClip ? undefined : fs.readFileSync(lookFile).toString('base64');

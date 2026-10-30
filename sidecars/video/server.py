@@ -12,6 +12,7 @@ API (127.0.0.1 only)
   POST /i2v      {"image_b64" | "from_clip" (path: continue from that clip's last frame), "prompt", "negative"?,
                   "frames"? (default 97 ≈ 4 s), "fps"? 25, "width"? 768, "height"? 512,
                   "steps"? 8, "guidance"? 1.0, "seed"?} -> {"ok", "path", "seconds", "frames", "fps", "seed"}
+  POST /cancel   -> the clip in flight stops at its next step and /i2v answers 409 {"cancelled": true}
   POST /unload   -> frees the GPU
 The clip is written as mp4 (25 fps) under .run/clips/ and the path returned; the face sidecar takes that
 path as a video source (/appearance) and the window plays it.
@@ -46,7 +47,17 @@ OUT = Path(ARGS.out)
 OUT.mkdir(parents=True, exist_ok=True)
 
 _lock = threading.Lock()
-_state = {"pipe": None, "device": None, "busy": False, "last_error": None}
+_state = {"pipe": None, "device": None, "busy": False, "last_error": None, "cancel": False}
+
+
+class Cancelled(Exception):
+    pass
+
+
+def _step_cb(pipe, step, timestep, kw):
+    if _state["cancel"]:
+        raise Cancelled("cancelled at step %d" % step)
+    return kw
 NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text")
 
@@ -154,8 +165,10 @@ def i2v(req):
     t0 = time.time()
     if device() == "cuda":
         torch.cuda.empty_cache()
+    _state["cancel"] = False
     out = pipe(image=img, prompt=prompt, negative_prompt=str(req.get("negative") or NEG), width=w, height=h,
-               num_frames=frames, num_inference_steps=steps, guidance_scale=guidance, generator=gen).frames[0]
+               num_frames=frames, num_inference_steps=steps, guidance_scale=guidance, generator=gen,
+               callback_on_step_end=_step_cb).frames[0]
     path = OUT / ("clip-%d-%s.mp4" % (int(time.time() * 1000), seed))
     export_to_video(out, str(path), fps=fps)
     return {"ok": True, "path": str(path), "seconds": round(time.time() - t0, 1), "frames": frames, "fps": fps,
@@ -193,6 +206,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/unload":
             with _lock:
                 return self._json({"ok": True, "unloaded": unload()})
+        if path == "/cancel":                       # stop the clip in flight at its next step (she has something to say)
+            _state["cancel"] = True
+            return self._json({"ok": True, "busy": _state["busy"]})
         if path != "/i2v":
             return self._json({"error": "unknown endpoint"}, 404)
         if not req.get("image_b64") and not req.get("from_clip"):
@@ -208,6 +224,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(res)
         except FileNotFoundError as e:
             return self._json({"error": str(e)}, 503)
+        except Cancelled as e:
+            log("clip cancelled:", e)
+            return self._json({"error": "cancelled", "cancelled": True}, 409)
         except Exception as e:
             _state["last_error"] = "%s: %s" % (type(e).__name__, str(e)[-600:])
             log("failed:", _state["last_error"])

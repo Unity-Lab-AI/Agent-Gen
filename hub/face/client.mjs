@@ -42,7 +42,7 @@ export async function appearance(file, { extend = false } = {}) {
   if (!isLive()) return null;
   try {
     const r = await fetch(`${cfg.faceUrl}/appearance`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: file, extend }), signal: AbortSignal.timeout(60000) });
+      body: JSON.stringify({ path: file, extend, max_frames: extend ? cfg.reelMaxFrames : 0 }), signal: AbortSignal.timeout(60000) });
     return r.ok ? await r.json() : { ok: false, error: (await r.json().catch(() => ({}))).error || `face ${r.status}` };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }

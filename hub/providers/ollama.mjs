@@ -20,12 +20,12 @@ export async function pickModel() {
 }
 
 /** Async generator of content deltas. `messages` is the full chat (system first). */
-export async function* chatStream(messages, { signal, model } = {}) {
+export async function* chatStream(messages, { signal, model, numPredict } = {}) {
   const m = model || await pickModel();
   const body = {
     model: m, stream: true, messages, keep_alive: cfg.keepAlive,
     options: { num_ctx: cfg.numCtx, temperature: cfg.temperature, top_p: cfg.topP, repeat_penalty: cfg.repeatPenalty,
-      num_predict: cfg.numPredict, stop: cfg.stop },
+      num_predict: numPredict || cfg.numPredict, stop: cfg.stop },
   };
   const r = await fetch(`${cfg.ollamaUrl}/api/chat`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal,
@@ -51,6 +51,13 @@ export async function* chatStream(messages, { signal, model } = {}) {
       if (j.done) return;
     }
   }
+}
+
+/** One whole reply, no streaming, for side questions (e.g. what she does next while idle). */
+export async function chatOnce(messages, { numPredict = 300, signal } = {}) {
+  let out = '';
+  for await (const d of chatStream(messages, { signal, numPredict })) out += d;
+  return out;
 }
 
 export async function health() {

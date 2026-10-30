@@ -446,10 +446,11 @@ class LiveFace:
             self.swapping = False
             self.paused = False      # a new look always resumes her
 
-    def extend_source(self, path):
+    def extend_source(self, path, max_frames=0):
         """Append a clip's frames to her live reel. No worker restart: the playhead simply has more body motion
         to mirror through, so the body stops being one short loop. The clip must continue the current look
-        (rendered from its last frame, same framing). A still-image face falls back to a full swap."""
+        (rendered from its last frame, same framing). A still-image face falls back to a full swap. Each frame
+        carries ~8 MB of appearance features in RAM, so past `max_frames` the oldest motion is dropped."""
         if not os.path.exists(path):
             raise FileNotFoundError(path)
         sdk = self.sdk
@@ -466,8 +467,13 @@ class LiveFace:
             if len(info["x_s_info_lst"]) > 1 and sdk.smo_k_s > 1:
                 info["x_s_info_lst"] = spo.smooth_x_s_info_lst(info["x_s_info_lst"], smo_k=sdk.smo_k_s)
             src = sdk.source_info
-            for k in ("x_s_info_lst", "f_s_lst", "M_c2o_lst", "img_rgb_lst", "eye_open_lst", "eye_ball_lst"):
+            keys = ("x_s_info_lst", "f_s_lst", "M_c2o_lst", "img_rgb_lst", "eye_open_lst", "eye_ball_lst")
+            for k in keys:
                 src[k].extend(info[k])
+            drop = len(src["x_s_info_lst"]) - int(max_frames) if max_frames else 0
+            if drop > 0:
+                for k in keys:
+                    del src[k][:drop]
             sdk.source_info_frames = len(src["x_s_info_lst"])
             ch = sdk.condition_handler                               # eye tracks are flat arrays over the reel
             if getattr(ch, "use_eye_open", False) and getattr(ch, "eye_open_seq", 0) is None:
@@ -475,7 +481,7 @@ class LiveFace:
             if getattr(ch, "use_eye_ball", False) and getattr(ch, "eye_ball_seq", 0) is None:
                 ch.eye_ball_lst = np.concatenate(src["eye_ball_lst"], 0); ch.num_eye_ball = len(ch.eye_ball_lst)
             return {"ok": True, "portrait": os.path.basename(ARGS.portrait), "added": len(info["x_s_info_lst"]),
-                    "reel_frames": sdk.source_info_frames, "seconds": round(time.time() - t0, 2)}
+                    "dropped": max(drop, 0), "reel_frames": sdk.source_info_frames, "seconds": round(time.time() - t0, 2)}
         finally:
             self.paused = was
 
@@ -670,7 +676,7 @@ class Handler(BaseHTTPRequestHandler):
                     src = os.path.join(tempfile.gettempdir(), "unity-look-%d.png" % int(time.time() * 1000))
                     open(src, "wb").write(base64.b64decode(req["image_b64"]))
                 with SWAP_LOCK:
-                    return self._json(FACE.extend_source(src) if req.get("extend") else FACE.set_source(src))
+                    return self._json(FACE.extend_source(src, req.get("max_frames") or 0) if req.get("extend") else FACE.set_source(src))
             if path == "/emotion":
                 return self._json({"emo": FACE.set_emotion(req.get("emotion", 4))})
             if path == "/pose":

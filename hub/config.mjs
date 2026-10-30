@@ -36,9 +36,12 @@ export const cfg = {
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
   clipWidth: Number(process.env.CLIP_WIDTH || 448),
   clipHeight: Number(process.env.CLIP_HEIGHT || 640),
-  // after a look's clip lands, while she is idle, this many more clips are chained from its last frame and
-  // appended to her live reel, each a different small motion, so the body is not one short loop
-  reelClips: Number(process.env.REEL_CLIPS || 2),
+  // after a look's clip lands, whenever she is idle, more clips are chained from the last frame and appended to
+  // her live reel, each a thing she decided to do, so the body is open-ended instead of one short loop.
+  // reelClips 0 = keep going for as long as she is idle; reelMaxFrames bounds RAM (~8 MB per frame).
+  reelClips: Number(process.env.REEL_CLIPS ?? 0),
+  reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
+  reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
   reelMotions: (process.env.REEL_MOTIONS || 'she shifts her weight and breathes, small natural movement|she brushes her hair back and glances to the side, then back at the camera|she sways a little, adjusts her posture, slow blink').split('|'),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),

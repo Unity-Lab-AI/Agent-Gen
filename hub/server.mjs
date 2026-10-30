@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { cfg } from './config.mjs';
-import { chatStream, health as brainHealth } from './providers/ollama.mjs';
+import { chatStream, chatOnce, health as brainHealth } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
 import { TagFilter } from './voice/tags.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
@@ -101,6 +101,7 @@ class Session {
 
   async respond(userText) {
     if (this.busy) this.interrupt('new-input');
+    if (this.reelBusy) { video.cancel(); face.resume(); }   // her lips come first; the idle clip dies at its next step
     const epoch = ++this.epoch;
     this.queue.epoch = epoch;
     const ac = new AbortController();
@@ -142,6 +143,7 @@ class Session {
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
+    this.idleActions = [];                         // and what she had planned to do in the old look
     const job = (async () => {
       try {
         // every look evolves from the current one (her likeness photo at first), so she stays herself
@@ -179,15 +181,18 @@ class Session {
     this.looks = (this.looks || Promise.resolve()).then(() => job);
   }
 
-  /** While she is idle, grow the current look's reel: more clips chained from the last frame, each a different
-   *  small motion, appended to her live face. Stays in the GPU chain, so a newer look preempts it after at most
-   *  one clip; waits while she is thinking or speaking so her face is never held mid-sentence. */
+  /** Whenever she is idle, grow the current look's reel: clips chained from the last frame, each a thing she
+   *  decided to do, appended to her live face. Open-ended (reelClips 0) or capped. Stays in the GPU chain, so a
+   *  newer look preempts it after at most one clip; waits while she is thinking or speaking, and a new message
+   *  cancels the clip in flight (see respond) so her lips never wait on it. */
   async extendReel(clipPath, prompt, lookId) {
     let last = clipPath;
-    for (let i = 0; i < cfg.reelClips; i++) {
+    for (let i = 0; cfg.reelClips === 0 || i < cfg.reelClips; i++) {
       while (this.busy && !this.closed && this.lookSeq === lookId) await new Promise(r => setTimeout(r, 1000));
       if (this.closed || this.lookSeq !== lookId) return;
-      const motion = cfg.reelMotions[i % cfg.reelMotions.length];
+      const motion = await this.nextIdleAction(prompt, lookId);
+      if (this.closed || this.lookSeq !== lookId || this.busy) { i--; continue; }
+      this.reelBusy = true;
       try {
         await face.pause();
         await video.makeRoom();
@@ -196,14 +201,31 @@ class Session {
         const f = await face.appearance(c.path, { extend: true });
         if (!f?.ok) { this.log('reel append failed', f?.error); return; }
         last = c.path;
-        this.send({ type: 'look', stage: 'reel', prompt, clip: { seconds: c.seconds, frames: c.frames }, reel: f.reel_frames, epoch: this.epoch });
+        this.log(`reel +${c.frames} (${f.reel_frames} frames): ${motion}`);
+        this.send({ type: 'look', stage: 'reel', prompt, motion, clip: { seconds: c.seconds, frames: c.frames }, reel: f.reel_frames, epoch: this.epoch });
       } catch (e) {
-        this.log('reel failed', e.message);
-        return;
+        if (!/cancelled/.test(e.message)) { this.log('reel failed', e.message); return; }
       } finally {
+        this.reelBusy = false;
         await face.resume();
       }
     }
+  }
+
+  /** What she does next while nobody is talking to her: her own brain decides, a batch at a time (one brain
+   *  load per batch, since the brain is unloaded for every clip). Falls back to the config motions. */
+  async nextIdleAction(prompt, lookId) {
+    if (!this.idleActions?.length) {
+      try {
+        const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} short physical things you do next, whatever you feel like, one per line, present tense, third person "she", no words spoken, no numbering, no commentary.`;
+        const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }]);
+        if (this.lookSeq !== lookId) return cfg.reelMotions[0];
+        this.idleActions = text.split('\n').map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/\[\[.*?\]\]/g, '').trim()).filter(s => s.length > 8 && s.length < 200);
+        this.log(`idle plan (${this.idleActions.length}): ${this.idleActions.slice(0, 3).join(' | ')}`);
+      } catch (e) { this.log('idle plan failed', e.message); }
+      if (!this.idleActions?.length) this.idleActions = [...cfg.reelMotions];
+    }
+    return this.idleActions.shift();
   }
 
   async onMessage(raw) {
@@ -213,7 +235,7 @@ class Session {
       case 'utterance': return this.onUtterance(m);
       case 'text': return this.onText(m);
       case 'interrupt': return this.interrupt(m.reason || 'barge-in');
-      case 'reset': this.interrupt('reset'); this.history = []; return this.send({ type: 'reset' });
+      case 'reset': this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = []; return this.send({ type: 'reset' });
       case 'ping': return this.send({ type: 'pong', t: m.t });
       default: return this.send({ type: 'error', error: `unknown message type ${m.type}` });
     }
