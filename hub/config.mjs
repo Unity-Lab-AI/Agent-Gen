@@ -18,10 +18,12 @@ export const cfg = {
   // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
   lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
-  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, a young adult woman, pale grey-blue eyes,',
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, pale grey-blue eyes,',   // identity only; a restyle drops it
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
   lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
+  picWidth: Number(process.env.PIC_WIDTH || 640),     // [[pic]]: anything that is not her look
+  picHeight: Number(process.env.PIC_HEIGHT || 576),
   lookHeight: Number(process.env.LOOK_HEIGHT || 704),
   lookMaxSide: Number(process.env.LOOK_MAX_SIDE || 768),
   lookSteps: Number(process.env.LOOK_STEPS || 30),

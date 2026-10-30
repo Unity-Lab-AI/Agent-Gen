@@ -37,16 +37,21 @@ const RESTYLE = new RegExp([
   /\b(blonde|brunette|redhead|ginger)\b/, /\b(makeup|make-up|eyeliner|mascara|lipstick|freckles)\b/,
   /\b(skin|complexion)\b/, /\b(caucasian|african|asian|latina|hispanic|indian|arab|nubian|nile|ebony|ethnicity)\b/,
   /\b(white|black|brown) (woman|girl|lady|beauty)\b/, /\bnatural look\b/,
+  // someone else entirely: another sex, age or kind of body ("a 40 year old man")
+  /\b(man|men|male|guy|dude|boy|gentleman|husband|father|dad|grandpa|grandfather|grandma|grandmother|elderly|beard|bearded)\b/,
+  /\b\d{2}[- ]year[- ]old\b/, /\b(old|older|middle[- ]aged) (woman|lady|man)\b/,
 ].map(r => r.source).join('|'), 'i');
 export const isRestyle = prompt => RESTYLE.test(String(prompt || ''));
 
 /** Render a look, fresh from her words. Her face lock (her likeness, or `faceFile` after a restyle) keeps her her;
  *  a restyle renders without it and `faceFile` then carries the new face into later looks. */
-export async function render(prompt, { width, height, seed, strength, sourceFile, restyle = false, faceFile } = {}) {
-  const full = `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`.replace(/\s+/g, ' ').trim();
+export async function render(prompt, { width, height, seed, strength, sourceFile, restyle = false, faceFile, plain = false } = {}) {
+  // plain = a picture of anything ([[pic]]): exactly her words, no identity, no face lock. A restyle drops the
+  // identity prefix too: "a 40 year old man" must not be glued to "photo of Unity".
+  const full = (plain ? prompt : restyle ? `${prompt}, ${cfg.lookSuffix}` : `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`).replace(/\s+/g, ' ').trim();
   const face = faceFile && fs.existsSync(faceFile) ? fs.readFileSync(faceFile).toString('base64') : faceRef();
   const body = { prompt: full, width: width || cfg.lookWidth, height: height || cfg.lookHeight, steps: cfg.lookSteps,
-    guidance: cfg.lookGuidance, seed: seed || undefined, face: restyle ? undefined : (face || undefined), face_scale: cfg.lookFaceScale, negative: NEG };
+    guidance: cfg.lookGuidance, seed: seed || undefined, face: restyle || plain ? undefined : (face || undefined), face_scale: cfg.lookFaceScale, negative: NEG };
   // every look is a fresh render: redrawing look after look from the last picture, face lock on top, made her a
   // plastic doll. The light face lock alone keeps her her; a restyle drops it.
   const endpoint = '/txt2img';

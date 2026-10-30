@@ -152,6 +152,24 @@ class Session {
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
     this.idleActions = [];                         // and what she had planned to do in the old look
+    if (['pic', 'picture', 'photo', 'draw'].includes(tag.kind)) {
+      // a picture of anything (two gorillas, a dinosaur, a professor): exactly as written, in the chat, never her face
+      const job = (async () => {
+        this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
+        try {
+          await face.pause();
+          const res = await image.render(prompt, { plain: true, width: cfg.picWidth, height: cfg.picHeight });
+          if (this.closed) return;
+          this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
+          this.send({ type: 'look', stage: 'image-only', kind: tag.kind, prompt, epoch });
+        } catch (e) {
+          this.log('picture failed', e.message);
+          this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
+        } finally { await face.resume(); }
+      })();
+      this.looks = (this.looks || Promise.resolve()).then(() => job);
+      return;
+    }
     if (tag.kind === 'do' || tag.kind === 'action') {
       const job = this.motion(prompt, lookId, epoch);
       this.looks = (this.looks || Promise.resolve()).then(() => job);

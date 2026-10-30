@@ -108,3 +108,10 @@ Still open: "lightning like hue spikes and her ghosting a bit". The raw clip (MJ
 Operator: "this project should have a directory list like thing showing where images and clips are saved and have option to clear them without unisintalling the app of its systems but like a reset to fresh install without needing to reinstall so like a clear logs, saves images and videos and genrations and conversations completely".
 - Footer "Storage" (app window only): rows for her looks (`data\run\looks`), clips (`data\run\clips`), logs (`data\logs`), conversations and window cache (Electron userData, `%APPDATA%\Agent Gen`), each with path, size, file count, Open folder, Clear. "Reset to fresh" clears all four after one confirmation. Runtimes, model weights and her brain are never touched.
 - `app/main.js` `agentgen:storage:*` IPC; logs are emptied in place (the running app writes to them). Clearing looks, clips or conversations first calls the hub's `/api/forget` (loopback): every window forgets its conversation and look, a clip in flight is cancelled, the face goes back to `assets/portrait/unity-bust.jpg`, so nothing points at a deleted file. Conversations otherwise live only in hub memory.
+
+## 2026-10-30 ~12:05 — pictures of anything, and she can be a man (0.5.15)
+
+Operator: asked for a 40 year old man (a professor) and got a woman; "lets not limit the ammplicatrion to be only females and only images of the persona the persona should be able to image anything not just protrat sefies".
+- New tag `[[pic: ...]]` (also `picture`, `photo`, `draw`): any picture, rendered exactly as written (no identity prefix, no face lock, 640x576), shown in the chat, never her face. Persona (`hub/persona/unity.txt`) uses it for anything that is not her own look.
+- `[[img]]` stays her look. `lookPrefix` no longer says "woman"; `isRestyle()` also catches another sex or age (man, guy, bearded, NN year old, elderly…), which drops the prefix and the face lock, and that render becomes her face ("become a 40 year old man").
+- Tested through the image sidecar: two gorillas in a jungle, a bearded male professor in tweed.
