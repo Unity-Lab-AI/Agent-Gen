@@ -30,7 +30,7 @@ git clone <this repo>; cd agent-gen
 cd app && npm install && npx electron .
 ```
 
-A dev box with the lab's Python 3.10 (torch cu118), `sidecars/face/.venv`, the Ollama tray app and `models/` already in place is detected as complete and boots straight in. Missing pieces are offered in the first-run screen. Weights by hand: `python scripts/fetch-models.py`. Build the exe: `npm run dist` in `app/` (output in `dist/`).
+A dev box with the lab's Python 3.10 (torch cu118), `sidecars/face/.venv`, the Ollama tray app and `models/` already in place is detected as complete and boots straight in. Missing pieces are offered in the first-run screen. Weights by hand: `python scripts/fetch-models.py`. Build the exe: `npm run dist` in `app/` (output in `dist/`). To run the built exe against a checkout's weights instead of downloading them again, junction `%LOCALAPPDATA%\AgentGen\models` to `models` and `%LOCALAPPDATA%\AgentGenenvsace` to `sidecarsace\.venv`.
 
 ## How she works
 
