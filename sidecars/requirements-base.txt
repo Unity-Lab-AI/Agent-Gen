@@ -1,0 +1,14 @@
+# One interpreter for the voice, speech, image and video sidecars (the face has its own venv on top of it).
+# torch goes in first from the CUDA 11.8 index; the installer does this, by hand it is:
+#   python -m pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+-r voice/requirements.txt
+-r speech/requirements.txt
+diffusers==0.35.1
+transformers==4.57.6
+accelerate>=1.0
+safetensors
+sentencepiece
+opencv-python
+pillow
+numpy>=2.0,<2.3
+huggingface_hub

@@ -42,11 +42,12 @@ build/
 /.survey/
 
 # Model weights live outside git (copied locally by tools/vendor_rip.py)
-/models/
+/models/*
+!/models/unity-voice-v2/
+/models/unity-voice-v2/__pycache__/
 /.run/
 __pycache__/
 *.pyc
-/third_party/
 .venv/
 /dist/
 app/node_modules/

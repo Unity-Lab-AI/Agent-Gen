@@ -4,8 +4,6 @@
 librosa
 tqdm
 filetype
-imageio
-imageio-ffmpeg
 opencv-python-headless
 scikit-image
 scipy

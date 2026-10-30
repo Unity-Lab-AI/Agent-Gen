@@ -1,9 +1,12 @@
-// Agent Gen app: our own window, not a browser. Opens -> supervisor starts everything -> her face fills the
-// window. Closes -> everything she runs on is shut down with it.
+// Agent Gen app: our own window, not a browser. Opens -> (first run: installs what she needs) -> supervisor starts
+// everything -> her face fills the window. Closes -> everything she runs on is shut down with it.
 'use strict';
 const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
+const { spawn } = require('node:child_process');
 const { Supervisor } = require('./supervisor');
+const setup = require('./setup');
 
 const DEV = !app.isPackaged;
 const ROOT = DEV ? path.join(__dirname, '..') : process.resourcesPath;
@@ -28,8 +31,6 @@ function createWindow() {
   session.defaultSession.setPermissionCheckHandler(() => true);
   win.once('ready-to-show', () => front());
   win.on('closed', () => { win = null; });
-  // boot screen while the services come up
-  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(bootHtml()));
 }
 
 function front() {
@@ -49,23 +50,34 @@ function bootHtml() {
   pre{font:11px ui-monospace,monospace;color:#8c8aa0;max-height:160px;overflow:auto;white-space:pre-wrap}</style>
   <div class="box"><h1>Agent Gen · waking her up</h1><div id="rows"></div><pre id="log"></pre></div>
   <script>
-  const names=['voice','speech','image','face','hub'];const rows=document.getElementById('rows');
+  const names=['brain','voice','speech','image','video','face','hub'];const rows=document.getElementById('rows');
   for(const n of names){rows.insertAdjacentHTML('beforeend','<div class="row"><span>'+n+'</span><span id="s-'+n+'" class="wait">waiting</span></div>')}
   window.agentgen.onStatus((n,s)=>{const e=document.getElementById('s-'+n);if(!e)return;e.textContent=s;e.className=s==='ready'||s==='adopted'?'ok':(s.startsWith('exited')||s==='failed'?'bad':'wait')});
   window.agentgen.onLog(l=>{const p=document.getElementById('log');p.textContent=(l+'\\n'+p.textContent).slice(0,4000)});
   </script>`;
 }
 
-app.whenReady().then(async () => {
-  createWindow();
-  sup = new Supervisor(ROOT, log);
+async function boot() {
+  await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(bootHtml()));
+  sup = new Supervisor(ROOT, log, { nodeBin: DEV ? null : process.execPath });
   await sup.start((name, s) => { status[name] = s; if (win && !win.isDestroyed()) win.webContents.send('agentgen:status', name, s); });
   if (status.hub === 'ready' || status.hub === 'adopted') {
     await win.loadURL(HUB);
     front();
   } else {
-    dialog.showErrorBox('Agent Gen', 'The hub did not come up. See .run/hub.log');
+    dialog.showErrorBox('Agent Gen', `The hub did not come up. See ${path.join(sup.logDir || setup.DATA, 'hub.log')}`);
   }
+}
+
+app.whenReady().then(async () => {
+  createWindow();
+  const need = await setup.missing(ROOT);
+  if (need.length) {
+    log(`first run: missing ${need.map(s => s.id).join(', ')}`);
+    await win.loadFile(path.join(__dirname, 'setup.html'));   // its Install button drives setup, then boot()
+    return;
+  }
+  await boot();
 });
 
 app.on('window-all-closed', () => { shutdown(); app.quit(); });
@@ -77,3 +89,35 @@ let down = false;
 function shutdown() { if (down) return; down = true; try { sup && sup.stop(); } catch {} }
 
 ipcMain.handle('agentgen:status', () => status);
+ipcMain.handle('agentgen:quit', () => app.quit());
+ipcMain.handle('agentgen:setup:plan', async () => ({
+  data: setup.DATA,
+  steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, done: !!(await s.done()) }))),
+}));
+ipcMain.handle('agentgen:setup:start', async () => {
+  try {
+    await setup.install(ROOT, ev => { if (win && !win.isDestroyed()) win.webContents.send('agentgen:setup:event', ev); });
+  } catch (e) {
+    log('setup failed:', e.message);
+    return { ok: false, error: String(e.message || e) };
+  }
+  await boot();
+  return { ok: true };
+});
+ipcMain.handle('agentgen:uninstall', async () => {
+  const r = await dialog.showMessageBox(win, {
+    type: 'warning', buttons: ['Remove everything', 'Cancel'], defaultId: 1, cancelId: 1, title: 'Uninstall Agent Gen',
+    message: 'Remove everything Agent Gen installed for itself?',
+    detail: `Deletes ${setup.DATA}: the Python runtime, model weights, her brain's models and logs (tens of gigabytes). ` +
+      (app.isPackaged ? 'The app uninstaller runs afterwards.' : 'Dev checkout files are not touched.'),
+  });
+  if (r.response !== 0) return { ok: false };
+  shutdown();
+  const ok = setup.uninstallData();
+  if (app.isPackaged) {
+    const un = path.join(path.dirname(process.execPath), 'Uninstall Agent Gen.exe');
+    if (fs.existsSync(un)) spawn(un, [], { detached: true, stdio: 'ignore' }).unref();
+  }
+  app.quit();
+  return { ok };
+});

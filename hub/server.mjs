@@ -142,14 +142,22 @@ class Session {
     if (s.replace(/<[^>]+>/g, '').trim()) this.queue.enqueue(s, epoch);
   }
 
-  /** [[img: ...]] / [[look: ...]] / [[do: ...]] from her stream: render it, show it, and make it her face. */
+  /** [[img: ...]] / [[look: ...]] from her stream: a new picture of her, then a clip, then her live face.
+   *  [[do: ...]] / [[action: ...]] (and a stage direction with no line): a clip of her CURRENT look doing it; no
+   *  new picture. Operator: "she should only change or take off outfits when told to, just telling her to
+   *  bounce or jiggle or dance should not instanty generate a new self image unless told that". */
   onTag(tag, epoch) {
     const prompt = tag.text;
     if (!prompt) return;
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
-    this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
     this.idleActions = [];                         // and what she had planned to do in the old look
+    if (tag.kind === 'do' || tag.kind === 'action') {
+      const job = this.motion(prompt, lookId, epoch);
+      this.looks = (this.looks || Promise.resolve()).then(() => job);
+      return;
+    }
+    this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
     const job = (async () => {
       try {
         // every look evolves from the current one (her likeness photo at first), so she stays herself
@@ -159,6 +167,7 @@ class Session {
         const res = await image.render(prompt, { sourceFile: this.currentLook });
         if (this.closed) return;
         this.currentLook = res.file;
+        this.currentLookPrompt = prompt;           // the idle reel keeps describing THIS look, not a later motion
         this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
         if (cfg.lookDrivesFace) {
           const f = await face.appearance(res.file);
@@ -185,6 +194,30 @@ class Session {
       }
     })();
     this.looks = (this.looks || Promise.resolve()).then(() => job);
+  }
+
+  /** A movement in the look she already has: clip from where she is now (the current clip's last frame, else
+   *  her current look image, else her base portrait), swapped onto her face, then the reel continues from it. */
+  async motion(prompt, lookId, epoch) {
+    this.send({ type: 'look', stage: 'animating', kind: 'do', prompt, epoch });
+    try {
+      const vh = await video.health();
+      if (!vh.ok || !vh.model_present) { this.send({ type: 'look', stage: 'failed', kind: 'do', prompt, error: 'video engine down', epoch }); return; }
+      await face.pause();
+      await video.makeRoom();
+      const c = this.currentClip
+        ? await video.clip(null, prompt, { fromClip: this.currentClip })
+        : await video.clip(this.currentLook || cfg.lookBase, prompt);
+      if (this.closed || this.lookSeq !== lookId) return;
+      this.currentClip = c.path;
+      const f = await face.appearance(c.path);
+      this.send({ type: 'look', stage: f?.ok ? 'moving' : 'clip-only', kind: 'do', prompt, clip: { seconds: c.seconds, frames: c.frames }, face: f, epoch });
+      if (f?.ok) await this.extendReel(c.path, this.currentLookPrompt || prompt, lookId);
+    } catch (e) {
+      if (!/cancelled/.test(e.message)) { this.log('motion failed', e.message); this.send({ type: 'look', stage: 'failed', kind: 'do', prompt, error: String(e.message || e), epoch }); }
+    } finally {
+      await face.resume();
+    }
   }
 
   /** Whenever she is idle, grow the current look's reel: clips chained from the last frame, each a thing she
