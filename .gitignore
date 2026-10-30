@@ -48,3 +48,5 @@ __pycache__/
 *.pyc
 /third_party/
 .venv/
+/dist/
+app/node_modules/

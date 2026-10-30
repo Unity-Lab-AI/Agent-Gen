@@ -151,6 +151,20 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(h));
   }
+  if (url.pathname === '/api/text' && req.method === 'POST') {
+    // Loopback only: say something to her as if typed in the newest open window (used by tests and tools).
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 65536) req.destroy(); });
+    req.on('end', () => {
+      let text = '';
+      try { text = String(JSON.parse(body || '{}').text || ''); } catch {}
+      const s = [...sessions].pop();
+      res.writeHead(s && text ? 200 : 409, { 'Content-Type': 'application/json' });
+      if (s && text) { s.onText({ text }); return res.end(JSON.stringify({ ok: true, session: s.id })); }
+      res.end(JSON.stringify({ ok: false, error: s ? 'empty text' : 'no open window' }));
+    });
+    return;
+  }
   let p = decodeURIComponent(url.pathname);
   if (p === '/') p = '/index.html';
   const file = path.normalize(path.join(cfg.uiDir, p));
@@ -163,13 +177,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 32 * 1024 * 1024 });
+const sessions = new Set();
 let nextId = 1;
 wss.on('connection', ws => {
   const s = new Session(ws, nextId++);
+  sessions.add(s);
   s.log('connected');
   s.send({ type: 'hello', session: s.id, wakeWord: cfg.wakeWord });
   ws.on('message', raw => s.onMessage(raw.toString()));
-  ws.on('close', () => { s.interrupt('closed'); s.log('closed'); });
+  ws.on('close', () => { s.interrupt('closed'); sessions.delete(s); s.log('closed'); });
 });
 
 setInterval(() => face.health(), 5000);   // keeps face.isLive() current so sentences get mirrored when she is up

@@ -34,7 +34,10 @@ export function createPlayer({ onViseme = () => {}, onSpeakingChange = () => {},
     const startAt = Math.max(now + 0.03 + lead, nextAt);
     const source = c.createBufferSource();
     source.buffer = buffer;
-    source.connect(c.destination);
+    // audio === 'face': the face sidecar is playing this clip on the speakers, frame-locked; keep the
+    // timeline (visemes, speaking state) but stay silent here
+    if (clip.audio === 'face') { const mute = c.createGain(); mute.gain.value = 0; source.connect(mute); mute.connect(c.destination); }
+    else source.connect(c.destination);
     const item = { id: clip.seq, buffer, visemes: clip.visemes || [], startAt, source, text: clip.text, done: false };
     source.onended = () => { item.done = true; prune(); };
     source.start(startAt);

@@ -39,7 +39,7 @@ export class SpeechQueue {
         const lead_ms = f ? f.lead_ms + cfg.faceLeadMs : 0;
         this.send({ type: 'speak', epoch, seq, text: d.text, spoken: res.spoken, delivery: res.delivery,
           sample_rate: res.sample_rate, duration: res.duration, wav_b64: res.wav_b64, phones: res.phones, visemes: res.visemes,
-          synth_ms: res.synth_ms, face: !!f, lead_ms });
+          synth_ms: res.synth_ms, face: !!f, lead_ms, start_frame: f?.start_frame, audio: f?.played_here ? 'face' : 'ui' });
       } catch (e) {
         if (ac.signal.aborted || epoch !== this.epoch) return;
         this.send({ type: 'speak_error', epoch, seq, text: d.text, error: String(e.message || e) });

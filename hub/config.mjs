@@ -16,6 +16,8 @@ export const cfg = {
   faceUrl: process.env.FACE_URL || 'http://127.0.0.1:5126',
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.
   faceLeadMs: Number(process.env.FACE_LEAD_MS || 0),
+  // In the desktop app the face sidecar plays her voice itself, frame-locked to her lips; the UI then stays silent.
+  facePlayLocal: ['1', 'true', 'yes'].includes(String(process.env.FACE_PLAY_LOCAL || '').toLowerCase()),
 
   ollamaUrl: process.env.OLLAMA_URL || process.env.OLLAMA_HOST || 'http://127.0.0.1:11434',
   // Preference order; the first one Ollama actually has is used.

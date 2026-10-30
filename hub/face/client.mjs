@@ -17,7 +17,7 @@ export async function speak(wav_b64, emotion) {
   if (!isLive()) return null;
   try {
     const r = await fetch(`${cfg.faceUrl}/speak`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wav_b64, emotion }), signal: AbortSignal.timeout(5000) });
+      body: JSON.stringify({ wav_b64, emotion, play: cfg.facePlayLocal }), signal: AbortSignal.timeout(5000) });
     return r.ok ? await r.json() : null;
   } catch { return null; }
 }
