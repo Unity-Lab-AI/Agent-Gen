@@ -26,7 +26,7 @@
   ${EndIf}
 !macroend
 
-; replaces electron-builder's "RMDir /r $INSTDIR": everything in the install folder goes except data\
+; replaces electron-builder's "RMDir /r $INSTDIR": everything in the install folder goes except the data subfolder
 !macro customRemoveFiles
   SetOutPath $TEMP
   FindFirst $0 $1 "$INSTDIR\*"
