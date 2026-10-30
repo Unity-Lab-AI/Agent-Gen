@@ -548,12 +548,13 @@ class LiveFace:
 
     def _adopt_sink(self, old_sink):
         """After a re-setup: the new sink carries the old one's counters, so frame indices, cues and the feed
-        timeline stay continuous, and the hold loop carries across."""
+        timeline stay continuous. The hold loop does NOT carry across: its frames are the old look, and replaying
+        them while the next clip rendered flipped her back and forth between the old look and the new one."""
         new_sink = self.sdk.writer
         with old_sink.cond:
             new_sink.latest, new_sink.latest_idx, new_sink.frames_out = old_sink.latest, old_sink.latest_idx, old_sink.frames_out
-            new_sink.view_idx, new_sink.loop = old_sink.view_idx, old_sink.loop
-            new_sink.history.extend(old_sink.history)
+            new_sink.view_idx, new_sink.loop = old_sink.view_idx, None
+            new_sink.history.clear()
             new_sink.cues = []
         old_sink.close()
         self.sink = new_sink
