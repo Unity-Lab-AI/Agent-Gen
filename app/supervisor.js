@@ -37,6 +37,7 @@ class Supervisor {
     this.services = [
       { name: 'voice',  port: 5123, health: 'http://127.0.0.1:5123/health', cmd: basePy, args: ['-u', path.join(root, 'sidecars', 'voice', 'server.py')] },
       { name: 'speech', port: 5125, health: 'http://127.0.0.1:5125/health', cmd: basePy, args: ['-u', path.join(root, 'sidecars', 'speech', 'server.py'), '--preload'] },
+      { name: 'image',  port: 5124, health: 'http://127.0.0.1:5124/health', cmd: basePy, args: ['-u', path.join(root, 'sidecars', 'image', 'server.py')] },
       ...(facePy && exists(modelsDitto) ? [{ name: 'face', port: 5126, health: 'http://127.0.0.1:5126/health', cmd: facePy, args: ['-u', path.join(root, 'sidecars', 'face', 'server.py')] }] : []),
       { name: 'hub',    port: 4646, health: 'http://127.0.0.1:4646/api/health', cmd: process.env.NODE_BIN || 'node', args: [path.join(root, 'hub', 'server.mjs')],
         env: { FACE_PLAY_LOCAL: '1' } },

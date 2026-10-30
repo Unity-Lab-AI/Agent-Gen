@@ -49,7 +49,7 @@ function bootHtml() {
   pre{font:11px ui-monospace,monospace;color:#8c8aa0;max-height:160px;overflow:auto;white-space:pre-wrap}</style>
   <div class="box"><h1>Agent Gen · waking her up</h1><div id="rows"></div><pre id="log"></pre></div>
   <script>
-  const names=['voice','speech','face','hub'];const rows=document.getElementById('rows');
+  const names=['voice','speech','image','face','hub'];const rows=document.getElementById('rows');
   for(const n of names){rows.insertAdjacentHTML('beforeend','<div class="row"><span>'+n+'</span><span id="s-'+n+'" class="wait">waiting</span></div>')}
   window.agentgen.onStatus((n,s)=>{const e=document.getElementById('s-'+n);if(!e)return;e.textContent=s;e.className=s==='ready'||s==='adopted'?'ok':(s.startsWith('exited')||s==='failed'?'bad':'wait')});
   window.agentgen.onLog(l=>{const p=document.getElementById('log');p.textContent=(l+'\\n'+p.textContent).slice(0,4000)});

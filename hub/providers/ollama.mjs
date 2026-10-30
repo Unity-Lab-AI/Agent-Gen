@@ -24,7 +24,8 @@ export async function* chatStream(messages, { signal, model } = {}) {
   const m = model || await pickModel();
   const body = {
     model: m, stream: true, messages, keep_alive: cfg.keepAlive,
-    options: { num_ctx: cfg.numCtx, temperature: cfg.temperature, top_p: cfg.topP, repeat_penalty: cfg.repeatPenalty },
+    options: { num_ctx: cfg.numCtx, temperature: cfg.temperature, top_p: cfg.topP, repeat_penalty: cfg.repeatPenalty,
+      num_predict: cfg.numPredict, stop: cfg.stop },
   };
   const r = await fetch(`${cfg.ollamaUrl}/api/chat`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal,

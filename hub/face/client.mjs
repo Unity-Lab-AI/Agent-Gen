@@ -27,6 +27,16 @@ export async function interrupt() {
   try { await fetch(`${cfg.faceUrl}/interrupt`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
 }
 
+/** Make an image file her live face. Returns the sidecar's answer or null. */
+export async function appearance(file) {
+  if (!isLive()) return null;
+  try {
+    const r = await fetch(`${cfg.faceUrl}/appearance`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: file }), signal: AbortSignal.timeout(60000) });
+    return r.ok ? await r.json() : { ok: false, error: (await r.json().catch(() => ({}))).error || `face ${r.status}` };
+  } catch (e) { return { ok: false, error: String(e.message || e) }; }
+}
+
 export async function emotion(e) {
   if (!isLive()) return;
   try { await fetch(`${cfg.faceUrl}/emotion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emotion: e }), signal: AbortSignal.timeout(2000) }); } catch {}

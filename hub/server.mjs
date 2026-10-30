@@ -8,9 +8,11 @@ import { WebSocketServer } from 'ws';
 import { cfg } from './config.mjs';
 import { chatStream, health as brainHealth } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
+import { TagFilter } from './voice/tags.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
 import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
+import * as image from './image/client.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -28,8 +30,8 @@ async function probe(url, ms = 2500) {
 }
 
 async function healthAll() {
-  const [voice, speech, brain, faceH] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health()]);
-  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH };
+  const [voice, speech, brain, faceH, img] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health(), image.health()]);
+  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH, image: img };
 }
 
 async function transcribe(pcm_b64, sampleRate) {
@@ -106,6 +108,7 @@ class Session {
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
     const messages = [{ role: 'system', content: readPersona() }, ...this.history];
     const splitter = new SentenceSplitter();
+    const tags = new TagFilter(tag => this.onTag(tag, epoch));
     let full = '';
     this.send({ type: 'status', stage: 'thinking', epoch });
     try {
@@ -113,10 +116,12 @@ class Session {
         if (epoch !== this.epoch) return;
         full += delta;
         this.send({ type: 'delta', epoch, text: delta });
-        for (const s of splitter.push(delta)) this.queue.enqueue(s, epoch);
+        for (const s of splitter.push(tags.push(delta))) this.queue.enqueue(s, epoch);
       }
+      for (const s of splitter.push(tags.flush())) this.queue.enqueue(s, epoch);
       for (const s of splitter.flush()) this.queue.enqueue(s, epoch);
       await this.queue.drain();
+      await this.looks;                       // a look she asked for finishes rendering before the turn closes
     } catch (e) {
       if (!ac.signal.aborted) { this.log('brain error', e.message); this.send({ type: 'error', where: 'brain', error: String(e.message || e), epoch }); }
     } finally {
@@ -127,6 +132,30 @@ class Session {
       this.busy = false;
       this.send({ type: 'done', epoch, text: full.trim() });
     }
+  }
+
+  /** [[img: ...]] / [[look: ...]] / [[do: ...]] from her stream: render it, show it, and make it her face. */
+  onTag(tag, epoch) {
+    const prompt = tag.text;
+    if (!prompt) return;
+    this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
+    this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
+    const job = (async () => {
+      try {
+        const res = await image.render(prompt, { sourceFile: tag.kind === 'do' ? this.currentLook : undefined });
+        if (epoch !== this.epoch) return;
+        this.currentLook = res.file;
+        this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
+        if (cfg.lookDrivesFace) {
+          const f = await face.appearance(res.file);
+          this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: tag.kind, prompt, face: f, epoch });
+        }
+      } catch (e) {
+        this.log('look failed', e.message);
+        this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
+      }
+    })();
+    this.looks = (this.looks || Promise.resolve()).then(() => job);
   }
 
   async onMessage(raw) {
@@ -167,8 +196,10 @@ const server = http.createServer(async (req, res) => {
   }
   let p = decodeURIComponent(url.pathname);
   if (p === '/') p = '/index.html';
-  const file = path.normalize(path.join(cfg.uiDir, p));
-  if (!file.startsWith(path.normalize(cfg.uiDir))) { res.writeHead(403); return res.end(); }
+  let base = cfg.uiDir;
+  if (p.startsWith('/looks/')) { base = image.looksDir; p = p.slice('/looks'.length); }   // her rendered looks
+  const file = path.normalize(path.join(base, p));
+  if (!file.startsWith(path.normalize(base))) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });

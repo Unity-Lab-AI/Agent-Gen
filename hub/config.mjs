@@ -14,6 +14,19 @@ export const cfg = {
   voiceUrl: process.env.VOICE_URL || 'http://127.0.0.1:5123',
   speechUrl: process.env.SPEECH_URL || 'http://127.0.0.1:5125',
   faceUrl: process.env.FACE_URL || 'http://127.0.0.1:5126',
+  imageUrl: process.env.IMAGE_URL || 'http://127.0.0.1:5124',
+  // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
+  lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, a 25 year old emo goth woman, long black hair with pink streaks, winged eyeliner, fair skin,',
+  lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
+  lookWidth: Number(process.env.LOOK_WIDTH || 512),
+  lookHeight: Number(process.env.LOOK_HEIGHT || 768),
+  lookSteps: Number(process.env.LOOK_STEPS || 28),
+  lookGuidance: Number(process.env.LOOK_GUIDANCE || 6.5),
+  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.7),
+  lookStrength: Number(process.env.LOOK_STRENGTH || 0.6),
+  // every rendered look also becomes her live face
+  lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.
   faceLeadMs: Number(process.env.FACE_LEAD_MS || 0),
   // In the desktop app the face sidecar plays her voice itself, frame-locked to her lips; the UI then stays silent.
@@ -27,9 +40,13 @@ export const cfg = {
   numCtx: Number(process.env.BRAIN_NUM_CTX || 32768),
   keepAlive: process.env.BRAIN_KEEP_ALIVE || '30m',
   // her Modelfile's sampling: temperature 1.05, top_p 0.95, repeat_penalty 1.08
-  temperature: Number(process.env.BRAIN_TEMPERATURE || 1.05),
+  temperature: Number(process.env.BRAIN_TEMPERATURE || 0.9),
   topP: Number(process.env.BRAIN_TOP_P || 0.95),
   repeatPenalty: Number(process.env.BRAIN_REPEAT_PENALTY || 1.08),
+  // an 8B model under a 47 KB persona will keep writing past her turn and invent the user's next line;
+  // cap the reply and stop on a fabricated turn (the old Local Unity server capped at ~140 tokens)
+  numPredict: Number(process.env.BRAIN_NUM_PREDICT || 220),
+  stop: (process.env.BRAIN_STOP || '\nUser:|\nuser:|\nGee:|\nYou:|\n[User]|\n### User').split('|'),
 
   personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'unity.txt'),
   defaultEmotion: process.env.DEFAULT_EMOTION || 'warm',

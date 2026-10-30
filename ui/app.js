@@ -65,6 +65,22 @@ function onMsg(m) {
       break;
     }
     case 'speak_error': diagLine(`voice error: ${m.error}`); break;
+    case 'look': {
+      if (m.stage === 'rendering') { setState('changing…'); addMsg('sys', `rendering: ${m.prompt.slice(0, 90)}`); }
+      else if (m.stage === 'live') { setState('idle'); diagLine(`look live on her face in ${m.face?.seconds}s`); }
+      else if (m.stage === 'failed') { setState('idle'); addMsg('sys', `look failed: ${m.error}`); }
+      else if (m.stage === 'image-only') { setState('idle'); diagLine(`look rendered; face swap: ${m.face?.error || 'face down'}`); }
+      break;
+    }
+    case 'image': {
+      const d = document.createElement('div'); d.className = 'msg her';
+      const img = document.createElement('img'); img.src = m.url; img.alt = m.prompt; img.title = m.prompt;
+      img.style.cssText = 'max-width:100%;border-radius:8px;display:block;cursor:zoom-in';
+      img.onclick = () => window.open(m.url, '_blank');
+      d.appendChild(img); log.appendChild(d); log.scrollTop = log.scrollHeight;
+      diagLine(`image seed ${m.seed} in ${m.seconds}s`);
+      break;
+    }
     case 'done': if (herLine) herLine.textContent = m.text; herLine = null; pending = ''; break;
     case 'interrupted': player.stop(); setState('idle'); herLine = null; pending = ''; diagLine(`interrupted (${m.reason})`); break;
     case 'error': addMsg('sys', `${m.where || 'hub'} error: ${m.error}`); setState('idle'); break;
@@ -108,8 +124,9 @@ async function health() {
     const h = await (await fetch('/api/health')).json();
     setLight('#l-voice', h.voice?.ok); setLight('#l-speech', h.speech?.ok); setLight('#l-brain', h.brain?.ok, h.brain?.model || '');
     setLight('#l-face', h.face?.ok, h.face?.ok ? `${h.face.fps} fps` : '');
+    setLight('#l-image', h.image?.ok, h.image?.ok ? (h.image.loaded ? 'ready' : 'cold') : '');
     setFaceLive(!!h.face?.ok, h.face?.stream);
-  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); setLight('#l-face', false); setFaceLive(false); }
+  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); setLight('#l-face', false); setLight('#l-image', false); setFaceLive(false); }
 }
 const feed = $('#feed');
 function setFaceLive(on, stream) {

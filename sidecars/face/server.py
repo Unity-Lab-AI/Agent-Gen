@@ -353,8 +353,9 @@ class LiveFace:
         letting Ditto's internal queues pile up tens of seconds of unseen frames."""
         next_t = time.time()
         max_lag = self.valid_clip_frames * 2 + 30     # what Ditto needs in flight, plus a little
+        self.swapping = False
         while self.alive:
-            while self.alive and (self.fed_samples // 640 - self.sink.latest_idx) > max_lag:
+            while self.alive and (self.swapping or (self.fed_samples // 640 - self.sink.latest_idx) > max_lag):
                 time.sleep(0.02)
                 next_t = time.time()
             new, look = self._take()
@@ -380,6 +381,44 @@ class LiveFace:
                 time.sleep(delay)
             else:
                 next_t = time.time()
+
+    # appearance --------------------------------------------------------------------------------------
+    def set_source(self, path):
+        """Make a new image (or video) her face, live. Ditto re-registers the avatar: the old worker threads are
+        drained and joined, the new ones start, and the frame sink carries its counters across so frame indices,
+        cues and the feed timeline stay continuous. Takes a second or two; the last frame holds meanwhile."""
+        if not os.path.exists(path):
+            raise FileNotFoundError(path)
+        t0 = time.time()
+        self.swapping = True
+        try:
+            old_sink = self.sink
+            with self.lock:
+                self.pending = np.zeros((0,), dtype=np.float32)   # speech queued for the old face is dropped
+            try:
+                self.sdk.close()
+            except Exception as e:                                  # a worker that died earlier surfaces here; carry on
+                print("face: close while swapping:", repr(e)[:200], flush=True)
+            import tempfile
+            tmp_out = os.path.join(tempfile.gettempdir(), "unity-face-unused.mp4")
+            setup_kwargs = dict(online_mode=True, emo=self.emo, sampling_timesteps=ARGS.steps, crop_scale=ARGS.crop_scale,
+                                overlap_v2=ARGS.overlap, fix_kp_cond=1, smo_k_d=3, N_d=FPS * 3600 * 8)
+            self.sdk.setup(path, tmp_out, **setup_kwargs)
+            self.sdk.setup_Nd(N_d=FPS * 3600 * 8, ctrl_info=self.ctrl)
+            new_sink = self.sdk.writer
+            with old_sink.cond:
+                new_sink.latest, new_sink.latest_idx, new_sink.frames_out = old_sink.latest, old_sink.latest_idx, old_sink.frames_out
+                new_sink.cues = []
+            old_sink.close()
+            self.sink = new_sink
+            self._instrument()
+            with self.lock:
+                self.fed_samples = self.sink.latest_idx * 640          # re-anchor the feed timeline to the picture
+                self.hist = np.zeros((self.HIST,), dtype=np.float32)
+            ARGS.portrait = path
+            return {"ok": True, "portrait": os.path.basename(path), "seconds": round(time.time() - t0, 2)}
+        finally:
+            self.swapping = False
 
     # live controls -----------------------------------------------------------------------------------
     def set_emotion(self, value):
@@ -464,6 +503,7 @@ def stop_audio():
 
 
 FACE: LiveFace | None = None
+SWAP_LOCK = threading.Lock()
 CLIENTS = 0
 BOUNDARY = b"--unityframe"
 
@@ -557,6 +597,14 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/interrupt":
                 FACE.interrupt()
                 return self._json({"ok": True})
+            if path == "/appearance":
+                src = req.get("path")
+                if req.get("image_b64") and not src:
+                    import tempfile
+                    src = os.path.join(tempfile.gettempdir(), "unity-look-%d.png" % int(time.time() * 1000))
+                    open(src, "wb").write(base64.b64decode(req["image_b64"]))
+                with SWAP_LOCK:
+                    return self._json(FACE.set_source(src))
             if path == "/emotion":
                 return self._json({"emo": FACE.set_emotion(req.get("emotion", 4))})
             if path == "/pose":
