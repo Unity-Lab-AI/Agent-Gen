@@ -18,31 +18,47 @@ export const cfg = {
   // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
   lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
-  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, an adult emo goth woman, long black hair with pink streaks, winged eyeliner, fair skin,',
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, pale grey-blue eyes,',   // identity only; a restyle drops it
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
   lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
+  picWidth: Number(process.env.PIC_WIDTH || 640),     // [[pic]]: anything that is not her look
+  picHeight: Number(process.env.PIC_HEIGHT || 576),
   lookHeight: Number(process.env.LOOK_HEIGHT || 704),
   lookMaxSide: Number(process.env.LOOK_MAX_SIDE || 768),
   lookSteps: Number(process.env.LOOK_STEPS || 30),
-  lookGuidance: Number(process.env.LOOK_GUIDANCE || 5.5),
-  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.65),
-  lookStrength: Number(process.env.LOOK_STRENGTH || 0.6),
+  lookGuidance: Number(process.env.LOOK_GUIDANCE || 7),
+  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.4),   // 0.65 pressed her makeup and a waxy face onto every look
+  // img2img from her current look: 0.6 kept the old outfit through a "black cocktail dress"; 0.8 gave black strappy lingerie on the old bikini's lines; 0.9 lets the prompt redraw the outfit while the face lock keeps her
+  lookStrength: Number(process.env.LOOK_STRENGTH || 0.9),
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
+  // plain on purpose: piling motion and camera words on Wan measured the same motion and melted her face and colours
+  // by the clip's end (A/B, same seed); the room is held still by the sidecar's stabilizer instead
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
+  // which video engine films what. Wan 2.2 5B moves her whole body (bounces, jumps, dances) and holds together;
+  // LTX 2B is fast but only makes micro movements and melts when pushed. The sidecar stabilizes every clip so
+  // Wan's camera drift does not wobble the room. LTX stays selectable (MOTION_ENGINE / REEL_ENGINE=ltx).
+  motionEngine: process.env.MOTION_ENGINE || 'wan',
+  reelEngine: process.env.REEL_ENGINE || 'wan',
+  // appended to every [[do]] motion; empty by default: Wan moves her fully on the action alone, and extra push words broke the clip
+  motionPush: process.env.MOTION_PUSH || '',
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
   // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
-  clipWidth: Number(process.env.CLIP_WIDTH || 448),
-  clipHeight: Number(process.env.CLIP_HEIGHT || 640),
+  // never small: Wan at 352x640 splattered and melted her; 480x832 held (the sidecar also enforces this floor)
+  clipWidth: Number(process.env.CLIP_WIDTH || 480),
+  clipHeight: Number(process.env.CLIP_HEIGHT || 832),
   // after a look's clip lands, whenever she is idle, more clips are chained from the last frame and appended to
   // her live reel, each a thing she decided to do, so the body is open-ended instead of one short loop.
   // reelClips 0 = keep going for as long as she is idle; reelMaxFrames bounds RAM (~8 MB per frame).
   reelClips: Number(process.env.REEL_CLIPS ?? 0),
+  // with nothing to do this long (fresh start, after a reset), she starts her idle routine on her own
+  idleStartMs: Number(process.env.IDLE_START_MS || 20000),
+  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a young woman with long black hair with pink streaks, pale grey-blue eyes, in her room',
   reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
   reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
-  reelMotions: (process.env.REEL_MOTIONS || 'she shifts her weight and breathes, small natural movement|she brushes her hair back and glances to the side, then back at the camera|she sways a little, adjusts her posture, slow blink').split('|'),
+  reelMotions: (process.env.REEL_MOTIONS || 'she bounces on her toes and laughs, hair and chest bouncing|she dances, swinging her hips and raising her arms over her head|she jumps up and down excitedly, then grins at the camera|she spins around once and strikes a pose|she stretches both arms high overhead and arches her back').split('|'),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.

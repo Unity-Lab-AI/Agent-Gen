@@ -6,6 +6,11 @@ contextBridge.exposeInMainWorld('agentgen', {
   status: () => ipcRenderer.invoke('agentgen:status'),
   quit: () => ipcRenderer.invoke('agentgen:quit'),
   uninstall: () => ipcRenderer.invoke('agentgen:uninstall'),
+  storage: {
+    list: () => ipcRenderer.invoke('agentgen:storage:list'),
+    open: id => ipcRenderer.invoke('agentgen:storage:open', id),
+    clear: id => ipcRenderer.invoke('agentgen:storage:clear', id),
+  },
   setup: {
     plan: () => ipcRenderer.invoke('agentgen:setup:plan'),
     start: () => ipcRenderer.invoke('agentgen:setup:start'),

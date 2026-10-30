@@ -1,9 +1,10 @@
 // Action tags in her stream. Her persona writes [[img: full prompt]] on its own line when she means to show
 // something; the appearance engine renders it. Tags are lifted out of the text before anything is spoken,
-// so she never reads a prompt aloud. Also understands [[look: ...]] and [[do: ...]].
+// so she never reads a prompt aloud. Also understands [[look: ...]] and [[do: ...]], and [[pic: ...]] for a picture
+// of anything that is not her own look (shown in the chat, never her face).
 const OPEN = '[[';
 const CLOSE = ']]';
-const KINDS = /^\s*(img|image|selfie|look|do|action)\s*:\s*/i;
+const KINDS = /^\s*(img|image|selfie|look|do|action|pic|picture|photo|draw)\s*:\s*/i;
 // a stage direction: *...*, [...] (single brackets) or (...), 3-200 chars, no newline
 const STAGE = /\*([^*\n]{3,200})\*|(?<!\[)\[(?!\[)([^\[\]\n]{3,200})\]|\(([^()\n]{3,200})\)/;
 /** Text with stage directions removed, for her voice: she does them, she does not read them aloud. */
