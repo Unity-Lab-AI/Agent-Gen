@@ -33,6 +33,7 @@ M.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("HF_HOME", str(M / "hf"))
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "0")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")   # the file-count bar reads like noise; bytes below instead
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")   # Windows without Developer Mode: the cache copies instead of linking, fine
 
 from huggingface_hub import hf_hub_download, snapshot_download  # noqa: E402  (after HF_HOME)
 
@@ -114,6 +115,7 @@ def sd():
         f = hf_hub_download("SG161222/Realistic_Vision_V5.1_noVAE", "Realistic_Vision_V5.1.safetensors", local_dir=str(M / "sd"))
     target.parent.mkdir(parents=True, exist_ok=True)
     os.replace(f, target)
+    shutil.rmtree(M / "sd" / ".cache", ignore_errors=True)    # the download's scratch copy, 2 GB we do not need twice
 
 
 def ipadapter():
