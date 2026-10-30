@@ -33,7 +33,6 @@ _(none)_
 
 ## Pending
 
-- [ ] **M2 — Her voice and ears.** "the Unity voice v2" + "tts and stt" — unity-voice-v2 sidecar, faster-whisper sidecar, browser mic with VAD and barge-in, so you can talk to her and she talks back in real time.
 - [ ] **M3 — Her face.** "have a selfie and talk back to you in live action like a real person on a video call" + "you can see her lips move to the words she says" + operator decision "#D photo realistic photograph like vido" — photorealistic neural talking head rendered from the face-locked reference portrait, driven in real time by the voice sidecar's audio and phoneme timeline, streamed to the UI as live video. Track A single-photo neural renderer first, Track B mouth inpainting on generated idle video, Track C 3D Gaussian head.
 - [ ] **M4 — Her eyes.** "camera" — camera capture, screen capture, vision model path, ambient awareness so "you can see and she repsondes".
 - [ ] **M5 — Her hands.** "websearch and playwrite and coding shit all of it" — web search, Playwright browser tool, code / files / shell tools with containment, system tools, image generation tool, so "she ... does things ytou telleher to do".
@@ -52,6 +51,7 @@ _(none)_
 ## Closed milestones
 
 - [x] **M1 — Rip and stage.** "copying and ripping them into this project" — vendor the selected source files from `docs/FEATURE-SOURCES.md` into `vendor/` with provenance, secrets scrubbed, `D:\data` excluded. Closed 2026-10-30; see `docs/FINALIZED.md §Milestone closed: M1`.
+- [x] **M2 — Her voice and ears.** "the Unity voice v2" + "tts and stt" — unity-voice-v2 sidecar, faster-whisper sidecar, browser mic with VAD and barge-in, so you can talk to her and she talks back in real time. Closed 2026-10-30 (mic path awaits a human with a microphone); see `docs/FINALIZED.md §Milestone closed: M2`.
 
 ---
 

@@ -1,0 +1,7 @@
+# unity-voice-v2 runtime. Pin misaki exactly: infer.py checks the version and refuses to load otherwise.
+# torch: any >=2.1 build with the CUDA that matches your driver (the lab's known-good is 2.7.1+cu118 on Python 3.10).
+torch>=2.1
+numpy
+soundfile==0.13.1
+misaki[en]==0.9.4
+numba

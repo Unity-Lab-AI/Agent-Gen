@@ -43,3 +43,6 @@ build/
 
 # Model weights live outside git (copied locally by tools/vendor_rip.py)
 /models/
+/.run/
+__pycache__/
+*.pyc

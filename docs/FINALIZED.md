@@ -63,3 +63,39 @@ Test plan for the reviewer:
 2. `grep -rn "pk_YBwckB" vendor` returns nothing.
 3. `find vendor -iname ".env*"` returns nothing; `models/unity-voice-v2/` holds `acoustic.pt`, `vocoder.pt`, `voice-meta.json` and is not tracked by git.
 4. `vendor/PROVENANCE.md` rows for `vendor/backrooms/models/unity-voice-v2/serve.py` and `vendor/cora/ai/dispatcher.py` show a repo HEAD and last-commit value.
+
+## Milestone closed: M2 — Her voice and ears — 2026-10-30
+
+Operator: "wtf why are you NOT working" after the M1 check-in; standing order since then is continuous work through the roadmap.
+
+Minor tasks (all `[x]`, verbatim from TODO):
+
+- Stand up `sidecars/voice` from unity-voice-v2 with its own venv (torch + misaki 0.9.4), health check, and a phoneme/duration timeline returned alongside the WAV.
+- Stand up `sidecars/speech` (faster-whisper) with wake word, echo filter and the CUDA DLL path fix.
+- Browser mic path: VAD, pre-roll, barge-in, endpointing from `listen.js` / `turn.js`, streaming PCM to the hub.
+- Hub voice pipeline: sentence queue, interrupt on barge-in, emotion + speech-act selection, playback events to the UI.
+
+What shipped:
+
+- `sidecars/voice/server.py` + `visemes.py`: wraps the hash-bound unity-voice-v2 code without modifying it, re-runs the model's own inference tail to keep per-phoneme durations, returns `phones` and a 15-shape `visemes` track with the WAV (`/say_timed`), keeps the old `/say`, maps unsupported deliveries to the nearest recorded pair (`strict` restores 422), sanitises text with the ported `voice_text()`.
+- `sidecars/speech/server.py` + `wake_word.py`: faster-whisper on CUDA with the CTranslate2 PATH fix and HF symlink fix, accepts raw PCM (header or JSON) or container audio, returns segments, `/wake` fuzzy wake-phrase scoring.
+- `hub/`: Node session server (`ws` only dependency), Ollama streaming provider with model discovery (picked `unity-brain:latest`), streaming sentence splitter that never speaks code fences, per-sentence delivery picker (model `<emotion>` tags or lexicon), serial speech queue with epochs, interrupt, echo filter on text, `/api/health` aggregating all services, static UI with traversal guard.
+- `ui/`: vendored VAD listener (20 ms frames, pre-roll, barge-in, duration gate) resampled to 16 kHz, timed WAV player that surfaces viseme segments as events, placeholder mouth + blink driven by them, transcript, mute/shush/reset, typed fallback.
+- `scripts/dev.bat` / `dev.sh` bring all three up.
+
+Measured on the lab box (RTX 4070 Ti SUPER, unity-brain 6.3 GB in VRAM):
+
+| Check | Result |
+|---|---|
+| `/say_timed` "Hey you! I can hear you now; can you hear me? [laughter] Good." amused 0.5 | 5.12 s audio in 430 ms, 51 phones, 44 visemes, track ends at 5.12 s |
+| Her WAV → `/transcribe` (container and raw-PCM paths) | "Hey you, I can hear you now, can you hear me? Good." in 1.55 s / 0.19 s |
+| Typed turn over WS | first `speak` at 351 ms, two sentences, done at 486 ms |
+| Interrupt mid-reply (counting to twenty) | 2 sentences spoken before, 0 after, 0 deltas after; next turn answered |
+| Static assets | `/`, `/app.js`, `/listen.js`, `/player.js` 200; `..%2f` traversal 403 |
+
+Test plan for the reviewer (needs a microphone, which this session did not have):
+1. `scripts\dev.bat`; all four header lights green at http://127.0.0.1:4646/.
+2. Click Start mic, say a sentence, stop: your words appear on the right, she answers out loud and the mouth moves with the viseme label under the face.
+3. Talk over her mid-sentence: she stops within about 100 ms and the diagnostics line shows `interrupted (barge-in)`.
+4. Say nothing but let her finish a long answer: no transcript of her own voice appears as yours (if one does, the diagnostics show `[echo]` and it is dropped).
+5. Type a line and press Enter: same path without the mic.

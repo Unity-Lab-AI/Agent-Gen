@@ -33,10 +33,7 @@ All M1 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone
 
 ### M2 — Her voice and ears ("the Unity voice v2", "tts and stt", "talk back to you in real time")
 
-- [ ] Stand up `sidecars/voice` from unity-voice-v2 with its own venv (torch + misaki 0.9.4), health check, and a phoneme/duration timeline returned alongside the WAV.
-- [ ] Stand up `sidecars/speech` (faster-whisper) with wake word, echo filter and the CUDA DLL path fix.
-- [ ] Browser mic path: VAD, pre-roll, barge-in, endpointing from `listen.js` / `turn.js`, streaming PCM to the hub.
-- [ ] Hub voice pipeline: sentence queue, interrupt on barge-in, emotion + speech-act selection, playback events to the UI.
+All M2 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone closed: M2). Code: `sidecars/voice`, `sidecars/speech`, `hub/`, `ui/`, `scripts/dev.*`. Open follow-up carried into M8: the browser mic path has only been exercised by code review and the hub's typed path; a human with a microphone confirms VAD, barge-in and echo filtering.
 
 ### M3 — Her face ("have a selfie", "like a real person on a video call", "you can see her lips move to the words she says", operator decision: "#D photo realistic photograph like vido")
 
@@ -61,7 +58,7 @@ All M1 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone
 - [ ] Web search tool (DDG + Bing scrape + Playwright-rendered fallback) and web fetch tool.
 - [ ] Browser tool over persistent CDP Chromium (open, click, fill, screenshot, run JS, read text).
 - [ ] Code / files / shell tools with containment (blocked paths, writable roots, timeouts, danger levels needing confirmation).
-- [ ] System tools (apps, windows, processes, media, notifications) and image generation tool with selfie mode.
+- [ ] System tools (apps, windows, processes, media, notifications) and image generation tool with selfie mode. Per the operator ("she should be a slut sending dirt images of her self and like doing strip teases"; corrected: "dirty* not dirt.. i dont want to see dirty girls i want to see girls doing the dirty"), the selfie tool runs with the safety checker off as the vendored SD sidecars already do, with the face lock keeping her identity; no app-side filter ("the model handels all the safties already we dont need to double up").
 
 ### M6 — Any AI connected ("allows any ai connected to use it fully and completely all features we have ever built")
 

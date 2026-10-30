@@ -1,0 +1,177 @@
+#!/usr/bin/env node
+// Agent Gen hub, M2 scope: serves the face UI, holds one WebSocket session per tab, and runs the voice loop
+// (hear -> think -> speak with timing). Tool registry, MCP and the HTTP gateway arrive in M5/M6 on top of this.
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { WebSocketServer } from 'ws';
+import { cfg } from './config.mjs';
+import { chatStream, health as brainHealth } from './providers/ollama.mjs';
+import { SentenceSplitter } from './voice/sentences.mjs';
+import { SpeechQueue } from './voice/pipeline.mjs';
+import { EchoFilter } from './speech/echo-filter.mjs';
+
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+
+function readPersona() {
+  try { return fs.readFileSync(cfg.personaFile, 'utf8').trim(); } catch { return 'You are Unity. Speak briefly.'; }
+}
+
+async function probe(url, ms = 2500) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(ms) });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && j.ok !== false, ...j };
+  } catch (e) { return { ok: false, error: String(e.message || e) }; }
+}
+
+async function healthAll() {
+  const [voice, speech, brain] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth()]);
+  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain };
+}
+
+async function transcribe(pcm_b64, sampleRate) {
+  const r = await fetch(`${cfg.speechUrl}/transcribe`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pcm_b64, sample_rate: sampleRate }), signal: AbortSignal.timeout(60000),
+  });
+  const j = await r.json().catch(() => ({ error: `speech ${r.status}` }));
+  if (!r.ok) throw new Error(j.error || `speech ${r.status}`);
+  return j;
+}
+
+async function wakeCheck(text) {
+  if (!cfg.wakeWord.length) return { matched: true, remainder: text };
+  const r = await fetch(`${cfg.speechUrl}/wake`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, phrases: cfg.wakeWord }) });
+  return r.json();
+}
+
+class Session {
+  constructor(ws, id) {
+    this.ws = ws; this.id = id;
+    this.history = [];
+    this.epoch = 0;
+    this.abort = null;
+    this.echo = new EchoFilter();
+    this.queue = new SpeechQueue(m => this.send(m));
+    this.queue.onSpoken = t => this.echo.remember(t);
+    this.busy = false;
+  }
+  send(obj) { if (this.ws.readyState === 1) this.ws.send(JSON.stringify(obj)); }
+  log(...a) { console.log(new Date().toISOString().slice(11, 19), `[${this.id}]`, ...a); }
+
+  interrupt(reason = 'barge-in') {
+    if (this.abort) { this.abort.abort(); this.abort = null; }
+    this.queue.cancel();
+    this.epoch++;
+    this.busy = false;
+    this.send({ type: 'interrupted', epoch: this.epoch, reason });
+  }
+
+  async onUtterance({ pcm_b64, sampleRate = 16000, durationMs }) {
+    if (!pcm_b64) return;
+    this.send({ type: 'status', stage: 'transcribing' });
+    let heard;
+    try { heard = await transcribe(pcm_b64, sampleRate); }
+    catch (e) { return this.send({ type: 'error', where: 'speech', error: String(e.message || e) }); }
+    const text = (heard.text || '').trim();
+    if (!text) return this.send({ type: 'heard', text: '', dropped: 'empty', seconds: heard.seconds });
+    const echo = this.echo.check(text);
+    if (echo.echo) { this.log('echo dropped:', text, echo); return this.send({ type: 'heard', text, dropped: 'echo', echo }); }
+    const wake = await wakeCheck(text);
+    if (!wake.matched) return this.send({ type: 'heard', text, dropped: 'no-wake-word', wake });
+    const utter = (wake.remainder || text).trim() || text;
+    this.send({ type: 'heard', text: utter, seconds: heard.seconds, durationMs });
+    await this.respond(utter);
+  }
+
+  async onText({ text }) {
+    text = String(text || '').trim();
+    if (!text) return;
+    this.send({ type: 'heard', text, typed: true });
+    await this.respond(text);
+  }
+
+  async respond(userText) {
+    if (this.busy) this.interrupt('new-input');
+    const epoch = ++this.epoch;
+    this.queue.epoch = epoch;
+    const ac = new AbortController();
+    this.abort = ac;
+    this.busy = true;
+    this.history.push({ role: 'user', content: userText });
+    while (this.history.length > cfg.historyTurns * 2) this.history.shift();
+    const messages = [{ role: 'system', content: readPersona() }, ...this.history];
+    const splitter = new SentenceSplitter();
+    let full = '';
+    this.send({ type: 'status', stage: 'thinking', epoch });
+    try {
+      for await (const delta of chatStream(messages, { signal: ac.signal })) {
+        if (epoch !== this.epoch) return;
+        full += delta;
+        this.send({ type: 'delta', epoch, text: delta });
+        for (const s of splitter.push(delta)) this.queue.enqueue(s, epoch);
+      }
+      for (const s of splitter.flush()) this.queue.enqueue(s, epoch);
+      await this.queue.drain();
+    } catch (e) {
+      if (!ac.signal.aborted) { this.log('brain error', e.message); this.send({ type: 'error', where: 'brain', error: String(e.message || e), epoch }); }
+    } finally {
+      if (this.abort === ac) this.abort = null;
+    }
+    if (epoch === this.epoch) {
+      if (full.trim()) this.history.push({ role: 'assistant', content: full.trim() });
+      this.busy = false;
+      this.send({ type: 'done', epoch, text: full.trim() });
+    }
+  }
+
+  async onMessage(raw) {
+    let m;
+    try { m = JSON.parse(raw); } catch { return; }
+    switch (m.type) {
+      case 'utterance': return this.onUtterance(m);
+      case 'text': return this.onText(m);
+      case 'interrupt': return this.interrupt(m.reason || 'barge-in');
+      case 'reset': this.interrupt('reset'); this.history = []; return this.send({ type: 'reset' });
+      case 'ping': return this.send({ type: 'pong', t: m.t });
+      default: return this.send({ type: 'error', error: `unknown message type ${m.type}` });
+    }
+  }
+}
+
+// ---- http ------------------------------------------------------------------------------------------------
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname === '/api/health') {
+    const h = await healthAll();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(h));
+  }
+  let p = decodeURIComponent(url.pathname);
+  if (p === '/') p = '/index.html';
+  const file = path.normalize(path.join(cfg.uiDir, p));
+  if (!file.startsWith(path.normalize(cfg.uiDir))) { res.writeHead(403); return res.end(); }
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); return res.end('not found'); }
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    res.end(data);
+  });
+});
+
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 32 * 1024 * 1024 });
+let nextId = 1;
+wss.on('connection', ws => {
+  const s = new Session(ws, nextId++);
+  s.log('connected');
+  s.send({ type: 'hello', session: s.id, wakeWord: cfg.wakeWord });
+  ws.on('message', raw => s.onMessage(raw.toString()));
+  ws.on('close', () => { s.interrupt('closed'); s.log('closed'); });
+});
+
+server.listen(cfg.port, cfg.host, () => {
+  console.log(`agent-gen hub on http://${cfg.host}:${cfg.port}  ui=${cfg.uiDir}`);
+  console.log(`voice=${cfg.voiceUrl} speech=${cfg.speechUrl} ollama=${cfg.ollamaUrl} models=${cfg.brainModels.join(',')}`);
+});
