@@ -354,8 +354,9 @@ class LiveFace:
         next_t = time.time()
         max_lag = self.valid_clip_frames * 2 + 30     # what Ditto needs in flight, plus a little
         self.swapping = False
+        self.paused = False      # held while the image/video engines own the GPU: her last frame stays up
         while self.alive:
-            while self.alive and (self.swapping or (self.fed_samples // 640 - self.sink.latest_idx) > max_lag):
+            while self.alive and (self.swapping or self.paused or (self.fed_samples // 640 - self.sink.latest_idx) > max_lag):
                 time.sleep(0.02)
                 next_t = time.time()
             new, look = self._take()
@@ -419,6 +420,7 @@ class LiveFace:
             return {"ok": True, "portrait": os.path.basename(path), "seconds": round(time.time() - t0, 2)}
         finally:
             self.swapping = False
+            self.paused = False      # a new look always resumes her
 
     # live controls -----------------------------------------------------------------------------------
     def set_emotion(self, value):
@@ -439,6 +441,7 @@ class LiveFace:
                 "fps": round(self.sink.fps_out, 1), "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
                 "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps, "overlap": ARGS.overlap,
                 "fp16": self.fp16, "stage_ms": self.stage_ms, "lag_frames": int(self.fed_samples // 640 - self.sink.latest_idx),
+                "paused": getattr(self, "paused", False),
                 "load_s": self.load_s, "last_error": getattr(self, "last_error", None),
                 "worker_error": repr(self.sdk.worker_exception)[:300] if self.sdk.worker_exception else None,
                 "stopped": self.sdk.stop_event.is_set(), "stream": f"http://127.0.0.1:{ARGS.port}/stream.mjpg"}
@@ -597,6 +600,12 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/interrupt":
                 FACE.interrupt()
                 return self._json({"ok": True})
+            if path == "/pause":
+                FACE.paused = True
+                return self._json({"ok": True, "paused": True})
+            if path == "/resume":
+                FACE.paused = False
+                return self._json({"ok": True, "paused": False})
             if path == "/appearance":
                 src = req.get("path")
                 if req.get("image_b64") and not src:

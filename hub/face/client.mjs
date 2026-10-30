@@ -27,6 +27,16 @@ export async function interrupt() {
   try { await fetch(`${cfg.faceUrl}/interrupt`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
 }
 
+/** Hold her last frame while another engine owns the GPU; /appearance or resume() lets her move again. */
+export async function pause() {
+  if (!isLive()) return;
+  try { await fetch(`${cfg.faceUrl}/pause`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
+}
+export async function resume() {
+  if (!isLive()) return;
+  try { await fetch(`${cfg.faceUrl}/resume`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
+}
+
 /** Make an image file her live face. Returns the sidecar's answer or null. */
 export async function appearance(file) {
   if (!isLive()) return null;

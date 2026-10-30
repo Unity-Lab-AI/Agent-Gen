@@ -31,9 +31,11 @@ export const cfg = {
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
-  clipFrames: Number(process.env.CLIP_FRAMES || 97),
-  clipWidth: Number(process.env.CLIP_WIDTH || 768),
-  clipHeight: Number(process.env.CLIP_HEIGHT || 512),
+  // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
+  // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
+  clipFrames: Number(process.env.CLIP_FRAMES || 73),
+  clipWidth: Number(process.env.CLIP_WIDTH || 448),
+  clipHeight: Number(process.env.CLIP_HEIGHT || 640),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.

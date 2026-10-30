@@ -156,6 +156,7 @@ class Session {
         const vh = await video.health();
         if (vh.ok && vh.model_present) {
           this.send({ type: 'look', stage: 'animating', kind: tag.kind, prompt, epoch });
+          await face.pause();
           await video.makeRoom();
           const c = await video.clip(res.file, prompt);
           if (this.closed) return;
@@ -166,6 +167,8 @@ class Session {
       } catch (e) {
         this.log('look failed', e.message);
         this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
+      } finally {
+        await face.resume();
       }
     })();
     this.looks = (this.looks || Promise.resolve()).then(() => job);
