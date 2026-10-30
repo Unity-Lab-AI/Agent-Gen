@@ -32,6 +32,18 @@ export async function pause() {
   if (!isLive()) return;
   try { await fetch(`${cfg.faceUrl}/pause`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
 }
+/** After a new look goes live, let her render it before anything pauses her again: otherwise the frame held
+ *  through the video render is the OLD look (the sink carries its last picture across a swap). */
+export async function settle(frames = 12, timeoutMs = 8000) {
+  if (!isLive()) return;
+  const start = (await health()).frames || 0;
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    await new Promise(r => setTimeout(r, 250));
+    const h = await health();
+    if (!h.ok || (h.frames || 0) - start >= frames) return;
+  }
+}
 export async function resume() {
   if (!isLive()) return;
   try { await fetch(`${cfg.faceUrl}/resume`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}

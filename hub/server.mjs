@@ -172,6 +172,7 @@ class Session {
         if (cfg.lookDrivesFace) {
           const f = await face.appearance(res.file);
           this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: tag.kind, prompt, face: f, epoch });
+          if (f?.ok) await face.settle();          // the new look on screen before the video render holds the frame
         }
         // motion: when the video engine is up, every look also becomes a clip of her doing it
         const vh = await video.health();

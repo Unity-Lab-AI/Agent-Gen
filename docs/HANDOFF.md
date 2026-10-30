@@ -27,3 +27,12 @@ Branch `feature/m8-ship`, pushed to Forgejo (origin) and GitHub (Unity-Lab-AI/Ag
 ## Testing rule
 
 The operator tests visibly on their own desktop, with speakers, through the installed exe. A cloud session can edit, commit, push and run `npm run dist` if the environment allows it. The GPU, the desktop and the install on D: are not reachable from the cloud, so the operator, or a local session, runs the setup and talks to her.
+
+## 2026-10-30 ~09:15 results (0.5.1, installed silently over D:\Agent Gen)
+
+- Build + silent update: no "cannot be closed", data kept, she booted in 26 s. Item 1 holds for the silent path (setup MessageBox now has `/SD IDYES`, after the text).
+- "Uninstall everything" shows in the main window footer.
+- Black cocktail dress: brain wrote the right `[[img]]`, render came back **black but strappy lingerie** on the old bikini's lines → img2img strength 0.8 → **0.9** (`hub/config.mjs`).
+- Face at 0 fps showing the **old** look while the video rendered: the face swap carries the old sink's last picture and the hub paused the face before it drew the new look. Fix: `face.settle()` (`hub/face/client.mjs`) waits for ~12 new frames after a look goes live, before the video render pauses it (`hub/server.mjs`). 0 fps during a render is by design (the face holds a frame while Wan owns the GPU).
+- "look failed: fetch failed" after ~4–5 min of "rendering her moving": Node fetch gives up waiting for response headers at 300 s; a Wan clip on a fresh look runs longer. `hub/video/client.mjs` posts with node:http and a 15 min cap.
+- 0.5.2 built and reinstalled with these; dress + slap rerun → `.run/test052/`.
