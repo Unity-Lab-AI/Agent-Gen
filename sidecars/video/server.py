@@ -123,10 +123,41 @@ def round32(n, lo=256, hi=1024):
     return n - (n % 32)
 
 
+def write_mp4(frames, path, fps):
+    """mp4 via OpenCV, in-process: no ffmpeg child process (a console flash on Windows every time)."""
+    import cv2
+    import numpy as np
+    first = np.asarray(frames[0])
+    h, w = first.shape[:2]
+    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+    try:
+        for fr in frames:
+            a = np.asarray(fr)
+            if a.dtype != np.uint8:
+                a = (np.clip(a, 0, 1) * 255).astype(np.uint8)
+            vw.write(cv2.cvtColor(a, cv2.COLOR_RGB2BGR))
+    finally:
+        vw.release()
+
+
+def release_gpu(pipe):
+    """After a run the offload hooks leave the last modules parked on the card; send everything back and
+    return the cached blocks, so the live face and the brain get the room back immediately."""
+    try:
+        pipe.maybe_free_model_hooks()
+    except Exception:
+        pass
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+
 def i2v(req):
     import torch
     from PIL import Image
-    from diffusers.utils import export_to_video
     pipe = load()
     if req.get("from_clip") and not req.get("image_b64"):
         # continue a clip: its last frame is the new start, so her motion chains instead of restarting
@@ -166,11 +197,14 @@ def i2v(req):
     if device() == "cuda":
         torch.cuda.empty_cache()
     _state["cancel"] = False
-    out = pipe(image=img, prompt=prompt, negative_prompt=str(req.get("negative") or NEG), width=w, height=h,
-               num_frames=frames, num_inference_steps=steps, guidance_scale=guidance, generator=gen,
-               callback_on_step_end=_step_cb).frames[0]
+    try:
+        out = pipe(image=img, prompt=prompt, negative_prompt=str(req.get("negative") or NEG), width=w, height=h,
+                   num_frames=frames, num_inference_steps=steps, guidance_scale=guidance, generator=gen,
+                   callback_on_step_end=_step_cb).frames[0]
+    finally:
+        release_gpu(pipe)
     path = OUT / ("clip-%d-%s.mp4" % (int(time.time() * 1000), seed))
-    export_to_video(out, str(path), fps=fps)
+    write_mp4(out, path, fps)
     return {"ok": True, "path": str(path), "seconds": round(time.time() - t0, 1), "frames": frames, "fps": fps,
             "seed": seed, "width": w, "height": h, "prompt": prompt}
 
