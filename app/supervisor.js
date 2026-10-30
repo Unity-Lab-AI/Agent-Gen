@@ -61,7 +61,7 @@ class Supervisor {
       { name: 'hub', port: 4646, health: 'http://127.0.0.1:4646/api/health',
         // the packaged app has no node on PATH: Electron's own binary runs the hub as node
         cmd: nodeBin || process.env.NODE_BIN || 'node', args: [path.join(root, 'hub', 'server.mjs')],
-        env: { FACE_PLAY_LOCAL: '1', OLLAMA_URL: `http://127.0.0.1:${BRAIN_PORT}`, ...(nodeBin ? { ELECTRON_RUN_AS_NODE: '1' } : {}) } },
+        env: { FACE_PLAY_LOCAL: '1', AGENTGEN_RUN: modelEnv.AGENTGEN_RUN, OLLAMA_URL: `http://127.0.0.1:${BRAIN_PORT}`, ...(nodeBin ? { ELECTRON_RUN_AS_NODE: '1' } : {}) } },
     ];
   }
 

@@ -80,3 +80,8 @@ Holder: an orphaned `llama-server.exe` (Ollama model runner) whose private brain
 - `app/supervisor.js`: the brain server starts in `data` (`cwd: P.DATA`), so its runners never pin `resources`.
 
 Motion (0.5.7): the hub never passed `engine` to the video sidecar, so every clip, the idle reel included, ran on Wan. Now `motionEngine`/`reelEngine` are passed and both default to Wan. Idle plans and clip prompts ask for big full-body movement. `sidecars/video/server.py` `stabilize()` pins the room to the first frame (camera drift on a Wan clip went from ~11 px to ~4 px). Not yet measured on a fresh clip.
+
+## 2026-10-30 ~10:48 — hue splatter, looks folder (0.5.10)
+
+- Hue splatter / melting by the clip's end came from the 0.5.7 push prompt ("big full-body movement…", locked-camera words, camera negatives). A/B on Wan, same look and seed: the plain prompt measured the same motion (12.55 vs 12.3) with clean colour; the push prompt went from saturation 54 to 85 and melted her face. Both are back to plain (`clipPrefix`, `motionPush` empty, NEG as before). Wan for all motion, the idle plans asking for real actions, and `stabilize()` stay.
+- Looks landed in `resources\.run\looks` (an update wipes them): the hub never got `AGENTGEN_RUN`. `app/supervisor.js` passes it to the hub now.

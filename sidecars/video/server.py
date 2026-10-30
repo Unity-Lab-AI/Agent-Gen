@@ -60,7 +60,7 @@ ENGINES = {
     # measured on the 4070 Ti SUPER: ~0.6 s a step warm at 352x640, so 49 frames x 20 steps is about a minute
     "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 49, "fps": 24, "steps": 20, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
 }
-NEG = ("camera movement, camera pan, zoom, shaky camera, moving background, worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
+NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text, static, still image")
 
 

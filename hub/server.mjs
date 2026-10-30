@@ -207,7 +207,7 @@ class Session {
       await face.pause();
       await video.makeRoom();
       // LTX 2B is timid with bodies; a pushier description measured +40% motion. The big-motion engine is a model swap, not a prompt.
-      const p = `${prompt}, ${cfg.motionPush}`;
+      const p = cfg.motionPush ? `${prompt}, ${cfg.motionPush}` : prompt;
       const c = this.currentClip
         ? await video.clip(null, p, { fromClip: this.currentClip, engine: cfg.motionEngine })
         : await video.clip(this.currentLook || cfg.lookBase, p, { engine: cfg.motionEngine });
@@ -239,7 +239,7 @@ class Session {
       try {
         await face.pause();
         await video.makeRoom();
-        const c = await video.clip(null, `${prompt}, ${motion}, ${cfg.motionPush}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
+        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
         if (this.closed || this.lookSeq !== lookId) return;
         const f = await face.appearance(c.path, { extend: true });
         if (!f?.ok) {

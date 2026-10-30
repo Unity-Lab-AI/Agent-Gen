@@ -31,16 +31,16 @@ export const cfg = {
   lookStrength: Number(process.env.LOOK_STRENGTH || 0.9),
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
-  // locked camera: Wan pans and zooms on its own (measured up to 100 px background swing), and the face plays the
-  // clip back and forth, so a moving camera reads as the whole room wobbling
-  clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman, static camera on a tripod, the background and room stay perfectly still,',
+  // plain on purpose: piling motion and camera words on Wan measured the same motion and melted her face and colours
+  // by the clip's end (A/B, same seed); the room is held still by the sidecar's stabilizer instead
+  clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
   // which video engine films what. Wan 2.2 5B moves her whole body (bounces, jumps, dances) and holds together;
   // LTX 2B is fast but only makes micro movements and melts when pushed. The sidecar stabilizes every clip so
   // Wan's camera drift does not wobble the room. LTX stays selectable (MOTION_ENGINE / REEL_ENGINE=ltx).
   motionEngine: process.env.MOTION_ENGINE || 'wan',
   reelEngine: process.env.REEL_ENGINE || 'wan',
-  // appended to every motion and reel clip: the video models default to near-still bodies unless told otherwise
-  motionPush: process.env.MOTION_PUSH || 'big full-body movement, her arms, hips, legs, chest and hair all move with real weight and bounce, she changes position',
+  // appended to every [[do]] motion; empty by default: Wan moves her fully on the action alone, and extra push words broke the clip
+  motionPush: process.env.MOTION_PUSH || '',
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
   // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
