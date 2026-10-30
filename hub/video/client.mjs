@@ -25,10 +25,10 @@ export async function cancel() {
 }
 
 /** Render a clip from `lookFile` acting out `prompt`. Returns the sidecar's answer ({path, seconds, ...}). */
-export async function clip(lookFile, prompt, { frames, seed, fromClip } = {}) {
+export async function clip(lookFile, prompt, { frames, seed, fromClip, engine } = {}) {
   const image_b64 = fromClip ? undefined : fs.readFileSync(lookFile).toString('base64');
   const r = await fetch(`${cfg.videoUrl}/i2v`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_b64, from_clip: fromClip, prompt: `${cfg.clipPrefix} ${prompt}`.trim(), frames: frames || cfg.clipFrames, seed, width: cfg.clipWidth, height: cfg.clipHeight }),
+    body: JSON.stringify({ image_b64, from_clip: fromClip, engine, prompt: `${cfg.clipPrefix} ${prompt}`.trim(), frames: frames || cfg.clipFrames, seed, width: cfg.clipWidth, height: cfg.clipHeight }),
     signal: AbortSignal.timeout(900000) });
   const j = await r.json().catch(() => ({ error: `video ${r.status}` }));
   if (!r.ok || !j.ok) throw new Error(j.error || `video ${r.status}`);

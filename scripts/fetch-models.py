@@ -5,7 +5,8 @@ downloads resume. Run by the app's first-run installer, or by hand:
     python scripts/fetch-models.py [--models models] [--only ditto,ltx,sd,ipadapter,whisper,voice] [--voice-src DIR]
 
   ditto      digital-avatar/ditto-talkinghead  cfg + PyTorch + ONNX weights (live face)         ~4.6 GB
-  ltx        Lightricks/LTX-Video              2B 0.9.8 distilled + T5-XXL text encoder (motion) ~26 GB
+  ltx        Lightricks/LTX-Video              2B 0.9.8 distilled + T5-XXL text encoder (idle motion) ~26 GB
+  wan        Wan-AI/Wan2.2-TI2V-5B-Diffusers   5B image-to-video (commanded motion, real body physics) ~34 GB
   sd         SG161222/Realistic_Vision_V5.1_noVAE  (her looks)                                   ~2.1 GB
   ipadapter  h94/IP-Adapter plus-face + image encoder, into the HF cache (face lock)             ~1.3 GB
   whisper    Systran/faster-whisper-small, into the HF cache (her ears)                          ~0.5 GB
@@ -24,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 ap = argparse.ArgumentParser(description="fetch Agent Gen model weights")
 ap.add_argument("--models", default=str(REPO / "models"))
-ap.add_argument("--only", default="ditto,ltx,sd,ipadapter,whisper,voice")
+ap.add_argument("--only", default="ditto,ltx,wan,sd,ipadapter,whisper,voice")
 ap.add_argument("--voice-src", default=str(REPO / "models" / "unity-voice-v2"))
 ARGS = ap.parse_args()
 M = Path(ARGS.models)
@@ -55,6 +56,14 @@ def ltx():
     hf_hub_download("Lightricks/LTX-Video", "ltxv-2b-0.9.8-distilled.safetensors", local_dir=str(d))
     snapshot_download("Lightricks/LTX-Video", local_dir=str(d),
                       allow_patterns=["model_index.json", "scheduler/*", "text_encoder/*", "tokenizer/*"])
+
+
+def wan():
+    d = M / "wan2.2-ti2v-5b"
+    if (d / "model_index.json").exists() and (d / "transformer").exists():
+        return log("wan present")
+    log("wan: Wan2.2 TI2V-5B (34 GB, the big one for body physics)")
+    snapshot_download("Wan-AI/Wan2.2-TI2V-5B-Diffusers", local_dir=str(d), max_workers=8)
 
 
 def sd():
@@ -88,7 +97,7 @@ def voice():
     shutil.copytree(src, target, ignore=shutil.ignore_patterns("__pycache__"))
 
 
-STEPS = {"ditto": ditto, "ltx": ltx, "sd": sd, "ipadapter": ipadapter, "whisper": whisper, "voice": voice}
+STEPS = {"ditto": ditto, "ltx": ltx, "wan": wan, "sd": sd, "ipadapter": ipadapter, "whisper": whisper, "voice": voice}
 for name in [s.strip() for s in ARGS.only.split(",") if s.strip()]:
     if name not in STEPS:
         raise SystemExit("unknown model group: %s" % name)

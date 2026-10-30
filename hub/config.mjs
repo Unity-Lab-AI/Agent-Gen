@@ -31,6 +31,10 @@ export const cfg = {
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
+  // which video engine films what: commanded motions and new looks want real body physics (Wan 2.2 5B, slow);
+  // the idle reel wants cheap clips (LTX 2B, fast). The sidecar falls back to ltx when wan is not installed.
+  motionEngine: process.env.MOTION_ENGINE || 'wan',
+  reelEngine: process.env.REEL_ENGINE || 'ltx',
   // appended to every [[do]] motion: LTX 2B needs to be pushed to move a body (measured +40% motion energy)
   motionPush: process.env.MOTION_PUSH || 'large fast clear movement, energetic, her whole upper body moves, hair swings',
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.

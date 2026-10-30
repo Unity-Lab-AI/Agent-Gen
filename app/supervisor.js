@@ -44,6 +44,7 @@ class Supervisor {
       DITTO_MODELS: path.join(P.models, 'ditto'), DITTO_DIR: P.ditto,
       UNITY_VOICE_DIR: path.join(P.models, 'unity-voice-v2'),
       UNITY_VIDEO_MODEL_DIR: path.join(P.models, 'ltx-video'),
+      UNITY_VIDEO_WAN_DIR: path.join(P.models, 'wan2.2-ti2v-5b'),
       HF_HOME: P.hf,
       ...(P.sdCkpt ? { CORA_IMAGE_CHECKPOINT: P.sdCkpt } : {}),
     };

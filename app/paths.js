@@ -26,6 +26,7 @@ function resolve(root) {
     have: {
       ditto: exists(path.join(models, 'ditto', 'ditto_cfg')) && exists(ditto),
       ltx: exists(path.join(models, 'ltx-video', 'ltxv-2b-0.9.8-distilled.safetensors')),
+      wan: exists(path.join(models, 'wan2.2-ti2v-5b', 'model_index.json')),   // optional: commanded-motion engine
       voice: exists(path.join(models, 'unity-voice-v2', 'acoustic.pt')),
       sd: !!sdCkpt,
       // Ollama's store moved layouts in 2026 (manifests-v2/ollama.com); accept either
