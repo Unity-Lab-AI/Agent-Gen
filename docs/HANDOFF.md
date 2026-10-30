@@ -150,3 +150,10 @@ Fixes: a GPU gate (`gpu.rendering` in `hub/providers/ollama.mjs`, counted by `vi
 - `LICENSE` (MIT, Unity AI Lab), `PRIVACY.md`, `THIRD-PARTY-NOTICES.md` at the repo root, bundled into the install under `resources\legal`; `app/package.json` license MIT + author; README has Privacy and License sections and an up-to-date "How she works".
 - Audit: at runtime everything is loopback. Two quiet internet touches closed: her engines run with `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` (verified offline loads: faster-whisper small, IP-Adapter, Realistic Vision via `from_single_file` + cached SD1.5 configs), and the window's spellcheck is off (Chromium fetches dictionaries from Google). First-run setup is the only internet use (GitHub releases, pytorch.org, PyPI, Hugging Face, Ollama registry).
 - Shipped: feature → develop → main on both remotes; GitHub release `v0.5.22` with the installer.
+
+## 2026-10-30 ~14:15 — still jammed on a reply mid-render (0.5.23)
+
+"go ahead and take ur top off, slowley" arrived 40 s into an idle clip; the hub cancelled, but the video engine only checks for a cancel between steps and a 480x832 Wan step on a crowded card took ~4 min (235 s/it). After its 30 s wait the reply loaded the brain anyway: card full, render estimating over an hour, and the reply died at Node fetch's 5 min header timeout ("brain error fetch failed").
+- `video.stopRender()` (`hub/video/client.mjs`): cancel, and if the render has not stopped within 3 s, `POST /abort` — the video sidecar exits on the spot (`os._exit`), its VRAM goes with it. A clip that dies that way reads as "cancelled", not a failure.
+- `app/supervisor.js` restarts an engine that exits while the app runs (1 s delay; more than 5 exits in 2 min stops the retries).
+- respond awaits `stopRender` before her brain loads. Clip jobs wait up to 60 s for the video engine to come back (`video.ready()`).

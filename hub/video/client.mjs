@@ -30,6 +30,27 @@ export async function makeRoom() {
   } catch {}
 }
 
+let abortedAt = 0;
+/** Health, waiting up to `timeoutMs` for the engine to come back (it restarts after an abort). */
+export async function ready(timeoutMs = 60000) {
+  let h = await health();
+  for (const until = Date.now() + timeoutMs; !h.ok && Date.now() < until;) { await new Promise(r => setTimeout(r, 1000)); h = await health(); }
+  return h;
+}
+
+/** Free the card now: cancel, and if the render has not stopped within `graceMs`, abort the engine (it exits and
+ *  the app restarts it). Resolves once nothing is rendering. */
+export async function stopRender(graceMs = 3000) {
+  const { gpu } = await import('../providers/ollama.mjs');
+  if (gpu.rendering <= 0) return;
+  await cancel();
+  for (const until = Date.now() + graceMs; gpu.rendering > 0 && Date.now() < until;) await new Promise(r => setTimeout(r, 100));
+  if (gpu.rendering <= 0) return;
+  abortedAt = Date.now();
+  try { await fetch(`${cfg.videoUrl}/abort`, { method: 'POST', signal: AbortSignal.timeout(3000) }); } catch {}
+  for (const until = Date.now() + 10000; gpu.rendering > 0 && Date.now() < until;) await new Promise(r => setTimeout(r, 100));
+}
+
 /** Stop the clip in flight at its next step; its clip() call rejects with "cancelled". */
 export async function cancel() {
   try { await fetch(`${cfg.videoUrl}/cancel`, { method: 'POST', signal: AbortSignal.timeout(2000) }); } catch {}
@@ -40,6 +61,7 @@ export async function clip(lookFile, prompt, { frames, seed, fromClip, engine } 
   const { gpu } = await import('../providers/ollama.mjs');
   gpu.rendering++;                                 // background brain calls wait until this render is done
   try { return await clipRender(lookFile, prompt, { frames, seed, fromClip, engine }); }
+  catch (e) { if (Date.now() - abortedAt < 20000) throw new Error('cancelled: video engine aborted'); throw e; }
   finally { gpu.rendering--; }
 }
 async function clipRender(lookFile, prompt, { frames, seed, fromClip, engine } = {}) {

@@ -331,6 +331,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/cancel":                       # stop the clip in flight at its next step (she has something to say)
             _state["cancel"] = True
             return self._json({"ok": True, "busy": _state["busy"]})
+        if path == "/abort":
+            # a Wan step on a crowded card can take minutes, so /cancel may come far too late: exit now, the GPU
+            # memory goes with the process, and the app starts the engine again (Wan reloads on the next clip)
+            busy = _state["busy"]
+            self._json({"ok": True, "busy": busy, "exiting": busy})
+            if busy:
+                log("abort: exiting to free the card")
+                threading.Timer(0.2, lambda: os._exit(3)).start()
+            return
         if path != "/i2v":
             return self._json({"error": "unknown endpoint"}, 404)
         if not req.get("image_b64") and not req.get("from_clip"):
