@@ -7,9 +7,23 @@ const os = require('node:os');
 const path = require('node:path');
 
 const exists = p => { try { return !!p && fs.existsSync(p); } catch { return false; } };
+
+// Where the data root lives is the user's choice (operator: "i want it on D:/ drive the whole install and models
+// as C:/ drive is getting full"). A one-line pointer file next to the default location remembers it; the env var
+// wins for dev runs. Nothing else (registry, PATH) is touched.
+const LOCAL = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+const POINTER = path.join(LOCAL, 'AgentGen.location');
+function readPointer() { try { const p = fs.readFileSync(POINTER, 'utf8').trim(); return p || null; } catch { return null; } }
+function setDataRoot(dir) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(POINTER, dir); }
+function freeBytes(dir) {
+  // walk up until a folder exists, then ask the volume
+  let d = path.resolve(dir);
+  while (!exists(d) && path.dirname(d) !== d) d = path.dirname(d);
+  try { const s = fs.statfsSync(d); return s.bavail * s.bsize; } catch { return null; }
+}
 // a half-downloaded model folder keeps *.incomplete parts under .cache; it is not present until those are gone
 const hasIncomplete = dir => { try { return fs.readdirSync(path.join(dir, '.cache', 'huggingface', 'download'), { recursive: true }).some(f => String(f).endsWith('.incomplete')); } catch { return false; } };
-const DATA = process.env.AGENTGEN_DATA || path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'AgentGen');
+const DATA = process.env.AGENTGEN_DATA || readPointer() || path.join(LOCAL, 'AgentGen');
 const RUNTIME = path.join(DATA, 'runtime');
 
 /** @param {string} root  repo root (dev) or the packaged app's resources dir */
@@ -37,4 +51,4 @@ function resolve(root) {
   };
 }
 
-module.exports = { DATA, RUNTIME, resolve, exists };
+module.exports = { DATA, RUNTIME, POINTER, resolve, exists, setDataRoot, freeBytes };

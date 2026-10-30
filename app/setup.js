@@ -16,7 +16,7 @@ const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
 const { spawn, execSync } = require('node:child_process');
-const { DATA, RUNTIME, resolve, exists } = require('./paths');
+const { DATA, RUNTIME, resolve, exists, setDataRoot, freeBytes } = require('./paths');
 
 const DL = path.join(DATA, 'downloads');
 const STATE = path.join(DATA, 'state.json');
@@ -102,7 +102,7 @@ function plan(root) {
   const dlDir = () => { fs.mkdirSync(DL, { recursive: true }); return DL; };
   return [
     {
-      id: 'python', title: 'Python 3.10 runtime',
+      gb: 0.1, id: 'python', title: 'Python 3.10 runtime',
       done: () => !!py(),
       async run(log, progress) {
         const a = await ghAsset('astral-sh/python-build-standalone', n => /^cpython-3\.10\.\d+\+\d+-x86_64-pc-windows-msvc-install_only\.tar\.gz$/.test(n));
@@ -115,7 +115,7 @@ function plan(root) {
       },
     },
     {
-      id: 'base', title: 'PyTorch (CUDA 11.8) and the voice, speech, image and video requirements',
+      gb: 6, id: 'base', title: 'PyTorch (CUDA 11.8) and the voice, speech, image and video requirements',
       // a real probe, not a marker: every library the four sidecars import must load in that interpreter,
       // so a machine with its own Python (a dev box) gets missing pieces installed too (ftfy taught us that)
       done: async () => !!py() && await probe(py(), PROBE_IMPORTS),
@@ -128,7 +128,7 @@ function plan(root) {
       },
     },
     {
-      id: 'face', title: 'Face engine environment (Ditto)',
+      gb: 2, id: 'face', title: 'Face engine environment (Ditto)',
       done: () => !!P().facePy,
       async run(log) {
         const venv = path.join(DATA, 'venvs', 'face');
@@ -138,7 +138,7 @@ function plan(root) {
       },
     },
     {
-      id: 'ollama', title: 'Ollama server (her brain\'s runtime)',
+      gb: 1.5, id: 'ollama', title: 'Ollama server (her brain\'s runtime)',
       done: () => !!ollama(),
       async run(log, progress) {
         const a = await ghAsset('ollama/ollama', n => n === 'ollama-windows-amd64.zip');
@@ -151,7 +151,7 @@ function plan(root) {
       },
     },
     {
-      id: 'models', title: 'Model weights (face, motion, looks, hearing, her voice)',
+      gb: 72, id: 'models', title: 'Model weights (face, motion, looks, hearing, her voice)',
       done: () => { const h = P().have; return h.ditto && h.ltx && h.wan && h.voice && h.sd; },
       async run(log) {
         const models = path.join(DATA, 'models');
@@ -160,7 +160,7 @@ function plan(root) {
       },
     },
     {
-      id: 'brain', title: `Her brain (${BRAIN_BASE} + unity-local)`,
+      gb: 5.5, id: 'brain', title: `Her brain (${BRAIN_BASE} + unity-local)`,
       // the manifest on disk, or any Ollama already serving on this box (tray app or ours) that lists it
       done: async () => P().have.brain || (await tagsHave(11434, 'unity-local')) || (await tagsHave(11435, 'unity-local')),
       async run(log) {
@@ -209,4 +209,4 @@ function uninstallData() {
   return !exists(DATA);
 }
 
-module.exports = { plan, missing, install, uninstallData, DATA, homedir: os.homedir };
+module.exports = { plan, missing, install, uninstallData, DATA, setDataRoot, freeBytes, homedir: os.homedir };

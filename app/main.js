@@ -91,9 +91,18 @@ function shutdown() { if (down) return; down = true; try { sup && sup.stop(); } 
 ipcMain.handle('agentgen:status', () => status);
 ipcMain.handle('agentgen:quit', () => app.quit());
 ipcMain.handle('agentgen:setup:plan', async () => ({
-  data: setup.DATA,
-  steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, done: !!(await s.done()) }))),
+  data: setup.DATA, free: setup.freeBytes(setup.DATA),
+  steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, gb: s.gb, done: !!(await s.done()) }))),
 }));
+// where the 80 GB goes is the user's call; takes effect on the next launch (the pointer file is read at startup)
+ipcMain.handle('agentgen:setup:choose', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Folder for the runtimes and models (about 80 GB)', properties: ['openDirectory', 'createDirectory'], defaultPath: setup.DATA });
+  if (r.canceled || !r.filePaths[0]) return { ok: false };
+  const dir = path.join(r.filePaths[0], path.basename(r.filePaths[0]).toLowerCase() === 'agentgen' ? '' : 'AgentGen');
+  setup.setDataRoot(dir);
+  app.relaunch(); app.quit();
+  return { ok: true, dir };
+});
 ipcMain.handle('agentgen:setup:start', async () => {
   try {
     await setup.install(ROOT, ev => { if (win && !win.isDestroyed()) win.webContents.send('agentgen:setup:event', ev); });
