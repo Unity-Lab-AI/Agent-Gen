@@ -53,6 +53,9 @@ export const cfg = {
   // her live reel, each a thing she decided to do, so the body is open-ended instead of one short loop.
   // reelClips 0 = keep going for as long as she is idle; reelMaxFrames bounds RAM (~8 MB per frame).
   reelClips: Number(process.env.REEL_CLIPS ?? 0),
+  // with nothing to do this long (fresh start, after a reset), she starts her idle routine on her own
+  idleStartMs: Number(process.env.IDLE_START_MS || 20000),
+  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a young woman with long black hair with pink streaks, pale grey-blue eyes, in her room',
   reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
   reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
   reelMotions: (process.env.REEL_MOTIONS || 'she bounces on her toes and laughs, hair and chest bouncing|she dances, swinging her hips and raising her arms over her head|she jumps up and down excitedly, then grins at the camera|she spins around once and strikes a pose|she stretches both arms high overhead and arches her back').split('|'),

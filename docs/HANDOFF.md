@@ -129,3 +129,7 @@ Operator: "she keeps witch back and forthe between the original and other images
 ## 2026-10-30 ~13:00 — "that's you now" adopts the picture (0.5.18)
 
 "show me a person eating an apple" → `[[pic]]` of a bearded man (right). "thats you now, update your look and get to eatting dat apple" → her brain wrote a fresh `[[img]]` of goth Unity (the persona pulls her back to her default). The hub now does it itself: after a `[[pic]]` (`lastPic`), a message matching `THAT_YOU` ("that's you / that is you / this is your / become that / make that you") makes that picture her look as it is (no re-render, it becomes `lookFace`), animates it with the picture's prompt plus the operator's words, and ignores every image/motion line she writes that turn. Reset forgets `lastPic`.
+
+## 2026-10-30 ~13:10 — she never did anything on her own (0.5.19)
+
+Operator: "all she ever does is sit ther and blink, never saw her do anything, and i never sent her an input". The idle reel only started after a look or motion clip landed, so a fresh start (or a reset) left her on the bust portrait blinking forever. Each session now has a watchdog (`idleCheck`, every 5 s): with no reply in progress, no look/picture/clip job in flight (`jobs`, counted by `queueJob`) and nothing for `idleStartMs` (20 s), `startIdle()` films her current look (her default `lookBase` on a fresh start, described by `idleLookPrompt`) doing something her brain picks, then runs the open-ended reel. Any message, look or reset preempts it.

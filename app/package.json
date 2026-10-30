@@ -1,7 +1,7 @@
 {
   "name": "agent-gen",
   "productName": "Agent Gen",
-  "version": "0.5.18",
+  "version": "0.5.19",
   "private": true,
   "description": "Unity, live. One window: her face, her voice, her ears, her hands. Opens everything, closes everything.",
   "main": "main.js",

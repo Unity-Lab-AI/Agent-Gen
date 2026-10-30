@@ -69,6 +69,52 @@ class Session {
     this.queue.onSpoken = t => this.echo.remember(t);
     this.busy = false;
     this.lookSeq = 0;
+    this.jobs = 0;                 // looks, pictures and clips in flight (a look's job lasts as long as its reel)
+    this.lastActive = Date.now();
+    // she lives on her own: with nothing to do for a while (fresh start, after a reset, a reel that ended), she
+    // starts her idle routine from her current look instead of sitting there blinking
+    this.idleTimer = setInterval(() => this.idleCheck(), 5000);
+  }
+  queueJob(job) {
+    this.jobs++;
+    job.finally(() => { this.jobs--; this.lastActive = Date.now(); });
+    this.looks = (this.looks || Promise.resolve()).then(() => job);
+  }
+  idleCheck() {
+    if (this.closed) return clearInterval(this.idleTimer);
+    if (this.busy || this.jobs > 0 || Date.now() - this.lastActive < cfg.idleStartMs) return;
+    this.lastActive = Date.now();
+    this.queueJob(this.startIdle());
+  }
+  /** Her idle routine from the look she has (her default full-body look on a fresh start): a first clip of
+   *  something she decides to do, then the open-ended reel. Any message, look or reset preempts it. */
+  async startIdle() {
+    const lookId = ++this.lookSeq;
+    const look = this.currentLook || cfg.lookBase;
+    const lookPrompt = this.currentLookPrompt || cfg.idleLookPrompt;
+    if (!this.currentLook) { this.currentLook = look; this.currentLookPrompt = lookPrompt; }
+    this.log('idle: she starts doing her own thing');
+    try {
+      const vh = await video.health();
+      if (!vh.ok || !vh.model_present) return;
+      const motion = await this.nextIdleAction(lookPrompt, lookId);
+      if (this.closed || this.busy || this.lookSeq !== lookId) return;
+      this.reelBusy = true;
+      await face.pause();
+      await video.makeRoom();
+      const c = await video.clip(look, `${lookPrompt}, ${motion}, her face stays visible to the camera`, { engine: cfg.reelEngine });
+      this.reelBusy = false;
+      if (this.closed || this.lookSeq !== lookId) return;
+      this.currentClip = c.path;
+      const f = await face.appearance(c.path);
+      this.send({ type: 'look', stage: f?.ok ? 'reel' : 'clip-only', prompt: lookPrompt, motion, clip: { seconds: c.seconds, frames: c.frames }, epoch: this.epoch });
+      if (f?.ok) await this.extendReel(c.path, lookPrompt, lookId);
+    } catch (e) {
+      if (!/cancelled/.test(e.message)) this.log('idle failed', e.message);
+    } finally {
+      this.reelBusy = false;
+      await face.resume();
+    }
   }
   send(obj) { if (this.ws.readyState === 1) this.ws.send(JSON.stringify(obj)); }
   log(...a) { console.log(new Date().toISOString().slice(11, 19), `[${this.id}]`, ...a); }
@@ -113,6 +159,7 @@ class Session {
     const ac = new AbortController();
     this.abort = ac;
     this.busy = true;
+    this.lastActive = Date.now();
     this.history.push({ role: 'user', content: userText });
     this.lastUserText = userText;
     if (this.lastPic && THAT_YOU.test(userText)) {
@@ -120,7 +167,7 @@ class Session {
       // redraw herself back to her default
       this.adoptEpoch = epoch;
       const job = this.adopt(this.lastPic, this.lastPicPrompt, userText, epoch);
-      this.looks = (this.looks || Promise.resolve()).then(() => job);
+      this.queueJob(job);
     }
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
     const messages = [{ role: 'system', content: readPersona() }, ...this.history];
@@ -192,12 +239,12 @@ class Session {
           this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
         } finally { await face.resume(); }
       })();
-      this.looks = (this.looks || Promise.resolve()).then(() => job);
+      this.queueJob(job);
       return;
     }
     if (tag.kind === 'do' || tag.kind === 'action') {
       const job = this.motion(prompt, lookId, epoch);
-      this.looks = (this.looks || Promise.resolve()).then(() => job);
+      this.queueJob(job);
       return;
     }
     this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
@@ -240,7 +287,7 @@ class Session {
         await face.resume();
       }
     })();
-    this.looks = (this.looks || Promise.resolve()).then(() => job);
+    this.queueJob(job);
   }
 
   /** The picture she just made becomes her look as it is (no re-render), then a clip of it doing what was asked. */
