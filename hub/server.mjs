@@ -186,7 +186,8 @@ class Session {
    *  newer look preempts it after at most one clip; waits while she is thinking or speaking, and a new message
    *  cancels the clip in flight (see respond) so her lips never wait on it. */
   async extendReel(clipPath, prompt, lookId) {
-    let last = clipPath;
+    const chain = [clipPath];                      // clips she can continue from; a clip that ends faceless is popped
+    let misses = 0;
     for (let i = 0; cfg.reelClips === 0 || i < cfg.reelClips; i++) {
       while (this.busy && !this.closed && this.lookSeq === lookId) await new Promise(r => setTimeout(r, 1000));
       if (this.closed || this.lookSeq !== lookId) return;
@@ -196,11 +197,17 @@ class Session {
       try {
         await face.pause();
         await video.makeRoom();
-        const c = await video.clip(null, `${prompt}, ${motion}`, { fromClip: last });
+        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1] });
         if (this.closed || this.lookSeq !== lookId) return;
         const f = await face.appearance(c.path, { extend: true });
-        if (!f?.ok) { this.log('reel append failed', f?.error); return; }
-        last = c.path;
+        if (!f?.ok) {
+          // the chain point lost her face (turned away, walked out of frame): step back to the previous good clip
+          this.log('reel append failed', f?.error);
+          if (!/no face/i.test(f?.error || '') || ++misses > 4 || chain.length === 0) return;
+          if (chain.length > 1) chain.pop();
+          continue;
+        }
+        chain.push(c.path);
         this.log(`reel +${c.frames} (${f.reel_frames} frames): ${motion}`);
         this.send({ type: 'look', stage: 'reel', prompt, motion, clip: { seconds: c.seconds, frames: c.frames }, reel: f.reel_frames, epoch: this.epoch });
       } catch (e) {
@@ -217,7 +224,7 @@ class Session {
   async nextIdleAction(prompt, lookId) {
     if (!this.idleActions?.length) {
       try {
-        const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} short physical things you do next, whatever you feel like, one per line, present tense, third person "she", no words spoken, no numbering, no commentary.`;
+        const ask = `You are standing there in this look: "${prompt}". Nobody is talking to you. List ${cfg.reelBatch} short physical things you do next, whatever you feel like, one per line, present tense, third person "she", staying in frame with your face toward the camera, no words spoken, no numbering, no commentary.`;
         const text = await chatOnce([{ role: 'system', content: readPersona() }, ...this.history, { role: 'user', content: ask }]);
         if (this.lookSeq !== lookId) return cfg.reelMotions[0];
         this.idleActions = text.split('\n').map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/\[\[.*?\]\]/g, '').trim()).filter(s => s.length > 8 && s.length < 200);
