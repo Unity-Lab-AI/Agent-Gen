@@ -20,6 +20,10 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
 
+// "that's you now" after a picture: the picture she just made IS her new look. Her brain re-described her default
+// goth self instead (the persona pulls her home), so the hub adopts the picture itself.
+const THAT_YOU = /\b(that'?s|that is|thats|this is|this'?s|thiss) (you|your)\b|\b(become|be) (that|this|them|him|her|it)\b|\bmake (that|this|it) (you|your)/i;
+
 function readPersona() {
   try { return fs.readFileSync(cfg.personaFile, 'utf8').trim(); } catch { return 'You are Unity. Speak briefly.'; }
 }
@@ -111,6 +115,13 @@ class Session {
     this.busy = true;
     this.history.push({ role: 'user', content: userText });
     this.lastUserText = userText;
+    if (this.lastPic && THAT_YOU.test(userText)) {
+      // the last picture becomes her look as it is; image lines she writes this turn are ignored so she cannot
+      // redraw herself back to her default
+      this.adoptEpoch = epoch;
+      const job = this.adopt(this.lastPic, this.lastPicPrompt, userText, epoch);
+      this.looks = (this.looks || Promise.resolve()).then(() => job);
+    }
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
     const messages = [{ role: 'system', content: readPersona() }, ...this.history];
     const splitter = new SentenceSplitter();
@@ -152,6 +163,10 @@ class Session {
   onTag(tag, epoch) {
     const prompt = tag.text;
     if (!prompt) return;
+    if (this.adoptEpoch === epoch && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
+      this.log(`tag ${tag.kind} ignored: this turn adopts the last picture as her look`);
+      return;
+    }
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
     this.idleActions = [];                         // and what she had planned to do in the old look
@@ -171,6 +186,7 @@ class Session {
           if (this.closed) return;
           this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
           this.send({ type: 'look', stage: 'image-only', kind: tag.kind, prompt, epoch });
+          this.lastPic = res.file; this.lastPicPrompt = prompt;   // "that's you now" can adopt it
         } catch (e) {
           this.log('picture failed', e.message);
           this.send({ type: 'look', stage: 'failed', kind: tag.kind, prompt, error: String(e.message || e), epoch });
@@ -225,6 +241,37 @@ class Session {
       }
     })();
     this.looks = (this.looks || Promise.resolve()).then(() => job);
+  }
+
+  /** The picture she just made becomes her look as it is (no re-render), then a clip of it doing what was asked. */
+  async adopt(file, picPrompt, userText, epoch) {
+    const lookId = ++this.lookSeq;
+    this.idleActions = [];
+    this.log(`adopting the last picture as her look`);
+    try {
+      this.currentLook = file; this.currentLookPrompt = picPrompt; this.lookFace = file; this.currentClip = null;
+      this.send({ type: 'look', stage: 'rendering', kind: 'img', prompt: picPrompt, epoch });
+      if (cfg.lookDrivesFace) {
+        const f = await face.appearance(file);
+        this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: 'img', prompt: picPrompt, face: f, epoch });
+        if (f?.ok) await face.settle();
+      }
+      const vh = await video.health();
+      if (!vh.ok || !vh.model_present || this.lookSeq !== lookId) return;
+      this.send({ type: 'look', stage: 'animating', kind: 'img', prompt: picPrompt, epoch });
+      await face.pause();
+      await video.makeRoom();
+      const c = await video.clip(file, `${picPrompt}, ${userText}`, { engine: cfg.motionEngine });
+      if (this.closed || this.lookSeq !== lookId) return;
+      this.currentClip = c.path;
+      const f2 = await face.appearance(c.path);
+      this.send({ type: 'look', stage: f2?.ok ? 'moving' : 'clip-only', kind: 'img', prompt: picPrompt, clip: { seconds: c.seconds, frames: c.frames }, face: f2, epoch });
+      if (f2?.ok) await this.extendReel(c.path, picPrompt, lookId);
+    } catch (e) {
+      if (!/cancelled/.test(e.message)) { this.log('adopt failed', e.message); this.send({ type: 'look', stage: 'failed', kind: 'img', prompt: picPrompt, error: String(e.message || e), epoch }); }
+    } finally {
+      await face.resume();
+    }
   }
 
   /** A movement in the look she already has: clip from where she is now (the current clip's last frame, else
@@ -314,6 +361,7 @@ class Session {
   reset() {
     this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = [];
     this.lookFace = null; this.currentLook = null; this.currentLookPrompt = null; this.currentClip = null;
+    this.lastPic = null; this.lastPicPrompt = null; this.adoptEpoch = null;
   }
 
   async onMessage(raw) {

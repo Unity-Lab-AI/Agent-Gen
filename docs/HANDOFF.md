@@ -125,3 +125,7 @@ Operator: asked for a 40 year old man (a professor) and got a woman; "lets not l
 ## 2026-10-30 ~12:50 — she flipped between the old look and the new one (0.5.17)
 
 Operator: "she keeps witch back and forthe between the original and other images". The hold loop (0.5.13) replays the last frames she played while a clip renders, and `_adopt_sink` carried that history across a look swap, so the loop mixed old-look frames with new ones. A swap now clears the history and the loop; only frames of the current look are ever replayed. The original comes back only on a reset.
+
+## 2026-10-30 ~13:00 — "that's you now" adopts the picture (0.5.18)
+
+"show me a person eating an apple" → `[[pic]]` of a bearded man (right). "thats you now, update your look and get to eatting dat apple" → her brain wrote a fresh `[[img]]` of goth Unity (the persona pulls her back to her default). The hub now does it itself: after a `[[pic]]` (`lastPic`), a message matching `THAT_YOU` ("that's you / that is you / this is your / become that / make that you") makes that picture her look as it is (no re-render, it becomes `lookFace`), animates it with the picture's prompt plus the operator's words, and ignores every image/motion line she writes that turn. Reset forgets `lastPic`.
