@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { cfg, REPO } from '../config.mjs';
 
-const OUT = path.join(REPO, '.run', 'looks');
+// the app keeps renders in its data root (AGENTGEN_RUN); a dev checkout under .run/
+const OUT = process.env.AGENTGEN_RUN ? path.join(process.env.AGENTGEN_RUN, 'looks') : path.join(REPO, '.run', 'looks');
 fs.mkdirSync(OUT, { recursive: true });
 
 let faceRefB64 = null;
@@ -56,4 +57,4 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
   return { file, url: `/looks/look-${id}.png`, seed: Number(r.headers.get('x-seed')), seconds: Number(r.headers.get('x-seconds')), prompt: full };
 }
 
-export const looksDir = process.env.AGENTGEN_RUN ? join(process.env.AGENTGEN_RUN, 'looks') : OUT;   // the app keeps renders in its data root
+export const looksDir = OUT;

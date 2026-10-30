@@ -25,9 +25,10 @@ export const cfg = {
   lookHeight: Number(process.env.LOOK_HEIGHT || 704),
   lookMaxSide: Number(process.env.LOOK_MAX_SIDE || 768),
   lookSteps: Number(process.env.LOOK_STEPS || 30),
-  lookGuidance: Number(process.env.LOOK_GUIDANCE || 5.5),
+  lookGuidance: Number(process.env.LOOK_GUIDANCE || 7),
   lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.65),
-  lookStrength: Number(process.env.LOOK_STRENGTH || 0.6),
+  // img2img from her current look: 0.6 kept the old outfit through a "black cocktail dress"; 0.8 lets the prompt win while the face lock keeps her
+  lookStrength: Number(process.env.LOOK_STRENGTH || 0.8),
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
