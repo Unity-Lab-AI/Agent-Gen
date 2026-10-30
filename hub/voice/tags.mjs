@@ -4,6 +4,10 @@
 const OPEN = '[[';
 const CLOSE = ']]';
 const KINDS = /^\s*(img|image|selfie|look|do|action)\s*:\s*/i;
+// a stage direction: *...*, [...] (single brackets) or (...), 3-200 chars, no newline
+const STAGE = /\*([^*\n]{3,200})\*|(?<!\[)\[(?!\[)([^\[\]\n]{3,200})\]|\(([^()\n]{3,200})\)/;
+/** Text with stage directions removed, for her voice: she does them, she does not read them aloud. */
+export const unstaged = s => s.replace(new RegExp(STAGE.source, 'g'), ' ').replace(/\s{2,}/g, ' ').trim();
 
 export class TagFilter {
   constructor(onTag) { this.onTag = onTag; this.buf = ''; this.inTag = false; this.fired = 0; this.text = ''; }
@@ -45,8 +49,8 @@ export class TagFilter {
       const m = KINDS.exec(this.buf);                      // reply ended mid-tag: use what we have
       if (m && this.buf.slice(m[0].length).trim()) this.fire({ kind: m[1].toLowerCase(), text: this.buf.slice(m[0].length).trim(), raw: this.buf });
     }
-    // no image line but she acted it out in asterisks (*top removed*): the stage direction is the look
-    if (!this.fired) { const a = /\*([^*\n]{3,200})\*/.exec(this.text); if (a) this.fire({ kind: 'do', text: a[1].trim(), raw: a[0] }); }
+    // no image line but she acted it out as a stage direction (*top removed*, [shakes her chest], (winks)): that is the look
+    if (!this.fired) { const a = STAGE.exec(this.text); if (a) this.fire({ kind: 'do', text: (a[1] || a[2] || a[3]).trim(), raw: a[0] }); }
     this.buf = ''; this.inTag = false;
     return out;
   }

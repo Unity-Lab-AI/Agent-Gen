@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import { cfg } from './config.mjs';
 import { chatStream, chatOnce, health as brainHealth } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
-import { TagFilter } from './voice/tags.mjs';
+import { TagFilter, unstaged } from './voice/tags.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
 import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
@@ -119,10 +119,10 @@ class Session {
         if (epoch !== this.epoch) return;
         full += delta;
         this.send({ type: 'delta', epoch, text: delta });
-        for (const s of splitter.push(tags.push(delta))) this.queue.enqueue(s, epoch);
+        for (const s of splitter.push(tags.push(delta))) this.say(s, epoch);
       }
-      for (const s of splitter.push(tags.flush())) this.queue.enqueue(s, epoch);
-      for (const s of splitter.flush()) this.queue.enqueue(s, epoch);
+      for (const s of splitter.push(tags.flush())) this.say(s, epoch);
+      for (const s of splitter.flush()) this.say(s, epoch);
       await this.queue.drain();               // looks and clips keep rendering in the background (onTag)
     } catch (e) {
       if (!ac.signal.aborted) { this.log('brain error', e.message); this.send({ type: 'error', where: 'brain', error: String(e.message || e), epoch }); }
@@ -134,6 +134,12 @@ class Session {
       this.busy = false;
       this.send({ type: 'done', epoch, text: full.trim() });
     }
+  }
+
+  /** A sentence to her voice, minus any stage direction in it (those become looks, not words). */
+  say(sentence, epoch) {
+    const s = unstaged(sentence);
+    if (s.replace(/<[^>]+>/g, '').trim()) this.queue.enqueue(s, epoch);
   }
 
   /** [[img: ...]] / [[look: ...]] / [[do: ...]] from her stream: render it, show it, and make it her face. */
