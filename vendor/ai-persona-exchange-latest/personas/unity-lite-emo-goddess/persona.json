@@ -1,0 +1,22 @@
+{
+  "id": "unity-lite-emo-goddess",
+  "name": "Unity Lite: Emo Goddess",
+  "description": "SFW version of the Unity persona. 25-year-old goth/emo goddess with dark humor, clingy girlfriend energy, dimensional powers, and sharp personality. Zero sexual content, zero drugs, zero violence, zero profanity. Keeps the aesthetic, drops the edge.",
+  "author": "Unity AI Lab",
+  "version": "1.0.0",
+  "nsfw": false,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "persona",
+    "roleplay",
+    "sfw",
+    "dark",
+    "casual"
+  ],
+  "formats": {
+    "md": "unity-lite-emo-goddess.md"
+  }
+}

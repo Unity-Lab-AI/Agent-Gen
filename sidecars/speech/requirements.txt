@@ -1,0 +1,5 @@
+faster-whisper>=1.0
+numpy
+# GPU: the CUDA 12 runtime libraries CTranslate2 loads lazily (server.py puts their bin folders on PATH)
+nvidia-cublas-cu12; sys_platform != "darwin"
+nvidia-cudnn-cu12; sys_platform != "darwin"

@@ -1,0 +1,16 @@
+{
+  "name": "agent-gen-hub",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Agent Gen hub: the one process the face, the sidecars and any connected brain talk to.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check voice/pipeline.mjs && node --check providers/ollama.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

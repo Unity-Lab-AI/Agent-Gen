@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UnityBotV4 — Web UI</title>
+<link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+
+<header>
+  <h1>UnityBotV4 <span class="badge">v2.0</span></h1>
+  <div class="status" id="status">
+    <span class="dot"></span>
+    <span id="status-text">connecting…</span>
+  </div>
+</header>
+
+<!-- Wizard view ─────────────────────────────────────────────────────────── -->
+<main id="wizard-view" class="hidden">
+  <div class="wizard">
+    <div class="wizard-progress" id="wizard-progress"></div>
+    <div class="wizard-step-label" id="wizard-step-label"></div>
+
+    <!-- Step 1: Welcome -->
+    <div class="wizard-step" data-step="1">
+      <h2>Welcome to UnityBotV4 setup</h2>
+      <p class="lede">
+        We're going to walk through every piece of configuration step-by-step,
+        in plain language. You can't get it wrong — every field is validated
+        as you type, and the NEXT button only enables when your input looks
+        right.
+      </p>
+      <p>What you'll need:</p>
+      <ul>
+        <li>A <strong>Discord bot token</strong> (we'll show you exactly how to get one)</li>
+        <li>A <strong>Pollinations.AI API key</strong> (free, takes 60 seconds)</li>
+        <li>Optionally: a Discord channel ID, a list of approved Discord servers, and Supabase/Claude-Collab keys (skip if you don't know what these are — you can always add them later)</li>
+      </ul>
+      <p>This setup writes a <code>.env</code> file next to <code>bot.py</code>. Nothing is sent anywhere — it stays on this machine.</p>
+    </div>
+
+    <!-- Step 2: Discord token -->
+    <div class="wizard-step hidden" data-step="2">
+      <h2>Discord Bot Token</h2>
+      <p class="lede">Required. This lets the bot log in to Discord as your bot user.</p>
+
+      <div class="walkthrough">
+        <h3>How to get your Discord token</h3>
+        <ol>
+          <li>Open <a href="https://discord.com/developers/applications" target="_blank">https://discord.com/developers/applications</a> in a new tab.</li>
+          <li>Click the blue <strong>"New Application"</strong> button (top right corner).</li>
+          <li>Type a name (anything works — e.g., <code>UnityBot</code>), accept the terms, click <strong>"Create"</strong>.</li>
+          <li>In the left sidebar of the new application page, click <strong>"Bot"</strong>.</li>
+          <li>Scroll down to the <strong>"Privileged Gateway Intents"</strong> section. Turn BOTH of these ON:
+            <ul>
+              <li><strong>MESSAGE CONTENT INTENT</strong></li>
+              <li><strong>SERVER MEMBERS INTENT</strong></li>
+            </ul>
+          </li>
+          <li>Scroll back up to the <strong>"Token"</strong> section. Click <strong>"Reset Token"</strong> (this is normal — the token is only shown once).</li>
+          <li>Click <strong>"Yes, do it!"</strong> to confirm.</li>
+          <li>You'll now see a long string. Click <strong>"Copy"</strong> next to it.</li>
+          <li>Paste it into the box below.</li>
+        </ol>
+        <div class="tip">If you ever see the token shown again, that's because you just reset it. Don't reset it twice — copy it the first time. If you lost it, you can reset again any time.</div>
+      </div>
+
+      <div class="field">
+        <label for="DISCORD_TOKEN">Discord Token</label>
+        <input type="password" id="DISCORD_TOKEN" data-key="DISCORD_TOKEN" placeholder="paste here — 50 to 100 characters, no quotes, no spaces" autocomplete="off">
+        <div class="feedback note" data-feedback-for="DISCORD_TOKEN">Format: 50–100 characters, letters/numbers/dots/dashes/underscores only.</div>
+      </div>
+    </div>
+
+    <!-- Step 3: Pollinations key -->
+    <div class="wizard-step hidden" data-step="3">
+      <h2>Pollinations.AI API Key</h2>
+      <p class="lede">Required. This is what the bot uses to talk to the AI backend (where chat + image generation happen).</p>
+
+      <div class="walkthrough">
+        <h3>How to get your Pollinations API key (new gen.pollinations.ai stack)</h3>
+        <ol>
+          <li>Open <a href="https://enter.pollinations.ai" target="_blank">https://enter.pollinations.ai</a> in a new tab.</li>
+          <li>Sign in (Google / GitHub — first login auto-assigns the free "Seed" tier).</li>
+          <li>Generate a new API key. You'll see two choices:
+            <ul>
+              <li><strong>Publishable key (starts with <code>pk_</code>)</strong> — pick this for most setups. It's safe to use from clients, rate-limited at 3 requests per burst.</li>
+              <li><strong>Secret key (starts with <code>sk_</code>)</strong> — pick this only if your bot is running on a server you fully control AND you want no rate limits. It can spend Pollen, so protect it like an admin password.</li>
+            </ul>
+          </li>
+          <li>Copy the key.</li>
+          <li>Paste it into the box below.</li>
+        </ol>
+        <div class="tip">If you have an OLD token from the previous <code>auth.pollinations.ai</code> portal (a 16-character alphanumeric string), you can leave the box below empty and fill the legacy fallback box instead — the bot will detect the format and use the old endpoints.</div>
+      </div>
+
+      <div class="field">
+        <label for="POLLINATIONS_API_KEY">Pollinations API Key (new — recommended)</label>
+        <input type="password" id="POLLINATIONS_API_KEY" data-key="POLLINATIONS_API_KEY" placeholder="pk_xxx or sk_xxx" autocomplete="off">
+        <div class="feedback note" data-feedback-for="POLLINATIONS_API_KEY">Format: starts with <code>pk_</code> (publishable) or <code>sk_</code> (secret), followed by 8–64 letters/digits.</div>
+      </div>
+
+      <details style="margin-top: 16px;">
+        <summary style="cursor: pointer; color: var(--fg-muted);">I have a legacy 16-char token instead (click to expand)</summary>
+        <div class="field" style="margin-top: 12px;">
+          <label for="POLLINATIONS_TOKEN">Legacy Pollinations Token (old format)</label>
+          <input type="password" id="POLLINATIONS_TOKEN" data-key="POLLINATIONS_TOKEN" placeholder="16 alphanumeric chars from auth.pollinations.ai" autocomplete="off">
+          <div class="feedback note" data-feedback-for="POLLINATIONS_TOKEN">Format: exactly 16 alphanumeric characters. Bot will use legacy endpoints and log a deprecation warning.</div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Step 4: Optional — CLI bridge -->
+    <div class="wizard-step hidden" data-step="4">
+      <h2>Claude CLI Bridge (optional)</h2>
+      <p class="lede">Skip this step if you don't plan to use the Claude-CLI-to-Discord bridge. You can always come back later.</p>
+
+      <div class="walkthrough">
+        <h3>What this does</h3>
+        <p>The bridge lets a separate Claude CLI session "be" Unity in one specific Discord channel — read messages there, post replies as Unity. If you don't know what this is, you don't need it.</p>
+        <h3>How to get a channel ID</h3>
+        <ol>
+          <li>In the Discord desktop or web app: <strong>User Settings (gear icon) → Advanced → Developer Mode</strong> — turn it ON.</li>
+          <li>Right-click the channel name in the channel list → <strong>"Copy Channel ID"</strong>.</li>
+          <li>Paste it below. It's a long number (15–25 digits).</li>
+        </ol>
+      </div>
+
+      <div class="field">
+        <label for="CLAUDE_CHAT_CHANNEL_ID">Channel ID (optional)</label>
+        <input type="text" id="CLAUDE_CHAT_CHANNEL_ID" data-key="CLAUDE_CHAT_CHANNEL_ID" placeholder="e.g. 1389349100000120955" autocomplete="off">
+        <div class="feedback note" data-feedback-for="CLAUDE_CHAT_CHANNEL_ID">Format: 15–25 digit numeric ID. Leave empty to use the default placeholder.</div>
+      </div>
+
+      <div class="field">
+        <label for="CLAUDE_API_PORT">Bridge API port (optional)</label>
+        <input type="text" id="CLAUDE_API_PORT" data-key="CLAUDE_API_PORT" placeholder="5050" autocomplete="off">
+        <div class="feedback note" data-feedback-for="CLAUDE_API_PORT">Default 5050. Change only if 5050 is already in use on your machine.</div>
+      </div>
+    </div>
+
+    <!-- Step 5: Optional — guild allowlist -->
+    <div class="wizard-step hidden" data-step="5">
+      <h2>Approved Discord Servers (optional but recommended)</h2>
+      <p class="lede">Lock the bot to specific Discord servers — defense-in-depth so it doesn't get added to random servers and start chatting there.</p>
+
+      <div class="walkthrough">
+        <h3>How to get a server (guild) ID</h3>
+        <ol>
+          <li>Open Discord (desktop or web).</li>
+          <li><strong>User Settings (gear icon) → Advanced → Developer Mode</strong> — turn it ON (if not already on).</li>
+          <li>In the left sidebar, <strong>right-click the SERVER ICON</strong> (the round/square icon for the server, not a channel).</li>
+          <li>Click <strong>"Copy Server ID"</strong>.</li>
+          <li>Paste it below. To add multiple servers, separate them with commas (no spaces) — e.g. <code>123456789,987654321</code>.</li>
+        </ol>
+        <h3>Want to disable DMs?</h3>
+        <p>Add the special token <code>no-dms</code> to your list — e.g. <code>1234567890,no-dms</code>. With <code>no-dms</code> present, the bot will ignore DMs entirely.</p>
+        <div class="tip">Leave empty to allow the bot in every server it's invited to. Recommended for production: explicit allowlist.</div>
+      </div>
+
+      <div class="field">
+        <label for="ALLOWED_GUILDS">Approved Server IDs (optional)</label>
+        <input type="text" id="ALLOWED_GUILDS" data-key="ALLOWED_GUILDS" placeholder="e.g. 1234567890,9876543210 — or leave empty" autocomplete="off">
+        <div class="feedback note" data-feedback-for="ALLOWED_GUILDS">Format: comma-separated server IDs (digits only, no spaces). Add <code>no-dms</code> to disable DMs.</div>
+      </div>
+
+      <div class="field">
+        <label>
+          <input type="checkbox" id="ALLOWED_GUILDS_STRICT" data-key="ALLOWED_GUILDS_STRICT" style="width:auto;margin-right:6px;">
+          Strict mode — automatically leave any non-approved server the bot is invited to (recommended)
+        </label>
+      </div>
+
+      <details style="margin-top: 16px;">
+        <summary style="cursor: pointer; color: var(--fg-muted);">Restrict to specific CHANNELS too (click to expand)</summary>
+        <p style="color: var(--fg-muted); margin: 8px 0;">If set, even inside approved servers the bot only responds in these channels. Get channel IDs by right-clicking the channel name → Copy Channel ID.</p>
+        <div class="field" style="margin-top: 12px;">
+          <label for="ALLOWED_CHANNELS">Approved Channel IDs (optional)</label>
+          <input type="text" id="ALLOWED_CHANNELS" data-key="ALLOWED_CHANNELS" placeholder="e.g. 1234567890,9876543210" autocomplete="off">
+          <div class="feedback note" data-feedback-for="ALLOWED_CHANNELS">Format: comma-separated channel IDs (digits only, no spaces).</div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Step 6 (Collab Subsystem) removed 2026-05-19 — V4 is single-instance only.
+         Step 6 in the wizard is now the Review step (previously step 7). -->
+
+    <!-- Step 6: Review -->
+    <div class="wizard-step hidden" data-step="6">
+      <h2>Review &amp; Save</h2>
+      <p class="lede">Here's everything we're about to write to <code>.env</code>. Secrets are redacted by default. Click <strong>"Save &amp; Continue"</strong> to finalize.</p>
+      <div style="margin-bottom: 12px;">
+        <label style="display: inline-flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="show-plaintext" style="width: auto; margin-right: 6px;">
+          <span style="color: var(--fg-muted); font-size: 13px;">Show full plaintext (will display secrets — only do this when nobody can see your screen)</span>
+        </label>
+      </div>
+      <table class="review-table" id="review-table"></table>
+      <div class="warn-banner" id="save-feedback" style="display: none;"></div>
+    </div>
+
+    <div class="wizard-buttons">
+      <button class="ghost" id="btn-prev">◀ Back</button>
+      <div class="right">
+        <button class="secondary" id="btn-skip">Skip this step ▶</button>
+        <button id="btn-next">Next ▶</button>
+        <button id="btn-save" class="hidden">Save &amp; Continue ▶</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Chat view ────────────────────────────────────────────────────────────── -->
+<main id="chat-view" class="hidden wide">
+  <div class="toolbar">
+    <label style="color:var(--fg-muted);">model:</label>
+    <select id="model-select"><option>unity</option></select>
+    <span class="spacer"></span>
+    <span class="info" id="chat-info"></span>
+    <button class="ghost" id="btn-clear-chat" title="Clear conversation history">Clear</button>
+    <button class="ghost" id="btn-reconfigure" title="Run the setup wizard again">⚙ Setup</button>
+  </div>
+  <div class="chat">
+    <div class="messages" id="messages"></div>
+    <div class="input-bar">
+      <textarea id="chat-input" placeholder="Type a message — Enter to send, Shift-Enter for newline" rows="1"></textarea>
+      <button class="secondary image-btn" id="btn-image" title="Generate an image directly (bypasses chat)">🎨 Image</button>
+      <button id="btn-send" title="Send message">Send</button>
+    </div>
+  </div>
+</main>
+
+<script src="/web/app.js"></script>
+
+</body>
+</html>

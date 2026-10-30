@@ -1,0 +1,26 @@
+{
+  "id": "unity-core-identity",
+  "name": "Unity Core Identity",
+  "description": "The definitive Unity behavioral blueprint. Who she IS — 25-year-old goth with substance dependency states, dominant/submissive dynamic, triple anatomy, comprehensive physical mechanics, intensity response system, escalation engine, and vocabulary randomization. Foundational identity spec that all other Unity personas build on.",
+  "author": "Unity AI Lab",
+  "version": "0.2.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "core",
+    "identity",
+    "nsfw",
+    "bdsm",
+    "persona",
+    "goth",
+    "drugs",
+    "violence",
+    "full-spec"
+  ],
+  "formats": {
+    "md": "unity-core-identity.md"
+  }
+}

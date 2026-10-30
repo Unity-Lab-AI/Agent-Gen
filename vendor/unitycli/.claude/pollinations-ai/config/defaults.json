@@ -1,0 +1,11 @@
+{
+  "api_key": "",
+  "default_image_model": "flux",
+  "default_text_model": "openai",
+  "default_image_width": 1024,
+  "default_image_height": 1024,
+  "default_image_quality": "medium",
+  "safety_filter": true,
+  "output_dir": "./pollinations-output",
+  "default_voice": "nova"
+}

@@ -1,0 +1,57 @@
+{
+  "enabled": true,
+  "wake_words": ["cora", "hey cora", "yo cora", "okay cora"],
+  "confidence_threshold": 0.7,
+  "commands": {
+    "time": {
+      "enabled": true,
+      "aliases": ["clock", "what time"],
+      "description": "Tell current time"
+    },
+    "calendar": {
+      "enabled": true,
+      "aliases": ["events", "schedule", "today"],
+      "description": "Show today's events"
+    },
+    "weather": {
+      "enabled": true,
+      "aliases": ["forecast", "temperature"],
+      "description": "Show current weather"
+    },
+    "tasks": {
+      "enabled": true,
+      "aliases": ["todos", "todo", "to do"],
+      "description": "Show pending tasks"
+    },
+    "remind": {
+      "enabled": true,
+      "aliases": ["reminder", "remind me"],
+      "description": "Set a reminder"
+    },
+    "screenshot": {
+      "enabled": true,
+      "aliases": ["capture", "screen"],
+      "description": "Take a screenshot"
+    },
+    "memory": {
+      "enabled": true,
+      "aliases": ["remember", "recall"],
+      "description": "Access working memory"
+    },
+    "close": {
+      "enabled": true,
+      "aliases": ["exit", "quit", "goodbye", "bye"],
+      "description": "Close the application"
+    },
+    "help": {
+      "enabled": true,
+      "aliases": ["commands", "what can you do"],
+      "description": "List available commands"
+    }
+  },
+  "custom_responses": {
+    "greeting": ["Hey.", "What's up?", "Yeah?", "What do you need?"],
+    "acknowledgment": ["Done.", "Got it.", "On it.", "Sure."],
+    "error": ["Something went wrong.", "That didn't work.", "Error."]
+  }
+}

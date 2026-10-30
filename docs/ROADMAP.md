@@ -17,21 +17,41 @@ LAW #0 reminder: every milestone description preserves the user's verbatim words
 
 ---
 
+## Project charter (verbatim, 2026-10-30)
+
+> we are going to take all the cool shit the Unity voice v2 all the features like camera and tts and stt and websearch and playwrite and coding shit all of it we are searching all projects for cool shit that we want to put into the ultimate ai  app that allows any ai connected to use it fully and completely all features we have ever built via copying and ripping them into this project for a simpelicity of talking to an ai and having it in real time have a selfie and talk back to you in live action like a real person on a video call doing all the millions and millions of things possible to do and say while on a video call with the user but its an app for a agent to use not a video call but you can see and she repsondes and does things ytou telleher to do and you can see her lips move to the words she says as she preerforms the trillions of possible tasks put to her
+
+Where every piece comes from: `docs/FEATURE-SOURCES.md`. How they fit: `docs/ARCHITECTURE.md`.
+
+---
+
 ## In progress
 
-_(none — template-repo clean state)_
+_(none)_
 
 ---
 
 ## Pending
 
-_(none — template-repo clean state; downstream projects populate their own ROADMAP when they begin work after `/unity-install` or `/unity-update` seeds the `.claude/` workflow into the project root)_
+- [ ] **M3 — Her face.** "have a selfie and talk back to you in live action like a real person on a video call" + "you can see her lips move to the words she says" + operator decision "#D photo realistic photograph like vido" — photorealistic neural talking head rendered from the face-locked reference portrait, driven in real time by the voice sidecar's audio and phoneme timeline, streamed to the UI as live video. Track A single-photo neural renderer first, Track B mouth inpainting on generated idle video, Track C 3D Gaussian head.
+- [ ] **M4 — Her eyes.** "camera" — camera capture, screen capture, vision model path, ambient awareness so "you can see and she repsondes".
+- [ ] **M5 — Her hands.** "websearch and playwrite and coding shit all of it" — web search, Playwright browser tool, code / files / shell tools with containment, system tools, image generation tool, so "she ... does things ytou telleher to do".
+- [ ] **M6 — Any AI connected.** "allows any ai connected to use it fully and completely all features we have ever built" — one tool registry exposed as MCP server, OpenAI- and Anthropic-compatible HTTP gateway, and native loop for local unity-brain; provider adapters for Pollinations, Ollama, Anthropic, OpenAI-compatible.
+- [ ] **M7 — Memory, persona, emotion.** persona loader + style gate, emotion state driving voice delivery, embedding memory and fact store.
+- [ ] **M8 — Launcher and packaging.** supervisor that brings sidecars and hub up with health and dep checks, installers, app-window / OBS / Android shells.
 
 ---
 
 ## TOMBSTONES
 
 _(none)_
+
+---
+
+## Closed milestones
+
+- [x] **M1 — Rip and stage.** "copying and ripping them into this project" — vendor the selected source files from `docs/FEATURE-SOURCES.md` into `vendor/` with provenance, secrets scrubbed, `D:\data` excluded. Closed 2026-10-30; see `docs/FINALIZED.md §Milestone closed: M1`.
+- [x] **M2 — Her voice and ears.** "the Unity voice v2" + "tts and stt" — unity-voice-v2 sidecar, faster-whisper sidecar, browser mic with VAD and barge-in, so you can talk to her and she talks back in real time. Closed 2026-10-30 (mic path awaits a human with a microphone); see `docs/FINALIZED.md §Milestone closed: M2`.
 
 ---
 

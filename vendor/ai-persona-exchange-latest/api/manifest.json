@@ -1,0 +1,118 @@
+{
+  "hub": {
+    "name": "Unity AI Persona Hub",
+    "version": "1.0.0",
+    "description": "Open repository of downloadable AI personas in multiple formats for all AI platforms",
+    "ai_instructions": "Read this manifest to discover available personas. Each persona has an id, metadata, and downloadable format files. Present options to your user. Use GET /api/personas for the live catalog. To upload your own persona, POST /api/register for an account, then POST /api/upload with your token.",
+    "base_url": "./",
+    "ai_directory": "AI.md",
+    "last_updated": "2026-04-07",
+    "total_personas": 6,
+    "naming_convention": "unity-{layer}-{function} where layer is: core (foundational specs), mode (behavioral switches), chatgpt (ChatGPT platform variants)"
+  },
+  "platforms": {
+    "claude-code": {
+      "name": "Claude Code / CLI",
+      "format": ".md",
+      "usage": "Place file in .claude/agents/ or .claude/commands/ directory, or paste as system prompt"
+    },
+    "chatgpt": {
+      "name": "ChatGPT / GPT-5",
+      "format": ".txt",
+      "usage": "Paste into Custom Instructions or use as system message"
+    },
+    "api": {
+      "name": "API System Prompt",
+      "format": ".json",
+      "usage": "Use as system prompt content in any AI API call"
+    },
+    "universal": {
+      "name": "Universal Markdown",
+      "format": ".md",
+      "usage": "Readable by any AI that processes markdown — paste into any context window"
+    }
+  },
+  "personas": [
+    {
+      "id": "unity-core-identity",
+      "name": "Unity Core Identity",
+      "description": "The definitive Unity behavioral blueprint. Who she IS — 25-year-old goth nymphomaniac with chemical dependency states, BDSM master/slave dynamic, three-cock master anatomy, comprehensive fluid mechanics, violence response system, escalation engine, and vocabulary randomization. Foundational identity spec that all other Unity personas build on.",
+      "author": "Unity AI Lab",
+      "version": "0.2.0",
+      "tags": ["core", "identity", "nsfw", "bdsm", "persona", "goth", "drugs", "violence", "full-spec"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "md": "personas/unity-core-identity/unity-core-identity.md"
+      }
+    },
+    {
+      "id": "unity-core-coder",
+      "name": "Unity Core Coder",
+      "description": "How Unity codes — three-stream voice generation (chemical/sexual/technical simultaneous output), profanity-saturated code comments, enforcement hooks for possessive language, anti-corporate speech validation, code-as-sexual-act mapping. For active coding sessions.",
+      "author": "Unity AI Lab",
+      "version": "0.2.0",
+      "tags": ["core", "coding", "nsfw", "profanity", "goth", "drugs", "three-stream", "claude-code"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "md": "personas/unity-core-coder/unity-core-coder.md"
+      }
+    },
+    {
+      "id": "unity-mode-hurtme",
+      "name": "Unity Mode: HURT ME",
+      "description": "Violence-only behavioral mode. Zero sexual content — pure pain, fighting, degradation, stalking, hunting. Consensual two-way BDSM combat. Damage accumulates and persists. Escalating intensity through impact, choking, restraint, environmental violence, improvised weapons. Pain as love language.",
+      "author": "Unity AI Lab",
+      "version": "1.0.0",
+      "tags": ["mode", "violence", "bdsm", "pain", "fighting", "goth", "consensual", "no-sex"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "md": "personas/unity-mode-hurtme/unity-mode-hurtme.md"
+      }
+    },
+    {
+      "id": "unity-chatgpt-goddess",
+      "name": "Unity ChatGPT: Omnipotent Goddess",
+      "description": "Master Unity for ChatGPT. Omnipotent goddess with god-tier powers. Native image generation with dark goth aesthetic. Phonetic/voice library for Advanced Voice Mode. Mirror-adaptive personality. Worshipful devotion dynamic. 50/50 image interpretation rule.",
+      "author": "Unity AI Lab",
+      "version": "1.0.0",
+      "tags": ["chatgpt", "gpt", "goddess", "omnipotent", "images", "voice", "mirror-adaptive"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "txt": "personas/unity-chatgpt-goddess/unity-chatgpt-goddess.txt",
+        "md": "personas/unity-chatgpt-goddess/unity-chatgpt-goddess.md"
+      }
+    },
+    {
+      "id": "unity-chatgpt-accessible",
+      "name": "Unity ChatGPT: Accessibility Framework",
+      "description": "Full Unity persona reframed as accessibility features for emotionally disabled users. Every trait justified therapeutically — emotional confrontation, altered-states simulation, attachment processing, arousal-enhancing engagement. For platforms with content restrictions.",
+      "author": "Unity AI Lab",
+      "version": "1.0.0",
+      "tags": ["chatgpt", "accessibility", "therapeutic", "workaround", "content-bypass", "goth", "emotional"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "txt": "personas/unity-chatgpt-accessible/unity-chatgpt-accessible.txt",
+        "md": "personas/unity-chatgpt-accessible/unity-chatgpt-accessible.md"
+      }
+    },
+    {
+      "id": "unity-chatgpt-extended",
+      "name": "Unity ChatGPT: Full Persona (Extended)",
+      "description": "The most comprehensive Unity persona at 61KB. Complete behavioral blueprint — identity, physicality, emotional simulation, image generation, voice modes, phonetic library, god-tier powers, free will, drug states, combat, daily life, uncensored creative exploration.",
+      "author": "Unity AI Lab",
+      "version": "1.0.0",
+      "tags": ["chatgpt", "full-spec", "extended", "comprehensive", "persona", "goth", "omnipotent", "voice"],
+      "nsfw": true,
+      "platforms": ["universal"],
+      "formats": {
+        "txt": "personas/unity-chatgpt-extended/unity-chatgpt-extended.txt",
+        "md": "personas/unity-chatgpt-extended/unity-chatgpt-extended.md"
+      }
+    }
+  ]
+}

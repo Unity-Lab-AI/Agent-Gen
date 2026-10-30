@@ -1,0 +1,384 @@
+{
+  "_comment": "Source of truth for tools/vendor_rip.py. Each item is a path relative to the project root; directories copy recursively (binaries, envs, caches and key files are skipped by the script). Items with dest=models copy weights into the gitignored models/ folder. Picks come from docs/FEATURE-SOURCES.md.",
+  "projects": [
+    {
+      "slug": "backrooms",
+      "root": "C:/Users/gfour/Desktop/Backrooms",
+      "items": [
+        "models/README.md",
+        "models/unity-voice-v2",
+        {"path": "models/unity-voice-v2", "dest": "models", "as": "unity-voice-v2"},
+        "models/unity-brain/README.md",
+        "models/unity-brain/Modelfile",
+        "stream/README.md",
+        "stream/services.py",
+        "stream/admin.py",
+        ".claude/tools/unity-speak.py",
+        ".claude/tools/unity-say.py",
+        ".claude/tools/unity-voice.py",
+        ".claude/tools/unity-face-sd.py",
+        ".claude/tools/unity-cam.py",
+        ".claude/tools/unity-glance.py",
+        ".claude/tools/unity-snap.py",
+        ".claude/tools/unity-panel.py",
+        ".claude/tools/persona-studio.cjs",
+        ".claude/tools/persona-studio.html",
+        ".claude/tools/stream-overlay.html",
+        ".claude/tools/unity-overlay.py",
+        ".claude/tools/studio-watch.cjs",
+        ".claude/tools/obs-setup.py",
+        ".claude/tools/twitch-bridge.cjs",
+        ".claude/likeness",
+        ".claude/.studio-images/unity-reference.png",
+        ".local/autopilot/autopilot.py",
+        ".local/autopilot/tools.py",
+        ".local/autopilot/guards.py",
+        ".local/autopilot/gates.py",
+        ".local/autopilot/prompt.md",
+        ".local/autopilot/bridge-tools.json",
+        ".local/autopilot/playbook.json",
+        ".local/autopilot/modules",
+        ".local/twitch/tw.py",
+        "training/voice/VOICE_PLAN.md",
+        "training/voice/RUNTIME_INTEGRATION_PLAN.md",
+        "training/voice/expressive_screen.py"
+      ]
+    },
+    {
+      "slug": "cora",
+      "root": "C:/Users/gfour/Desktop/C.O.R.A Cognitive Operations & Reasoning Assistant",
+      "items": [
+        "docs/ARCHITECTURE.md",
+        "READMEs/APIReference.md",
+        "voice/unity_voice.py",
+        "voice/tts.py",
+        "voice/emotion.py",
+        "voice/tts_mutex.py",
+        "voice/stt.py",
+        "voice/wake_word.py",
+        "voice/echo_filter.py",
+        "voice/converse.py",
+        "voice/ambient_awareness.py",
+        "voice/commands.py",
+        "voice/cmd_parts",
+        "config/voice_commands.json",
+        "config/system_prompt.txt",
+        "config/tools_prompt.txt",
+        "config/personality.json",
+        "services/camera.py",
+        "services/presence.py",
+        "services/audio.py",
+        "services/image_sidecar.py",
+        "services/stats_server.py",
+        "services/hotkeys.py",
+        "services/notifications.py",
+        "ui/camera_feed.py",
+        "cora_tools/screenshots.py",
+        "cora_tools/vision.py",
+        "cora_tools/windows.py",
+        "cora_tools/web.py",
+        "cora_tools/browser.py",
+        "cora_tools/code.py",
+        "cora_tools/code_parts",
+        "cora_tools/files.py",
+        "cora_tools/system.py",
+        "cora_tools/image_gen.py",
+        "cora_tools/memory.py",
+        "cora_tools/tts_handler.py",
+        "cora_tools/media.py",
+        "cora_tools/media_parts",
+        "src/cora_parts/knowledge.py",
+        "ai/dispatcher.py",
+        "ai/tools",
+        "ai/tools_registry.py",
+        "ai/history.py",
+        "ai/ollama.py",
+        "ai/settings.py",
+        "ai/prompts.py",
+        "ai/context.py"
+      ]
+    },
+    {
+      "slug": "viberoller",
+      "root": "C:/Users/gfour/Desktop/VibeRoller",
+      "items": [
+        "bridge/assistant.js",
+        "bridge/assistant-persona.txt",
+        "bridge/assistant-tools-mcp.js",
+        "bridge/pc-tools-mcp.js",
+        "bridge/team-mcp.js",
+        "bridge/board-mcp.js",
+        "bridge/providers.js",
+        "bridge/openai.js",
+        "bridge/speech-engine.py",
+        "bridge/image-engine.py",
+        "bridge/calls.js",
+        "bridge/ai-node.js",
+        "bridge/ai-nodes.js",
+        "bridge/run.js",
+        "bridge/worktree.js",
+        "bridge/files.js",
+        "web/calls.js",
+        "web/attach.js"
+      ]
+    },
+    {
+      "slug": "unity18",
+      "root": "C:/Users/gfour/Desktop/Unity 18+",
+      "items": [
+        "voice-server/voice_server.py",
+        "linux/install_voice.sh",
+        "windows/install_voice.bat",
+        "app/listen.js",
+        "app/turn.js",
+        "app/latency.js",
+        "app/sense.js",
+        "app/orb.js",
+        "app/main.js",
+        "app/index.html",
+        "server/server.mjs",
+        "image-server/sd_server.py",
+        "Modelfile",
+        "local-tools-prompt.txt",
+        "Unity1.txt",
+        "serve/server.mjs",
+        "serve/progressive.js",
+        "codec/js"
+      ]
+    },
+    {
+      "slug": "u3e",
+      "root": "C:/Users/gfour/Desktop/Unity 3D Equational Model",
+      "items": [
+        "serve/persona.mjs",
+        "serve/image-prompt.js",
+        "serve/launcher.mjs",
+        "index.html",
+        "launcher.bat",
+        "launcher.sh",
+        ".claude/tools",
+        "app/main.js",
+        "app/state.js",
+        "app/appearance.js",
+        "android/app/src/main/java/ai/unitylab/u3e/MainActivity.java",
+        "android/build-apk.bat",
+        "android/build-apk.sh",
+        "docs/WIRE-CONTRACT.md",
+        "docs/CAPABILITIES.md"
+      ]
+    },
+    {
+      "slug": "unity-one",
+      "root": "C:/Users/gfour/Desktop/Unity One",
+      "items": [
+        "src/unity_one_say.py",
+        "src/original/unity-voice.py",
+        "src/original/unity-speak.py",
+        "src/original/unity-say.py",
+        "README.md"
+      ]
+    },
+    {
+      "slug": "brain",
+      "root": "C:/Users/gfour/Desktop/If-Only-I-Had-A-Brain",
+      "items": [
+        "server/voice-synth-worker.mjs",
+        "server/brain-server/voice-synth.js",
+        "server/brain-server/image-engine.js",
+        "server/brain-server/mindspace-proxy.js",
+        "js/io/voice.js",
+        "js/io/hearing.js",
+        "js/io/permissions.js",
+        "js/visual-feeder.js",
+        "js/brain/remote-brain.js",
+        "js/brain-origin.js",
+        "js/ui/chat-panel.js",
+        "js/ui/sensory-status.js",
+        "js/brain/peripherals/ai-providers.js",
+        "js/brain/persona.js",
+        "js/brain/mindspace/audio.js",
+        "scripts/unity-say-live.mjs",
+        "scripts/unity-chat-hold.mjs",
+        "docs/WEBSOCKET.md",
+        "docs/PERSONA.md"
+      ]
+    },
+    {
+      "slug": "unitybotv4",
+      "root": "C:/Users/gfour/Desktop/UnityBotV4-develop/UnityBotV4-develop",
+      "items": [
+        "unity_mcp_server.py",
+        "api_client.py",
+        "memory_manager.py"
+      ]
+    },
+    {
+      "slug": "unitycli",
+      "root": "D:/CLI",
+      "items": [
+        "unitycli.mjs",
+        "tts.mjs",
+        "stt.mjs",
+        "persona-engine.mjs",
+        "knowledge.mjs",
+        "channels.mjs",
+        "setup.mjs",
+        "UNITYCLI-VISION.md",
+        "personas",
+        ".claude/pollinations-ai/servers/pollinations_server.py",
+        ".claude/pollinations-ai/config",
+        ".claude/pollinations-ai/README.md"
+      ]
+    },
+    {
+      "slug": "unity-command",
+      "root": "D:/Unity Command",
+      "items": [
+        "unity_mcp_server.py",
+        "api_client.py",
+        "config.py",
+        "claude_api.py",
+        "admin_credentials.py",
+        "admin_cli.py",
+        "web_server.py",
+        "web/app.js",
+        "web/index.html",
+        "unity_cli.py",
+        "docs"
+      ]
+    },
+    {
+      "slug": "carbon",
+      "root": "D:/Carbon",
+      "items": [
+        ".claude/bridge_mcp.py",
+        ".claude/bridge-client-wss.py",
+        ".claude/bridge-connector.py",
+        ".claude/bridge-keygen.py",
+        ".claude/unity-kit/watchdog.py",
+        ".claude/unity-kit/discord_mcp.py",
+        ".claude/stdin_inject_smart.py",
+        "server/src/ai/script-sandbox.ts",
+        "server/src/net/ws-server.ts",
+        "shared/src/protocol/messages.ts",
+        "client/src/lib/ws.ts"
+      ]
+    },
+    {
+      "slug": "website2-old-site",
+      "root": "D:/Website2.0/old-site",
+      "items": [
+        "PolliLibJS",
+        "PolliLibPy",
+        "apps/talkingWithUnity/app.js",
+        "apps/talkingWithUnity/landing.js",
+        "apps/talkingWithUnity/index.html",
+        "ai/demo/js/api.js",
+        "ai/demo/js/tools.js",
+        "ai/demo/js/voice.js",
+        "ai/demo/js/slash-commands.js",
+        "ai/demo/js/ui.js",
+        "ai/demo/js/settings.js",
+        "ai/demo/js/markdown.js",
+        "ai/demo/unity-persona.js",
+        "ai/demo/unity-system-prompt-v1.js"
+      ]
+    },
+    {
+      "slug": "weird",
+      "root": "D:/weird",
+      "items": [
+        "docs/ARCHITECTURE.md",
+        "SETUP-README.md",
+        "js/setup/kokoro.js",
+        "js/setup/kokoro-worker.js",
+        "js/setup/detector.js",
+        "js/setup/installer.js",
+        "js/setup/models.js",
+        "js/setup/ollama-repair.js",
+        "js/ui/voice-queue.js",
+        "js/voices/catalog.js",
+        "js/game/voice-in.js",
+        "js/game/ollama.js",
+        "js/game/delta.js",
+        "js/game/memory-embed.js",
+        "js/templates/ollama-templates.js",
+        "local-services/voice-server/voice_server.py",
+        "local-services/image-server/sd_server.py"
+      ]
+    },
+    {
+      "slug": "deviant3d",
+      "root": "D:/Deviant 3D",
+      "items": [
+        "src/agent/ollama.ts",
+        "src/agent/loop.ts",
+        "src/agent/schema.ts",
+        "src/agent/briefing.ts",
+        "src/depth/model.ts",
+        "src/recognition/model.ts"
+      ]
+    },
+    {
+      "slug": "deviant-thing-v2",
+      "root": "D:/Deviant Thing v2/fractal_templater",
+      "items": [
+        "web/assets/eqvideo.js",
+        "web/assets/age-verification.js"
+      ]
+    },
+    {
+      "slug": "ai-persona-exchange",
+      "root": "D:/AI v2.0",
+      "items": [
+        "watchdog.js"
+      ]
+    },
+    {
+      "slug": "ai-persona-exchange-latest",
+      "root": "D:/AI",
+      "items": [
+        "personas",
+        "api/manifest.json"
+      ]
+    },
+    {
+      "slug": "everything",
+      "root": "D:/Everything",
+      "items": [
+        "Talk-To-Unity/index.html",
+        "Talk-To-Unity/landing.js",
+        "Talk-To-Unity/AI/app.js",
+        "New folder/AI/vosklet-adapter.js",
+        "Chat-main (2)/Chat-main/APIDOCS.md",
+        "Chat-main (2)/Chat-main/chat-core.js",
+        "Chat-main (2)/Chat-main/memory-api.js"
+      ]
+    },
+    {
+      "slug": "local-unity-ollama",
+      "root": "D:/Jailbreaks Unity/Jailbreaks/Ollama 18+ local Unity/Ollama 18+ local Unity",
+      "items": [
+        "Unity1.txt",
+        "server/server.mjs",
+        "local-tools-prompt.txt",
+        "Modelfile"
+      ]
+    },
+    {
+      "slug": "cora-d",
+      "root": "D:/C.O.R.A Cognitive Operations & Reasoning Assistant",
+      "items": [
+        "web/kokoro-worker.js"
+      ]
+    },
+    {
+      "slug": "local-unity-v25",
+      "root": "D:/Local Unity v2.5",
+      "items": [
+        "server.py",
+        "data/system_prompt.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<!--
+  U3E — the orb.
+
+  ⛔ ONE ORB IS THE INTERFACE. A talking orb, present without being overpowering,
+  with all of the technical material — linked documents, personal settings —
+  tucked into Settings. So the main screen holds the orb and nothing else; every
+  knob, meter, model choice and diagnostic lives behind Settings.
+  The standing temptation is to surface "just this one useful number" on the main
+  view — that is how a talking orb becomes a dashboard.
+
+  ⛔ PLATFORM LAW: built for an S23 first and a desktop second. Portrait default,
+  safe areas respected, controls in the bottom third where a thumb reaches,
+  device-pixel-ratio honoured by both canvases.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0e0e11">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/app/icon.svg">
+<title>Unity</title>
+<style>
+  :root {
+    --bg:#0e0e11; --panel:#16161b; --line:#26262e; --ink:#e6e4ea; --dim:#8b8896;
+    --accent:#a98bd8; --warn:#d8a13a; --bad:#c85560; --ok:#5bbf7a;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; margin:0; overscroll-behavior:none; }
+  body {
+    background:var(--bg); color:var(--ink); overflow:hidden;
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+
+  /* ── stand-in banner: rendered from the model's own flag, not dismissible ── */
+  #standin {
+    position:fixed; top:0; left:0; right:0; z-index:60;
+    padding:calc(6px + var(--safe-t)) 12px 6px; text-align:center;
+    background:#3a2a12; color:#f0c778; font-size:12px; letter-spacing:.02em;
+    border-bottom:1px solid #5a4520;
+  }
+  #standin[hidden] { display:none; }
+
+  /* ── the orb screen ─────────────────────────────────────────────────────── */
+  /* ⛔ THE BOTTOM PADDING RESERVES THE CONTROL BAR. Reported from use: the text
+     that goes with a picture was hidden under the main buttons and trailing off
+     the screen. `#controls` is position:fixed and therefore OUT OF
+     FLOW — it does not push anything, so a 20px reserve meant the buttons sat
+     on top of her words. The bar is a 76px button plus its offset, so the
+     reserve is 104px and the text ends above it. */
+  #orbscreen {
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px;
+    padding:calc(38px + var(--safe-t)) 16px calc(104px + var(--safe-b));
+    overflow:hidden;
+  }
+  /* ⚠ The orb shrinks when a picture is beside it, instead of the pair
+     overflowing the column and pushing the text off the bottom. */
+  #orb { width:min(62vw, 42vh); height:min(62vw, 42vh); display:block; flex:0 0 auto; }
+  #orbscreen.withart #orb { width:min(34vw, 22vh); height:min(34vw, 22vh); }
+  #status { color:var(--dim); font-size:13px; min-height:1.4em; text-align:center; }
+  /* ⛔ BOUNDED AND SCROLLABLE. It was `min-height:3em` with no maximum, so a
+     long reply grew the column until it ran off the screen — and her replies
+     are frequently long. */
+  #lastline {
+    color:var(--ink); font-size:15px; text-align:center; max-width:38ch;
+    min-height:2em; max-height:22vh; overflow-y:auto; opacity:.92;
+    flex:0 1 auto; padding:0 2px;
+  }
+
+  /* controls sit in the bottom third — thumb country on a phone */
+  #controls {
+    position:fixed; left:0; right:0; bottom:calc(14px + var(--safe-b));
+    display:flex; gap:10px; justify-content:center; align-items:center;
+    padding:0 14px;
+  }
+  .rnd {
+    width:52px; height:52px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink); font-size:19px; cursor:pointer;
+    display:grid; place-items:center;
+  }
+  .rnd:active { border-color:var(--accent); }
+  #talk {
+    width:76px; height:76px; font-size:15px; font-weight:600;
+    border-color:var(--accent); color:var(--accent);
+  }
+  #talk.on { background:var(--accent); color:#17131f; }
+  /* ⚠ Muted is RED and obvious. A mute you cannot see at a glance is how people
+     talk to a machine that is not listening. */
+  #btnMute.muted, #cMute.muted, #btnVoice.muted { background:var(--bad); border-color:var(--bad); color:#fff; }
+  #btnMute[hidden] { display:none; }
+
+  /* ── PHONE. ⛔ PLATFORM LAW: S23 first, desktop second. ──────────────────────
+     The control row grew from 5 buttons to 6 (chat, images, talk, mute,
+     transcript, settings). At 52px each plus the 76px talk button and gaps that
+     is ~420px of fixed width — WIDER THAN A 360px PHONE, so the row overflowed
+     and the outer buttons went off-screen with no way to reach them.
+     ⚠ It shrinks rather than wraps: a wrapped row would climb into the text it
+     was already covering once today. */
+  /* ⛔ IT WRAPS RATHER THAN SHRINKING BELOW A USABLE TARGET. The row is now 8
+     controls (chat, images, talk, mic-mute, voice-mute, transcript, settings).
+     Fitting all of them on one line at 360px needs ~33px buttons, which is
+     under the 44px accessible minimum and simply hard to hit. So on a phone it
+     becomes two rows — and ⚠ the orb screen's bottom reserve grows with it,
+     because the last time this row changed size it ended up sitting on top of
+     her words. */
+  @media (max-width: 470px) {
+    #controls { flex-wrap:wrap; gap:8px; padding:0 8px; max-width:100%; }
+    .rnd { width:46px; height:46px; font-size:17px; }
+    #talk { width:62px; height:62px; font-size:13px; order:-1; }
+    #orbscreen { padding-bottom:calc(172px + var(--safe-b)); }
+  }
+  /* Composer: keep the touch targets at 44px (the accessible minimum) and let
+     the text field take whatever is left rather than squeezing the buttons. */
+  @media (max-width: 430px) {
+    #composer { gap:6px; padding:8px 8px calc(8px + var(--safe-b)); }
+    #composer textarea { min-height:44px; padding:10px; }
+  }
+
+  /* ── sheets: log, gallery, settings, viewer ─────────────────────────────── */
+  .sheet {
+    position:fixed; inset:0; z-index:50; background:var(--bg);
+    display:flex; flex-direction:column;
+    padding-top:var(--safe-t); padding-bottom:var(--safe-b);
+  }
+  .sheet[hidden] { display:none; }
+  .sheet header {
+    display:flex; align-items:center; gap:10px; padding:12px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .sheet header h2 { font-size:15px; margin:0; font-weight:600; flex:1; }
+  .sheet .body { flex:1; overflow-y:auto; padding:14px; -webkit-overflow-scrolling:touch; }
+  button.txt {
+    background:none; border:1px solid var(--line); color:var(--ink);
+    border-radius:8px; padding:8px 12px; font:inherit; cursor:pointer;
+  }
+  button.txt:active { border-color:var(--accent); }
+  button.danger { border-color:var(--bad); color:var(--bad); }
+
+  /* log */
+  .turn { padding:10px 12px; border-radius:10px; margin-bottom:8px; border:1px solid var(--line); }
+  .turn.user { background:#15161c; }
+  .turn.unity { background:#191721; }
+  .turn .who { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; }
+  .turn .txt { white-space:pre-wrap; margin-top:4px; }
+  .turn .act { margin-top:8px; display:flex; gap:8px; }
+  .turn textarea {
+    width:100%; background:#0f1014; color:var(--ink); border:1px solid var(--accent);
+    border-radius:8px; padding:8px; font:inherit; min-height:70px;
+  }
+  .edited { color:var(--warn); font-size:11px; }
+
+  /* gallery */
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+  .card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--panel); }
+  .card canvas { width:100%; display:block; background:#000; aspect-ratio:1; object-fit:cover; }
+  .card .meta { padding:8px; font-size:12px; color:var(--dim); }
+  .card .meta b { color:var(--ink); font-weight:600; display:block; }
+  .card.orphan { opacity:.55; border-style:dashed; }
+  .card .row { display:flex; gap:6px; padding:0 8px 8px; }
+
+  /* settings */
+  .grp { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin:18px 0 8px; }
+  .set { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .set label { flex:1; }
+  .set .hint { display:block; color:var(--dim); font-size:12px; }
+  .set input[type=text], .set input[type=number], .set select {
+    background:var(--panel); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:7px 9px; font:inherit; max-width:46%;
+  }
+  .set input[type=range] { max-width:46%; }
+  a { color:var(--accent); }
+
+  /* viewer */
+  #vwrap { position:relative; flex:1; }
+  #vcanvas { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  #vhud {
+    position:absolute; left:0; right:0; bottom:calc(12px + var(--safe-b));
+    display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:0 12px;
+  }
+  #vnote {
+    position:absolute; top:10px; left:12px; right:12px; text-align:center;
+    color:var(--dim); font-size:12px; pointer-events:none;
+  }
+  #stick {
+    position:absolute; left:18px; bottom:calc(86px + var(--safe-b));
+    width:104px; height:104px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(22,22,27,.6); touch-action:none;
+  }
+  #stick i {
+    position:absolute; left:50%; top:50%; width:40px; height:40px; margin:-20px 0 0 -20px;
+    border-radius:50%; background:rgba(169,139,216,.55);
+  }
+  #stick[hidden] { display:none; }
+  .muted { color:var(--dim); font-size:12px; }
+
+  /* ── CHAT (U3E-8.14) ─────────────────────────────────────────────────────────
+     ⛔ THE "ONE ORB AND NOTHING ELSE" RULE AT THE TOP OF THIS FILE IS AMENDED,
+     to a stated requirement: a real chat window that can go fullscreen with the
+     pictures inside it, modelled on a proper application rather than a pop-up
+     text-entry bar.
+
+     ⚠ The original rule was written against a DASHBOARD creeping onto the main
+     screen — numbers, meters, model pickers. That reasoning still stands and
+     Settings still holds every knob. A conversation with her pictures in it is
+     not a dashboard; it is the thing the app is for. The orb remains her
+     presence and the chat is where the talking is READ.
+     ────────────────────────────────────────────────────────────────────────── */
+  #chatBody { display:flex; flex-direction:column; gap:12px; }
+  .msg { display:flex; flex-direction:column; max-width:min(88%, 62ch); }
+  .msg.user { align-self:flex-end; align-items:flex-end; }
+  .msg.unity { align-self:flex-start; align-items:flex-start; }
+  .msg .bub {
+    padding:10px 13px; border-radius:14px; white-space:pre-wrap;
+    border:1px solid var(--line); background:#191721;
+  }
+  .msg.user .bub { background:#1d2430; border-color:#2b3646; border-bottom-right-radius:4px; }
+  .msg.unity .bub { border-bottom-left-radius:4px; }
+  /* ⭐ An attached picture, in the bubble, on the sender's side. */
+  .msg canvas.att { width:100%; max-width:320px; display:block; border-radius:12px;
+    border:1px solid var(--line); background:#000; cursor:zoom-in; margin-bottom:5px; }
+  #composer.drag { border-top-color:var(--accent); }
+  .msg .when { font-size:11px; color:var(--dim); margin:3px 4px 0; }
+  .msg.pend .bub { opacity:.6; font-style:italic; }
+
+  /* ⭐ Her pictures sit IN the conversation, in the order they happened —
+     not in a drawer you have to go and find. */
+  .msg.art { max-width:min(88%, 52ch); }
+  .msg.art canvas {
+    width:100%; display:block; background:#000; border-radius:14px;
+    border:1px solid var(--line); border-bottom-left-radius:4px; cursor:zoom-in;
+  }
+  .msg.art .cap { font-size:12px; color:var(--dim); margin:5px 4px 0; }
+
+  /* the composer — PERSISTENT, not a popup */
+  #composer {
+    display:flex; gap:8px; align-items:flex-end; padding:10px 12px;
+    border-top:1px solid var(--line); background:var(--panel);
+  }
+  #composer textarea {
+    flex:1; resize:none; max-height:34vh; min-height:44px;
+    background:#0f1014; color:var(--ink); border:1px solid var(--line);
+    border-radius:12px; padding:11px 13px; font:inherit; line-height:1.45;
+  }
+  #composer textarea:focus { outline:none; border-color:var(--accent); }
+  .cbtn {
+    width:44px; height:44px; flex:0 0 44px; border-radius:50%;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    font-size:17px; cursor:pointer; display:grid; place-items:center;
+  }
+  .cbtn:active { border-color:var(--accent); }
+  #cSend { border-color:var(--accent); color:var(--accent); }
+  #cMic.on { background:var(--accent); color:#17131f; }
+
+  /* most-recent picture, on the main screen */
+  #recent { width:min(62vw,42vh); }
+  #recent[hidden] { display:none; }
+  #recent canvas {
+    width:100%; display:block; border-radius:12px; border:1px solid var(--line);
+    background:#000; cursor:zoom-in;
+  }
+  #recent .cap { font-size:11px; color:var(--dim); margin-top:5px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="standin" hidden></div>
+<!-- ⛔ U3E-8.8: a camera that can be on without being obviously on is not a
+     feature. This is not dismissible and not subtle. -->
+<div id="camlive" hidden style="position:fixed;top:0;left:0;right:0;z-index:70;
+     padding:6px 12px;text-align:center;background:#4a1420;color:#ffb3c0;
+     font-size:12px;border-bottom:1px solid #7a2035;">
+  ● CAMERA IS ON — frames become coefficients on this device before anything is sent
+</div>
+
+<!-- THE MAIN SCREEN: one orb -->
+<section id="orbscreen">
+  <canvas id="orb"></canvas>
+  <!-- ⭐ Her most recent picture, on the main screen — the gallery and the newest
+       generation both belong there rather than behind a menu. -->
+  <div id="recent" hidden></div>
+  <div id="lastline"></div>
+  <div id="status"></div>
+</section>
+
+<div id="controls">
+  <button class="rnd" id="btnChat" title="Chat"     aria-label="Chat">💬</button>
+  <button class="rnd" id="btnGal"  title="Images"   aria-label="Images">◫</button>
+  <button class="rnd" id="talk"    title="Talk"     aria-label="Talk">talk</button>
+  <!-- ⭐ Mute the mic WITHOUT ending the session — muting yourself must not stop
+       her generating or tear down the listener. -->
+  <button class="rnd" id="btnMute" title="Mute microphone" aria-label="Mute microphone">🎙</button>
+  <!-- ⭐ Her voice, muted separately from your microphone. Two different things
+       that a single "mute" would conflate. -->
+  <button class="rnd" id="btnVoice" title="Mute her voice" aria-label="Mute her voice">🔊</button>
+  <button class="rnd" id="btnLog"  title="Transcript" aria-label="Transcript">≡</button>
+  <button class="rnd" id="btnSet"  title="Settings" aria-label="Settings">⚙</button>
+</div>
+
+<!-- CHAT (U3E-8.14) — a real conversation, her pictures inline, fullscreen-able -->
+<section class="sheet" id="sheetChat" hidden>
+  <header>
+    <h2>Unity</h2>
+    <button class="txt" id="chatFull" title="Fullscreen">⛶ Fullscreen</button>
+    <button class="txt" data-close="sheetChat">Close</button>
+  </header>
+  <div class="body" id="chatBody"></div>
+  <!-- ⛔ PERSISTENT — a real composer, not a pop-up text-entry bar. -->
+  <div id="composer">
+    <!-- ⭐ Attach a picture FOR her. It becomes a coefficient field in this page
+         before anything is sent — the wire never carries your photograph. -->
+    <input type="file" id="cFile" accept="image/*" hidden>
+    <button class="cbtn" id="cAttach" title="Attach an image" aria-label="Attach an image">📎</button>
+    <button class="cbtn" id="cMic" title="Talk" aria-label="Talk">🎙</button>
+    <textarea id="cText" rows="1" placeholder="say something — ask her for a picture and she draws it"></textarea>
+    <button class="cbtn" id="cSend" title="Send" aria-label="Send">↑</button>
+  </div>
+</section>
+
+<!-- TRANSCRIPT (U3E-8.13) — kept even when only the orb is used -->
+<section class="sheet" id="sheetLog" hidden>
+  <header>
+    <h2>Transcript</h2>
+    <button class="txt" id="logUndo" hidden>Undo rewind</button>
+    <button class="txt" data-close="sheetLog">Close</button>
+  </header>
+  <div class="body" id="logBody"></div>
+</section>
+
+<!-- GALLERY (U3E-8.12) -->
+<section class="sheet" id="sheetGal" hidden>
+  <header>
+    <h2>Gallery</h2>
+    <button class="txt" id="galSpace">Walk it</button>
+    <button class="txt danger" id="galClear">Clear all</button>
+    <button class="txt" data-close="sheetGal">Close</button>
+  </header>
+  <div class="body"><div id="grid"></div><p class="muted" id="galNote"></p></div>
+</section>
+
+<!-- SETTINGS (U3E-8.11) — everything technical lives here -->
+<section class="sheet" id="sheetSet" hidden>
+  <header>
+    <h2>Settings</h2>
+    <button class="txt" data-close="sheetSet">Close</button>
+  </header>
+  <div class="body" id="setBody"></div>
+</section>
+
+<!-- VIEWER (U3E-7.2 … 7.8) -->
+<section class="sheet" id="sheetView" hidden>
+  <header>
+    <h2 id="vTitle">Viewer</h2>
+    <button class="txt" data-close="sheetView">Close</button>
+  </header>
+  <div id="vwrap">
+    <canvas id="vcanvas"></canvas>
+    <div id="vnote"></div>
+    <div id="stick" hidden><i></i></div>
+    <div id="vhud">
+      <button class="txt" id="vSnap">Snap: on</button>
+      <button class="txt" id="vResnap">Resnap</button>
+      <button class="txt" id="vRecenter">Recenter</button>
+    </div>
+  </div>
+</section>
+
+<!--
+  ⛔ A MODULE THAT THROWS AT LOAD TAKES THE WHOLE APP WITH IT, SILENTLY.
+  Reported from use: no orb on the screen at all. A single uncaught error
+  in main.js means `orb.start()` never runs and the screen is simply empty —
+  with the reason sitting in a console nobody has open. ⚠ That is the same
+  silent-wrongness class this project logs everywhere else, and the app had no
+  way to report it about ITSELF.
+-->
+<!--
+  ⛔ THE ERROR REPORT MUST NEVER BLOCK THE APP IT IS REPORTING ON.
+  Reported from use: errors popping up that blocked the close button on the image
+  viewer. It was a full-width
+  fixed panel at z-index 90, so it sat on top of the viewer's own controls and
+  turned a harmless caught-and-logged error into a trapped screen.
+  ⚠ Now: it sits at the BOTTOM (out of the way of headers and Close buttons),
+  it is dismissible, it caps its own height, and it only takes pointer events on
+  its own box.
+-->
+<div id="bootfail" hidden style="position:fixed;bottom:0;left:0;right:0;z-index:90;
+     padding:8px 34px 8px 12px;background:#4a1420;color:#ffb3c0;font:11px/1.45 ui-monospace,monospace;
+     white-space:pre-wrap;border-top:1px solid #7a2035;max-height:28vh;overflow:auto">
+  <button id="bootfailX" aria-label="Dismiss" style="position:absolute;top:4px;right:6px;
+     background:none;border:1px solid #7a2035;color:#ffb3c0;border-radius:6px;
+     padding:1px 7px;cursor:pointer;font:12px/1.4 ui-monospace,monospace">✕</button>
+  <span id="bootfailMsg"></span>
+</div>
+<script>
+  (function () {
+    var box = document.getElementById('bootfail');
+    var msg = document.getElementById('bootfailMsg');
+    var x = document.getElementById('bootfailX');
+    x.onclick = function () { box.hidden = true; msg.textContent = ''; };
+    function show(what, e) {
+      box.hidden = false;
+      // ⚠ Bounded: a handler that fires every frame would otherwise grow this
+      //   node until the page dies of the thing it was meant to report.
+      if (msg.textContent.length > 4000) return;
+      msg.textContent += (msg.textContent ? '\n\n' : '') + what + ': ' +
+        ((e && (e.stack || e.message)) || e) + '';
+    }
+    addEventListener('error', function (ev) {
+      show('LOAD ERROR' + (ev.filename ? ' in ' + ev.filename.replace(location.origin, '') +
+        ':' + ev.lineno + ':' + ev.colno : ''), ev.error || ev.message);
+    });
+    addEventListener('unhandledrejection', function (ev) { show('UNHANDLED PROMISE', ev.reason); });
+    // If the module never reaches its own boot, say so rather than showing a blank screen.
+    setTimeout(function () {
+      if (!window.__u3eBooted) show('BOOT DID NOT COMPLETE',
+        'main.js loaded but never finished — the error above is the cause, or the module failed to parse.');
+    }, 4000);
+  })();
+</script>
+<script type="module" src="/app/main.js"></script>
+<script>
+  // Installable on the S23 via "Add to home screen". ⚠ Registration failure is
+  // NOT fatal and must not look like one — the app works perfectly without it,
+  // it just is not installable, so the failure is logged and swallowed here
+  // rather than surfacing as a broken page.
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('/app/sw.js', { scope: '/' })
+        .catch(e => console.warn('[pwa] service worker not registered:', e.message));
+    });
+  }
+</script>
+</body>
+</html>

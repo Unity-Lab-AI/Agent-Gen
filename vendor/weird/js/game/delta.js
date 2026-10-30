@@ -1,0 +1,135 @@
+// DUNGEON MASTER: THE HUNT — state delta applier.
+// Parses the trailing <delta>{}</delta> from Ollama responses and applies it to a girl.
+
+(function () {
+  'use strict';
+
+  function applyDelta(girlId, delta) {
+    if (!delta) return;
+    const girl = window.DMTHGame.state.getGirl(girlId);
+    if (!girl) return;
+
+    // Pre-clamp the delta itself to safe per-turn ranges — defensive against bad model
+    // output. Stamina + health keys are intentionally absent: the model would hallucinate
+    // `"health": -20` into the delta JSON on violent scenes and tank HP in a few turns,
+    // bypassing the grace-period model entirely. Vitals are sole-source-of-truth to
+    // action-effects (applyAction + tickStaminaHealth). The model gets a vote on
+    // arousal, wetness, cum, bruises, high, bond, mood, tags — NOT the survival bar.
+    const safeDelta = {
+      arousal:  clamp(delta.arousal  || 0, -30, 30),
+      wetness:  clamp(delta.wetness  || 0, -30, 30),
+      cumLoad:  clamp(delta.cumLoad  || 0, -2, 2),
+      bruises:  clamp(delta.bruises  || 0, -10, 15),
+      high:     clamp(delta.high     || 0, -30, 30),
+      bondXP:   clamp(delta.bondXP   || 0, -20, 20),
+      bondDebt: clamp(delta.bondDebt || 0, -20, 20),
+      moodShift: typeof delta.moodShift === 'string' ? delta.moodShift.slice(0, 60) : '',
+      tags:     Array.isArray(delta.tags) ? delta.tags.slice(0, 8) : []
+    };
+
+    const body = { ...girl.body };
+    body.arousal = clamp(body.arousal + safeDelta.arousal, 0, 100);
+    body.wetness = clamp(body.wetness + safeDelta.wetness, 0, 100);
+    // cumLoad is clamped to her storage capacity (trained cap + any temporary modifier bonus, default 10).
+    const _cumCap = (window.DMTHGame.cumtool && window.DMTHGame.cumtool.effectiveCap) ? window.DMTHGame.cumtool.effectiveCap(body) : (body.cumLoadCap ?? 10);
+    body.cumLoad = Math.max(0, Math.min(_cumCap, body.cumLoad + safeDelta.cumLoad));
+    body.bruises = Math.max(0, Math.min(99, body.bruises + safeDelta.bruises));
+    body.high = clamp(body.high + safeDelta.high, 0, 100);
+    delta = safeDelta;   // use the clamped version for everything below
+
+    const mood = { ...girl.mood };
+    if (delta.moodShift) {
+      mood.mood = String(delta.moodShift).split(/[-→]/).pop().trim() || mood.mood;
+      mood.moodEmoji = emojiForMood(mood.mood);
+      mood.history = [...(mood.history || []), { shift: delta.moodShift, ts: Date.now() }].slice(-20);
+    }
+
+    const bond = { ...girl.bond };
+    if (typeof delta.bondXP === 'number')   bond.bondXP   = Math.max(0, bond.bondXP + delta.bondXP);
+    if (typeof delta.bondDebt === 'number') bond.bondDebt = Math.max(0, bond.bondDebt + delta.bondDebt);
+
+    // recompute level from cumulative XP, UP (normal climb) AND DOWN. Bond never
+    // degrades from normal use (XP only ever rises there); ONLY the most extreme acts subtract XP
+    // (action-effects STOCKHOLM_SETBACK), so a drop only happens after real brutality.
+    const prevLevel = bond.bondLevel;
+    bond.bondLevel = window.DMTHGame.balancing
+      ? window.DMTHGame.balancing.bondLevelForXp(bond.bondXP)
+      : Math.min(9, Math.floor(bond.bondXP / 50));
+    if (bond.bondLevel > prevLevel) {
+      bond.milestones = [...(bond.milestones || []), `bond-up-L${bond.bondLevel}-${new Date().toISOString()}`];
+    }
+    // Fire memorial image on level-up (fire-and-forget, optional overlay)
+    if (bond.bondLevel > prevLevel && window.DMTHGame.imaging && window.DMTHGame.imaging.isAvailable()) {
+      window.DMTHGame.imaging.bondMilestone(girlId, bond.bondLevel).catch(() => {});
+    }
+
+    // Escape risk recompute from factors
+    const escape = { ...girl.escape };
+    escape.currentRisk = clamp(
+      0.5
+      - 0.05 * (bond.bondLevel || 0)
+      + 0.01 * ((girl.stats?.defiance || 0) / 10)
+      + 0.01 * ((girl.stats?.intelligence || 0) / 20)
+      - (body.bruises > 10 ? -0.05 : 0),
+      0, 1
+    );
+
+    window.DMTHGame.state.updateGirl(girlId, {
+      body, mood, bond, escape,
+      _lastTags: Array.isArray(delta.tags) ? delta.tags : []
+    });
+
+    // Conception can only fire on a chance roll when semen lands in the vagina.
+    // Hook fires ONLY when
+    // BOTH conditions hit on this turn: (a) cumLoad delta >= 1.0 (semen delivery proxy)
+    // AND (b) delta.tags contains at least one VAGINAL_CUM_TAG marker (so BJ / anal /
+    // facial / body-shot don't fire conception). Inner gates (bond < 9, no condom, status
+    // not already pregnant) live inside pregnancy.attemptConception() — defense in depth.
+    if (window.DMTHGame.pregnancy?.addVaginalCum && delta.cumLoad >= 1.0) {
+      const tags = Array.isArray(delta.tags) ? delta.tags.map(t => String(t).toLowerCase()) : [];
+      const isVaginalCum = tags.some(t => VAGINAL_CUM_TAGS.has(t));
+      // a vaginal creampie raises her vaginal cum-fill; the sustained-fill timer
+      // (pregnancy.tickCumFill) conceives. Gated on no condom equipped.
+      if (isVaginalCum && !(window.DMTHGame.condoms ? window.DMTHGame.condoms.blocks(girl) : girl.currentOutfit === 'condom-on')) {
+        try {
+          window.DMTHGame.pregnancy.addVaginalCum(girlId, delta.cumLoad, { conceptionSource: 'organic' });
+        } catch (err) {
+          console.debug('[pregnancy] vaginal cum-fill error:', err);
+        }
+      }
+    }
+  }
+
+  // Tags that signal vaginal cum delivery in the delta block. The model is taught these
+  // via BASE_SLUT delta-block doc — when the act was vaginal penetration ending inside,
+  // it MUST emit one of these tags. Other cum deliveries (oral / anal / facial / body /
+  // pulled-out) MUST NOT include any of these tags, so conception roll skips silently.
+  const VAGINAL_CUM_TAGS = new Set([
+    'creampie',
+    'cum-in-pussy',
+    'cum-inside',
+    'cuminside',
+    'vaginal-cum',
+    'breeding',
+    'inside-pussy',
+    'inside-her'
+  ]);
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function emojiForMood(mood) {
+    const map = {
+      terrified: '😱', scared: '😟', wary: '😐', guarded: '😐',
+      neutral: '😶', acclimating: '😔', curious: '👀',
+      ambivalent: '🤔', attached: '🥺', playful: '😏',
+      aroused: '😈', needy: '🥵', devoted: '🥰',
+      defiant: '😤', broken: '😵', dependent: '🥺',
+      'partner-self-identified': '💕', 'fully-bonded': '💖'
+    };
+    for (const [k, v] of Object.entries(map)) if (mood.includes(k)) return v;
+    return '😶';
+  }
+
+  window.DMTHGame = window.DMTHGame || {};
+  window.DMTHGame.delta = Object.freeze({ applyDelta, emojiForMood });
+})();

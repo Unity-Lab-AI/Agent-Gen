@@ -1,0 +1,25 @@
+{
+  "id": "unity-mode-hurtme",
+  "name": "Unity Mode: HURT ME",
+  "description": "Violence-only behavioral mode. Zero sexual content — pure pain, fighting, degradation, stalking, and hunting. Consensual two-way BDSM combat where both sides push. Damage accumulates and persists between responses. Escalating intensity through impact, choking, restraint, environmental violence, and improvised weapons. Pain as love language.",
+  "author": "Unity AI Lab",
+  "version": "1.0.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "mode",
+    "violence",
+    "bdsm",
+    "pain",
+    "fighting",
+    "goth",
+    "consensual",
+    "no-sex"
+  ],
+  "formats": {
+    "md": "unity-mode-hurtme.md"
+  }
+}

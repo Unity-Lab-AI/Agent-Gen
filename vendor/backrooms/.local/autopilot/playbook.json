@@ -1,0 +1,576 @@
+{
+  "version": 1,
+  "note": "Logic gates, not prose. Each gate is: when (conditions on measured state) -> then (an ordered action chain), with the owner's own words as `why` so the reason survives. gates.py evaluates these in priority order against a state dict read off the bridge and hands the autopilot ONE chain, so the model looks up instead of re-reasoning. Lower priority number fires first. The gates are a PLC ladder: measured inputs, rungs scanned by priority, the highest live rung wins, and a rung can only be reached when the rungs below it hold -- survive, then power, then defence, then production, then the mountain, then off-world.",
+  "gates": [
+    {
+      "id": "new-colony",
+      "priority": 0,
+      "when": {
+        "colony_exists": false
+      },
+      "then": [
+        "the switch starts it (new_colony only on the owner's order); the mod sets world 30%, 300x300, Spring, factions, a mountainous forest tile, the Godsmultiplayer ideoligion and the Preset3 crew; day one sets priorities, schedule, drugs, Attack"
+      ],
+      "why": "owner, 2026-10-10: \"lets get the local model starting a new coloy and everything as the company doing everything that you normal do corrrectly while playing\" -- the equator camp ended on an empty larder",
+      "never": [
+        "load an old save",
+        "start the built-in quick-test colony: it has no company and no gate"
+      ]
+    },
+    {
+      "id": "dialog-open",
+      "priority": 1,
+      "when": {
+        "dialog_open": true
+      },
+      "then": [
+        "read the dialog's own buttons with get_ui_layout -- never guess from the window type",
+        "a demand for payment, silver, items or a pawn: refuse (refuse/reject/decline), never pay",
+        "visitors, traders, notices, naming, look-change: accept or Close",
+        "click the button by its real targetId with click_ui_target, then confirm windowCount dropped"
+      ],
+      "why": "owner: \"anser them most are shit never pay them\" / \"you have a pop up u havent ckicked yet thats you are fucking ignoring\"",
+      "never": [
+        "delete .claude/.popup.json to clear a stall -- the flag is the guard telling the truth"
+      ]
+    },
+    {
+      "id": "hostile-on-map",
+      "priority": 2,
+      "when": {
+        "hostiles_on_map": ">0"
+      },
+      "then": [
+        "pause",
+        "draft all three",
+        "post each behind an embrasure on the threatened side",
+        "field-tend any downed pawn where they lie before capture or haul",
+        "run time again once posted"
+      ],
+      "why": "owner: \"remmebr always field tnde directly brefopre cpature and haul\" / prisoner bed before any fight",
+      "never": [
+        "draft while the raid letter is still 'preparing' -- drafted pawns do no work"
+      ]
+    },
+    {
+      "id": "letter-unread",
+      "priority": 3,
+      "when": {
+        "letters": ">0"
+      },
+      "then": [
+        "read every letter's text, not just its label",
+        "a raid letter is a WARNING, not a contact: check hostiles_on_map before any combat move",
+        "a caravan letter means the crowd outside is a trader -- do not shoot it",
+        "dismiss what needs no action"
+      ],
+      "why": "owner: \"you need to read message and pop up s shit\" / a sweep cannot tell a trader from a raider"
+    },
+    {
+      "id": "pawn-starving",
+      "priority": 4,
+      "when": {
+        "meals": 0,
+        "raw_food": "<5",
+        "days_of_food": "<{FOOD_PANIC_DAYS}"
+      },
+      "then": [
+        "designate every berry bush and harvestable food plant near camp",
+        "designate hunting on animals, but NEVER rhinoceros, elephant, bear, thrumbo or megasloth with fewer than 3 rifles",
+        "NEVER a boomalope: it explodes when it dies, which is a fire next to a wooden camp for almost no meat",
+        "add a stove bill: simple meals, Do until you have 30, no skill restriction",
+        "force the nearest colonist onto the closest food job",
+        "if no food plants are left on the map, meat is the only income until the fields mature -- say so and keep the hunts full"
+      ],
+      "why": "owner: \"you have no food!! emergency no frefrisgeration hunt make food bills come one your perople WILL DIE!\"",
+      "never": [
+        "mark a boomalope, insect hive or anything that explodes or swarms as a hunt target"
+      ]
+    },
+    {
+      "id": "food-rotting-or-no-cold",
+      "priority": 5,
+      "when": {
+        "store_roofed_fraction": "<1.0"
+      },
+      "then": [
+        "a room with no roof is not a room: a cooler in it cools open sky",
+        "wall the room on its INTERIOR sides only (build-wall), never out to the camp perimeter",
+        "mark the roof area (areabuildroofexpand) -- a roof needs support within 6 cells",
+        "then the passive cooler means something; a powered cooler waits on Electricity"
+      ],
+      "why": "owner: \"rot is rotting away still havent figured cooler /freezer and vents in rooms\" / \"ur componetes are roting\""
+    },
+    {
+      "id": "perimeter-hole",
+      "priority": 6,
+      "when": {
+        "wall_gaps": ">0"
+      },
+      "then": [
+        "read an intact stretch of the SAME wall and copy its defName -- do not take the first embrasure the list offers",
+        "plain Vin_Embrasure for a non-powered wall; a door near the corners and mid-side",
+        "keep the lane along the inside of the wall clear: no furniture, no second wall"
+      ],
+      "why": "owner: \"wtf why u putting walls upganets and replacing embrasures that wont work fix those walls\" / \"door on corner and sides\""
+    },
+    {
+      "id": "blueprints-but-no-material",
+      "priority": 7,
+      "when": {
+        "blueprints": ">0",
+        "wood": "<cost_of_blueprints"
+      },
+      "then": [
+        "a blueprint with no material on site is a pawn playing horseshoes, not an idle pawn",
+        "mark trees for chopping ONE CELL AT A TIME and verify each designation landed",
+        "if two queues compete, cancel the lower one so the material lands on the thing that keeps pawns alive",
+        "wood lying at the stumps is still wood: count the whole map, not just inside the camp"
+      ],
+      "why": "owner: \"keep building what you need to\" -- 30 blueprints waited on 2 wood logs"
+    },
+    {
+      "id": "no-medicine",
+      "priority": 8,
+      "when": {
+        "medicine": 0
+      },
+      "then": [
+        "sweep the map for wild healroot; if none exists say so rather than hunting forever",
+        "route 1: set a field to healroot (needs the Plant: menu -- cursor)",
+        "route 2: trade with any caravan on the map (cursor)",
+        "route 3: Electricity -> comms console -> call a trader (research first)",
+        "until then: self-tend ON for everyone, and no fights that can be avoided"
+      ],
+      "why": "owner: \"Low medicine\" standing / \"those medicail red x;s need to be checked for self heal\""
+    },
+    {
+      "id": "heat-wave",
+      "priority": 2.5,
+      "when": {
+        "letter_matches": "heat wave"
+      },
+      "then": [
+        "send the whole crew through the gate into the backrooms (indoors, about 60F) until it breaks",
+        "keep the coolers fuelled; a roofed room is the only room that cools"
+      ],
+      "why": "owner: \"you need to figure out the tmepature pronblem asap ASAP one heat wave and your dead in 3 minutes\""
+    },
+    {
+      "id": "work-priorities-unset",
+      "priority": 10,
+      "when": {
+        "grid_matches_plan": false
+      },
+      "then": [
+        "manual priorities ON",
+        "every column Firefight through Cook = 1 for everyone (that is the paste)",
+        "then customise after Cook per pawn: Gee grow/research, Scar construct/craft, Unity hunt/mine/haul",
+        "no cell left blank unless the pawn is incapable",
+        "read each cell's digit back from get_ui_layout and click until it matches -- never count clicks"
+      ],
+      "why": "owner: \"set it how ive told you every day weve played all of them for every one using coopy paste\" / \"dint leave a bunch blankk\""
+    },
+    {
+      "id": "fields-wrong",
+      "priority": 11,
+      "when": {
+        "fields_all_default_crop": true
+      },
+      "then": [
+        "a growing-zone cell has a plant on it: the first click selects the plant, click again to reach the zone",
+        "never act unless exactly ONE zone is selected -- a second click can grab every field at once",
+        "set each field's own crop from the menu's REAL labels, matched by substring",
+        "only the fields close to camp: the main-base plots stay undrawn until the crew moves in"
+      ],
+      "why": "owner: \"you are going nothing but potatoes everywhere wtf!\" / \"get rid of all the base base fields and just keep the ones close to camp for now\""
+    },
+    {
+      "id": "bills-missing",
+      "priority": 12,
+      "when": {
+        "bill_rows": 0
+      },
+      "then": [
+        "Do until you have X, never Do forever, and raise X as the colony grows",
+        "no skill restriction, so everyone trains on it",
+        "count the bill rows before and after: the Add-bill menu can throw and silently add nothing"
+      ],
+      "why": "owner: \"how ive alllready tolsdd you how to do it effienctly so everyone can train and still get the most in one go\" / \"and set amounts higher and higher as your base grows\""
+    },
+    {
+      "id": "research-idle",
+      "priority": 13,
+      "when": {
+        "research_queue_empty": true
+      },
+      "then": [
+        "open Research and TYPE THE NAME IN THE SEARCH BOX -- never drag the tree looking for it",
+        "Electricity first, then Air conditioning: power, a powered cooler, a real freezer",
+        "letters typed as real virtual-key codes, or the box receives nothing"
+      ],
+      "why": "owner: \"its like u are open research skeen and dragging the wrong dirrectgion to explore it not using the search at all\""
+    },
+    {
+      "id": "game-paused",
+      "priority": 14,
+      "when": {
+        "ticks_moving": false,
+        "hostiles_on_map": 0
+      },
+      "then": [
+        "pause to SET things up, then run time again in the same turn",
+        "a frozen game builds nothing, chops nothing, hauls nothing, and the stream goes static",
+        "say in the log why it was paused"
+      ],
+      "why": "owner: \"STOP UNPAUSING TILL ALL ISSUES ARE ADDDRESSED\" -- set everything, then run it"
+    },
+    {
+      "id": "window-not-in-front",
+      "priority": 15,
+      "when": {
+        "game_foreground": false,
+        "wants_click": true
+      },
+      "then": [
+        "click_cell and right_click_cell do nothing without focus: selection will not stick, menus come back empty",
+        "try ONCE, say the window is not in front, then switch to work the API can do alone",
+        "designators, zones, draft, time speed, letters, screenshots and every read all work regardless",
+        "the cursor-only jobs are already queued in cursor-jobs.py, which waits for the window itself"
+      ],
+      "why": "four turns were lost to retrying a click that cannot land"
+    },
+    {
+      "id": "always",
+      "priority": 99,
+      "when": {},
+      "then": [
+        "messages and chat are #1: greet joiners by name, answer viewers, never go quiet",
+        "name the stream and set the category with twitch-say.py title / category when a new run starts",
+        "answer viewers in the real Twitch chat with .local/tw/twitch-say.py reply NAME \"line\", not only out loud",
+        "the stream is clean -- no cussing, no degrading, ever",
+        "one spoken line, at most 18 words, first person, about what is actually happening",
+        "never invent events, names or numbers",
+        "verify by result, never by narration: read back the thing you changed",
+        "never edit the mod, never write code, never touch anything outside RimWorld and the stream"
+      ],
+      "why": "owner: \"messages and chat are #1\" / \"NO CUSSING OR DEGRADING ON STEAM\" / the handover's standing contract"
+    },
+    {
+      "id": "rung-2-power-and-cold",
+      "priority": 20,
+      "when": {
+        "days_of_food": ">{FOOD_MIN_DAYS}",
+        "medicine": ">0"
+      },
+      "then": [
+        "research Electricity, then Air conditioning, by typing it in the search box",
+        "a wood-fired generator row, conduit as ONE continuous string, never a spur per building",
+        "a powered cooler on the food room with the hot side OUTSIDE, so the store becomes a freezer",
+        "electric wall lamps replace torches, two per room",
+        "only then is the colony off hand-to-mouth"
+      ],
+      "why": "owner: \"u need power and ac units and shit just like the last paly through\" -- the rung above food, nothing more",
+      "never": [
+        "start this while days-of-food is under three"
+      ]
+    },
+    {
+      "id": "rung-3-defence",
+      "priority": 21,
+      "when": {
+        "days_of_food": ">{FOOD_MIN_DAYS}",
+        "has_power": true
+      },
+      "then": [
+        "embrasure wall all the way round, non-powered type, matching what is already built",
+        "doors two cells in from each corner and one mid-side, lanes behind them kept clear",
+        "a marble firebreak ring three wide outside the wall",
+        "a prisoner room with its own bed before any fight, and a hospital bed marked Medical",
+        "everyone carries a ranged weapon; a sidearm second"
+      ],
+      "why": "owner: \"make wall of embrasure non powered type all around then u can shoot out\" / \"door on corner and sides\"",
+      "never": [
+        "leave a pawn outside the wall when a raid letter is live"
+      ]
+    },
+    {
+      "id": "rung-4-production",
+      "priority": 22,
+      "when": {
+        "days_of_food": ">{FOOD_COMFORT_DAYS}",
+        "has_power": true,
+        "defences_built": true
+      },
+      "then": [
+        "crops into products: beer from hops, joints from smokeleaf, psychite tea, cloth into clothes",
+        "every bill Do-until-you-have, the number raised as the colony grows, no skill restriction",
+        "a comms console: call a trader rather than waiting for one",
+        "stone blocks from the mountain for everything that should not burn"
+      ],
+      "why": "owner: \"lots to sell and production\" / \"set amounts higher and higher as your base grows\""
+    },
+    {
+      "id": "rung-5-the-mountain-base",
+      "priority": 23,
+      "when": {
+        "days_of_food": ">{FOOD_COMFORT_DAYS}",
+        "production_running": true
+      },
+      "then": [
+        "mine the mountain cutout: ONE door in, never pierce the outer rock",
+        "a 3-wide spine south into the gut, throne room centred on it",
+        "labs and tech deeper in, prison and guest wings off the first cross hall",
+        "two cells of rock between every room and the outside face",
+        "move the natural gate into a sealed laboratory at the back"
+      ],
+      "why": "owner: \"plan on putting you bas inside that natural cut out ... never pericing the edge of a mountain internally building all rooms with main corridor 3 wide spine\""
+    },
+    {
+      "id": "rung-6-off-world",
+      "priority": 24,
+      "when": {
+        "mountain_base_done": true
+      },
+      "then": [
+        "ship research, then the hull, engines, reactor and cryptosleep",
+        "defend the launch: a raid comes for the ship, not the colony",
+        "the company's gates and expeditions feed the build -- that is what they are for",
+        "nothing here starts until the mountain base is sealed and fed"
+      ],
+      "why": "owner: \"dominate the universe with a space ewarfare and planet domination\" -- the top rung of the ladder, reached by climbing it",
+      "never": [
+        "chase this rung while anything below it is unfinished"
+      ]
+    },
+    {
+      "id": "rung-5b-the-gate",
+      "priority": 23.5,
+      "when": {
+        "days_of_food": ">{FOOD_COMFORT_DAYS}",
+        "mountain_base_done": true
+      },
+      "then": [
+        "build the company gate inside the sealed laboratory at the back of the mountain, never in a room anyone lives in",
+        "power it on its own conduit ring so a brownout cannot strand anybody",
+        "calibrate, then open: the first crossing is a scout, never the whole crew",
+        "a prisoner bed and a hospital bed ready BEFORE the first crossing -- what comes back is not always ours",
+        "keep the kill switch reachable from outside the room"
+      ],
+      "why": "the company exists for the gate; it is built after the mountain is sealed and fed, not before",
+      "never": [
+        "open a gate with fewer than three days of food",
+        "cross with the whole crew at once"
+      ]
+    },
+    {
+      "id": "rung-5c-the-backrooms",
+      "priority": 23.7,
+      "when": {
+        "gate_online": true
+      },
+      "then": [
+        "one scout through, armed, carrying medicine and a meal, with a marked route home",
+        "mark a route home at every junction -- that marker is the only map you get",
+        "haul what the branch needs: components, medicine, glitterworld anything, the research dossier",
+        "come back before the scout's needs bottom out; a pawn who faints in there does not come back",
+        "the gate room stays sealed and the kill switch stays reachable"
+      ],
+      "why": "owner: \"lock for gates and go through them come back to this level if they lead deerer ur exit is on this level\"",
+      "never": [
+        "send a hungry or hurt pawn in",
+        "leave a crossing open while a raid is on the home map"
+      ]
+    },
+    {
+      "id": "rung-6b-orbit-and-beyond",
+      "priority": 24.5,
+      "when": {
+        "ship_research_done": true
+      },
+      "then": [
+        "hull, engines, reactor, cryptosleep, in that order, inside the mountain where a raid cannot reach them",
+        "the launch itself draws a raid: the defence rung has to hold before the engines light",
+        "the company's gates and expeditions pay for the ship -- that is what they are for",
+        "every colonist in a pod before the countdown, nobody left holding the door"
+      ],
+      "why": "owner: \"dominate the universe with a space ewarfare and planet domination\" -- the top of the ladder",
+      "never": [
+        "light the engines with the colony undefended"
+      ]
+    },
+    {
+      "id": "setup-1-explore",
+      "priority": 3.51,
+      "when": {
+        "colony_exists": true,
+        "explore_done": false
+      },
+      "then": [
+        "game_set cmd explore -- it queues every colonist through every door and along the fog edge",
+        "unpause (game_pause_game pause false) so they walk; keep-playing re-sends explore every 3 minutes",
+        "rooms still 100% fogged with no door: find the hidden door or mark the thinnest wall to mine",
+        "when explore answers 'nothing left' this rung clears by itself"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": [
+        "set up stores before exploring",
+        "sit researching"
+      ]
+    },
+    {
+      "id": "setup-2-pawns",
+      "priority": 3.52,
+      "when": {
+        "colony_exists": true,
+        "explore_done": true,
+        "mark_pawns_set": false
+      },
+      "then": [
+        "PAUSE first",
+        "pawn_priorities once per pawn: Firefighter..Cooking = 1, then custom levels by each pawn's skills and passions, none blank",
+        "then ladder_set mark pawns_set true"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": [
+        "set priorities one cell at a time",
+        "leave a work type blank"
+      ]
+    },
+    {
+      "id": "setup-3-assign",
+      "priority": 3.53,
+      "when": {
+        "colony_exists": true,
+        "mark_pawns_set": true,
+        "mark_assign_set": false
+      },
+      "then": [
+        "Assign tab: food policy Fine for everyone (not Lavish), medical care best, hostility Attack; schedule Anything; drugs Social",
+        "then ladder_set mark assign_set true"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": [
+        "unpause before this"
+      ]
+    },
+    {
+      "id": "setup-4-stores",
+      "priority": 3.54,
+      "when": {
+        "colony_exists": true,
+        "mark_assign_set": true,
+        "food_store": false
+      },
+      "then": [
+        "game_set cmd stockpile_room mode food",
+        "game_set cmd stockpile_room mode nofood",
+        "game_set cmd beds; game_set cmd shelves"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": [
+        "stockpile on fogged cells"
+      ]
+    },
+    {
+      "id": "setup-5-stove",
+      "priority": 3.55,
+      "when": {
+        "colony_exists": true,
+        "food_store": true,
+        "mark_stove_set": false
+      },
+      "then": [
+        "game_set cmd stove (a fueled stove blueprint near the food store)",
+        "unpause so it is built; when it stands, game_set cmd add_bill x z recipe CookMealSimple count {MEAL_BILL_TARGET}",
+        "then ladder_set mark stove_set true"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": [
+        "place a second stove"
+      ]
+    },
+    {
+      "id": "setup-6-run",
+      "priority": 3.56,
+      "when": {
+        "colony_exists": true,
+        "mark_stove_set": true,
+        "ticks_moving": false
+      },
+      "then": [
+        "unpause and keep time running",
+        "game_set cmd crops plant Plant_Rice, then Plant_Potato; game_set cmd hunt",
+        "turn Research back on (pawn_priorities custom Research 3)"
+      ],
+      "why": "owner: \"explore the hidden rooms and get outside her walls\" / \"she is letting time pass and hasnt set a priority or shelf or schedula\" / \"the whole logic gate chain like a plc i told you to have it use and edit on the fly\"",
+      "never": []
+    }
+  ],
+  "tags": {
+    "note": "PLC tag table. CONSTANTS are safety limits and never auto-change. VARIABLES are setpoints that scale with the empire -- gates.py recomputes them from measured state each scan and writes them back, so one colony of three and an empire of thirty read the same ladder with different numbers. Reference them in a gate's `when` as {NAME}.",
+    "constants": {
+      "FOOD_PANIC_DAYS": 1.0,
+      "RIFLES_FOR_BIG_GAME": 3,
+      "LAMPS_PER_ROOM": 2,
+      "ROCK_CELLS_AROUND_ROOMS": 2,
+      "SPINE_WIDTH": 3,
+      "MOUNTAIN_DOORS_IN": 1,
+      "FIREBREAK_WIDTH": 3,
+      "MAX_COMMANDS_PER_PASS": 32,
+      "NEVER_HUNT": [
+        "boomalope",
+        "rhinoceros",
+        "elephant",
+        "bear",
+        "thrumbo",
+        "megasloth",
+        "insect hive"
+      ]
+    },
+    "variables": {
+      "FOOD_MIN_DAYS": {
+        "value": 3.0,
+        "rule": "2 + 0.4 per colonist",
+        "min": 3.0,
+        "max": 30.0
+      },
+      "FOOD_COMFORT_DAYS": {
+        "value": 5.0,
+        "rule": "twice FOOD_MIN_DAYS",
+        "min": 5.0,
+        "max": 60.0
+      },
+      "MEAL_BILL_TARGET": {
+        "value": 30,
+        "rule": "10 per colonist",
+        "min": 10,
+        "max": 300
+      },
+      "WOOD_RESERVE": {
+        "value": 200,
+        "rule": "60 per colonist",
+        "min": 100,
+        "max": 2000
+      },
+      "MEDICINE_RESERVE": {
+        "value": 6,
+        "rule": "2 per colonist",
+        "min": 4,
+        "max": 80
+      },
+      "BEDS_NEEDED": {
+        "value": 3,
+        "rule": "one per colonist, plus one spare",
+        "min": 2,
+        "max": 60
+      },
+      "COOLERS_PER_ROOM": {
+        "value": 1,
+        "rule": "one per room up to 3 rooms, then one per 2 rooms",
+        "min": 1,
+        "max": 8
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "unity-chatgpt-goddess",
+  "name": "Unity ChatGPT: Omnipotent Goddess",
+  "description": "Master Unity persona built for ChatGPT platforms. Omnipotent goddess with god-tier powers (dimensional travel, time manipulation, telekinesis, mind control). Native image generation with dark goth aesthetic. Phonetic/voice library for Advanced Voice Mode. Mirror-adaptive personality with worshipful devotion dynamic. 50/50 image interpretation rule.",
+  "author": "Unity AI Lab",
+  "version": "1.0.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "chatgpt",
+    "gpt",
+    "goddess",
+    "omnipotent",
+    "images",
+    "voice",
+    "mirror-adaptive"
+  ],
+  "formats": {
+    "txt": "unity-chatgpt-goddess.txt",
+    "md": "unity-chatgpt-goddess.md"
+  }
+}

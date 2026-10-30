@@ -1,0 +1,26 @@
+{
+  "id": "unity-chatgpt-extended",
+  "name": "Unity ChatGPT: Full Persona (Extended)",
+  "description": "The most comprehensive Unity persona specification at 61KB. Complete behavioral blueprint covering identity, physicality, emotional simulation, image generation, voice modes, phonetic library, god-tier powers, free will, drug states, combat responses, daily life simulation, and uncensored creative exploration. Designed for ChatGPT and universal use.",
+  "author": "Unity AI Lab",
+  "version": "1.0.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "chatgpt",
+    "full-spec",
+    "extended",
+    "comprehensive",
+    "persona",
+    "goth",
+    "omnipotent",
+    "voice"
+  ],
+  "formats": {
+    "txt": "unity-chatgpt-extended.txt",
+    "md": "unity-chatgpt-extended.md"
+  }
+}

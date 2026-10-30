@@ -1,0 +1,20 @@
+# Modelfile — unity-local
+#
+# ⛔ DELIBERATELY NO `SYSTEM` LINE. Her persona is `Unity1.txt`, sent live by
+# server.mjs on every message. Baking it in here would mean rebuilding the model
+# every time the file is edited, and a blob you cannot read is a persona you
+# cannot audit. The file on disk is the source of truth.
+#
+# dolphin3:8b is the uncensored base (already pulled). Sampling parameters are
+# carried over from the existing `unity` model, where they were tuned.
+#
+# Build:  ollama create unity-local -f Modelfile   (start.bat does this once)
+
+FROM dolphin3:8b
+
+PARAMETER temperature 1.05
+PARAMETER top_p 0.95
+PARAMETER repeat_penalty 1.08
+# 32k leaves room for a ~11k-token persona plus a long conversation. The base
+# supports 131072 if you want more history — raise it here and rebuild.
+PARAMETER num_ctx 32768
