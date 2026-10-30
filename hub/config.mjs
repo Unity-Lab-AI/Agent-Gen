@@ -31,6 +31,8 @@ export const cfg = {
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
   clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
+  // appended to every [[do]] motion: LTX 2B needs to be pushed to move a body (measured +40% motion energy)
+  motionPush: process.env.MOTION_PUSH || 'large fast clear movement, energetic, her whole upper body moves, hair swings',
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
   // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
   clipFrames: Number(process.env.CLIP_FRAMES || 73),

@@ -193,8 +193,6 @@ def i2v(req):
     seed = int(req.get("seed") or random.randint(1, 2 ** 31 - 1))
     gen = torch.Generator(device()).manual_seed(seed)
     prompt = str(req.get("prompt") or "").strip() or "a woman moving naturally, cinematic, realistic"
-    # how far the model may drift from the still: LTX's default 0.15 keeps bodies nearly frozen; higher = more motion
-    noise = float(req.get("noise") or os.environ.get("UNITY_VIDEO_NOISE") or 0.15)
     t0 = time.time()
     if device() == "cuda":
         torch.cuda.empty_cache()
@@ -202,13 +200,13 @@ def i2v(req):
     try:
         out = pipe(image=img, prompt=prompt, negative_prompt=str(req.get("negative") or NEG), width=w, height=h,
                    num_frames=frames, num_inference_steps=steps, guidance_scale=guidance, generator=gen,
-                   image_cond_noise_scale=noise, callback_on_step_end=_step_cb).frames[0]
+                   callback_on_step_end=_step_cb).frames[0]
     finally:
         release_gpu(pipe)
     path = OUT / ("clip-%d-%s.mp4" % (int(time.time() * 1000), seed))
     write_mp4(out, path, fps)
     return {"ok": True, "path": str(path), "seconds": round(time.time() - t0, 1), "frames": frames, "fps": fps,
-            "seed": seed, "width": w, "height": h, "prompt": prompt, "noise": noise}
+            "seed": seed, "width": w, "height": h, "prompt": prompt}
 
 
 class Handler(BaseHTTPRequestHandler):

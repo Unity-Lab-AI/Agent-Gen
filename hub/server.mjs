@@ -205,9 +205,11 @@ class Session {
       if (!vh.ok || !vh.model_present) { this.send({ type: 'look', stage: 'failed', kind: 'do', prompt, error: 'video engine down', epoch }); return; }
       await face.pause();
       await video.makeRoom();
+      // LTX 2B is timid with bodies; a pushier description measured +40% motion. The big-motion engine is a model swap, not a prompt.
+      const p = `${prompt}, ${cfg.motionPush}`;
       const c = this.currentClip
-        ? await video.clip(null, prompt, { fromClip: this.currentClip })
-        : await video.clip(this.currentLook || cfg.lookBase, prompt);
+        ? await video.clip(null, p, { fromClip: this.currentClip })
+        : await video.clip(this.currentLook || cfg.lookBase, p);
       if (this.closed || this.lookSeq !== lookId) return;
       this.currentClip = c.path;
       const f = await face.appearance(c.path);
