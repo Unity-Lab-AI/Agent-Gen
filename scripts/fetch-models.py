@@ -32,6 +32,7 @@ M = Path(ARGS.models)
 M.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("HF_HOME", str(M / "hf"))
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "0")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")   # the file-count bar reads like noise; bytes below instead
 
 from huggingface_hub import hf_hub_download, snapshot_download  # noqa: E402  (after HF_HOME)
 
@@ -40,12 +41,48 @@ def log(*a):
     print("fetch:", *a, flush=True)
 
 
+import threading
+
+
+def folder_bytes(p):
+    t = 0
+    for root, _, files in os.walk(p):
+        for f in files:
+            try:
+                t += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return t
+
+
+class Progress:
+    """Prints "<name>: 12.3 GB / 26 GB (47%)" every few seconds while a download runs: bytes on disk, not files."""
+    def __init__(self, name, folder, expected_gb):
+        self.name, self.folder, self.expected = name, folder, expected_gb * 1e9
+        self.stop = threading.Event()
+    def __enter__(self):
+        def run():
+            last = -1
+            while not self.stop.wait(5):
+                b = folder_bytes(self.folder)
+                pct = min(99, int(100 * b / self.expected)) if self.expected else 0
+                if pct != last:
+                    print("fetch: %s: %.1f GB / %.0f GB (%d%%)" % (self.name, b / 1e9, self.expected / 1e9, pct), flush=True)
+                    last = pct
+        threading.Thread(target=run, daemon=True).start()
+        return self
+    def __exit__(self, *a):
+        self.stop.set()
+        print("fetch: %s: %.1f GB, done" % (self.name, folder_bytes(self.folder) / 1e9), flush=True)
+
+
 def ditto():
     if (M / "ditto" / "ditto_cfg" / "v0.4_hubert_cfg_pytorch.pkl").exists() and (M / "ditto" / "ditto_pytorch").exists():
         return log("ditto present")
     log("ditto: cfg + pytorch + onnx weights")
-    snapshot_download("digital-avatar/ditto-talkinghead", local_dir=str(M / "ditto"),
-                      allow_patterns=["ditto_cfg/*", "ditto_pytorch/**", "ditto_onnx/*", "README.md"])
+    with Progress("ditto", M / "ditto", 4.6):
+        snapshot_download("digital-avatar/ditto-talkinghead", local_dir=str(M / "ditto"),
+                          allow_patterns=["ditto_cfg/*", "ditto_pytorch/**", "ditto_onnx/*", "README.md"])
 
 
 def ltx():
@@ -53,9 +90,10 @@ def ltx():
     if (d / "ltxv-2b-0.9.8-distilled.safetensors").exists() and (d / "text_encoder" / "config.json").exists():
         return log("ltx present")
     log("ltx: 2B 0.9.8 distilled + text encoder + tokenizer (this is the big one)")
-    hf_hub_download("Lightricks/LTX-Video", "ltxv-2b-0.9.8-distilled.safetensors", local_dir=str(d))
-    snapshot_download("Lightricks/LTX-Video", local_dir=str(d),
-                      allow_patterns=["model_index.json", "scheduler/*", "text_encoder/*", "tokenizer/*"])
+    with Progress("ltx", d, 25.8):
+        hf_hub_download("Lightricks/LTX-Video", "ltxv-2b-0.9.8-distilled.safetensors", local_dir=str(d))
+        snapshot_download("Lightricks/LTX-Video", local_dir=str(d),
+                          allow_patterns=["model_index.json", "scheduler/*", "text_encoder/*", "tokenizer/*"])
 
 
 def wan():
@@ -63,7 +101,8 @@ def wan():
     if (d / "model_index.json").exists() and (d / "transformer").exists():
         return log("wan present")
     log("wan: Wan2.2 TI2V-5B (34 GB, the big one for body physics)")
-    snapshot_download("Wan-AI/Wan2.2-TI2V-5B-Diffusers", local_dir=str(d), max_workers=8)
+    with Progress("wan", d, 34.2):
+        snapshot_download("Wan-AI/Wan2.2-TI2V-5B-Diffusers", local_dir=str(d), max_workers=4)
 
 
 def sd():
@@ -71,7 +110,8 @@ def sd():
     if target.exists():
         return log("sd present")
     log("sd: Realistic Vision 5.1")
-    f = hf_hub_download("SG161222/Realistic_Vision_V5.1_noVAE", "Realistic_Vision_V5.1.safetensors", local_dir=str(M / "sd"))
+    with Progress("sd", M / "sd", 2.1):
+        f = hf_hub_download("SG161222/Realistic_Vision_V5.1_noVAE", "Realistic_Vision_V5.1.safetensors", local_dir=str(M / "sd"))
     target.parent.mkdir(parents=True, exist_ok=True)
     os.replace(f, target)
 
