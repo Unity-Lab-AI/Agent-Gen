@@ -70,6 +70,9 @@ function onMsg(m) {
       else if (m.stage === 'live') { setState('idle'); diagLine(`look live on her face in ${m.face?.seconds}s`); }
       else if (m.stage === 'failed') { setState('idle'); addMsg('sys', `look failed: ${m.error}`); }
       else if (m.stage === 'image-only') { setState('idle'); diagLine(`look rendered; face swap: ${m.face?.error || 'face down'}`); }
+      else if (m.stage === 'animating') { setState('animating…'); addMsg('sys', 'rendering her moving…'); }
+      else if (m.stage === 'moving') { setState('idle'); diagLine(`clip ${m.clip?.frames} frames in ${m.clip?.seconds}s, live on her`); }
+      else if (m.stage === 'clip-only') { setState('idle'); diagLine(`clip rendered; face swap: ${m.face?.error || 'face down'}`); }
       break;
     }
     case 'image': {

@@ -24,15 +24,26 @@ export async function health() {
  * Render a look. prompt = what she wrote in the tag; her identity anchors are prepended so the picture is her.
  * Returns {file, url, seed, seconds, prompt} or throws.
  */
+const NEG = 'child, teen, underage, childlike, young girl, ' +
+  'extra arms, extra hands, extra limbs, extra fingers, missing fingers, fused fingers, three hands, deformed, ' +
+  'bad anatomy, bad proportions, mutated, disfigured, two heads, duplicate, clone, cropped head, lowres, blurry, ' +
+  'watermark, text, signature, cartoon, anime, 3d render, jpeg artifacts';
+// No content gate here. Operator: "the model handels all the safties already we dont need to double up",
+// "dont want gates hitting gates there is no reason to double up on code". What she renders is her persona's call.
+
 export async function render(prompt, { width, height, seed, strength, sourceFile } = {}) {
   const full = `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`.replace(/\s+/g, ' ').trim();
   const body = { prompt: full, width: width || cfg.lookWidth, height: height || cfg.lookHeight, steps: cfg.lookSteps,
-    guidance: cfg.lookGuidance, seed: seed || undefined, face: faceRef() || undefined, face_scale: cfg.lookFaceScale };
+    guidance: cfg.lookGuidance, seed: seed || undefined, face: faceRef() || undefined, face_scale: cfg.lookFaceScale, negative: NEG };
   let endpoint = '/txt2img';
-  if (sourceFile && fs.existsSync(sourceFile)) {       // evolve the current look instead of starting over
-    body.image = fs.readFileSync(sourceFile).toString('base64');
+  const src = sourceFile && fs.existsSync(sourceFile) ? sourceFile : (fs.existsSync(cfg.lookBase) ? cfg.lookBase : null);
+  if (src) {
+    // image-to-image from her current look (her likeness photo at first): the body and pose stay anchored,
+    // only what she asked for changes. Free-form txt2img at tall sizes is where SD1.5 grows extra arms.
+    body.image = fs.readFileSync(src).toString('base64');
     body.strength = strength ?? cfg.lookStrength;
-    body.face = true;                                   // keep the face of the source image
+    body.max_side = cfg.lookMaxSide;
+    body.face = faceRef() || true;                      // identity from the likeness, or the source face
     endpoint = '/img2img';
   }
   const r = await fetch(`${cfg.imageUrl}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },

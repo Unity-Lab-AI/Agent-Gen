@@ -17,14 +17,23 @@ export const cfg = {
   imageUrl: process.env.IMAGE_URL || 'http://127.0.0.1:5124',
   // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
   lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
-  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, a 25 year old emo goth woman, long black hair with pink streaks, winged eyeliner, fair skin,',
+  // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, an adult emo goth woman, long black hair with pink streaks, winged eyeliner, fair skin,',
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
+  lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
-  lookHeight: Number(process.env.LOOK_HEIGHT || 768),
-  lookSteps: Number(process.env.LOOK_STEPS || 28),
-  lookGuidance: Number(process.env.LOOK_GUIDANCE || 6.5),
-  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.7),
+  lookHeight: Number(process.env.LOOK_HEIGHT || 704),
+  lookMaxSide: Number(process.env.LOOK_MAX_SIDE || 768),
+  lookSteps: Number(process.env.LOOK_STEPS || 30),
+  lookGuidance: Number(process.env.LOOK_GUIDANCE || 5.5),
+  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.65),
   lookStrength: Number(process.env.LOOK_STRENGTH || 0.6),
+  // motion: image-to-video clips of her current look (LTX-Video locally)
+  videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
+  clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
+  clipFrames: Number(process.env.CLIP_FRAMES || 97),
+  clipWidth: Number(process.env.CLIP_WIDTH || 768),
+  clipHeight: Number(process.env.CLIP_HEIGHT || 512),
   // every rendered look also becomes her live face
   lookDrivesFace: !['0', 'false', 'no'].includes(String(process.env.LOOK_DRIVES_FACE ?? '1').toLowerCase()),
   // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.

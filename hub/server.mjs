@@ -13,6 +13,7 @@ import { SpeechQueue } from './voice/pipeline.mjs';
 import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
 import * as image from './image/client.mjs';
+import * as video from './video/client.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -30,8 +31,8 @@ async function probe(url, ms = 2500) {
 }
 
 async function healthAll() {
-  const [voice, speech, brain, faceH, img] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health(), image.health()]);
-  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH, image: img };
+  const [voice, speech, brain, faceH, img, vid] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health(), image.health(), video.health()]);
+  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH, image: img, video: vid };
 }
 
 async function transcribe(pcm_b64, sampleRate) {
@@ -120,8 +121,7 @@ class Session {
       }
       for (const s of splitter.push(tags.flush())) this.queue.enqueue(s, epoch);
       for (const s of splitter.flush()) this.queue.enqueue(s, epoch);
-      await this.queue.drain();
-      await this.looks;                       // a look she asked for finishes rendering before the turn closes
+      await this.queue.drain();               // looks and clips keep rendering in the background (onTag)
     } catch (e) {
       if (!ac.signal.aborted) { this.log('brain error', e.message); this.send({ type: 'error', where: 'brain', error: String(e.message || e), epoch }); }
     } finally {
@@ -142,13 +142,26 @@ class Session {
     this.send({ type: 'look', stage: 'rendering', kind: tag.kind, prompt, epoch });
     const job = (async () => {
       try {
-        const res = await image.render(prompt, { sourceFile: tag.kind === 'do' ? this.currentLook : undefined });
-        if (epoch !== this.epoch) return;
+        // every look evolves from the current one (her likeness photo at first), so she stays herself
+        // a look she was told to take is finished even if the conversation moves on; only a reset cancels
+        const res = await image.render(prompt, { sourceFile: this.currentLook });
+        if (this.closed) return;
         this.currentLook = res.file;
         this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
         if (cfg.lookDrivesFace) {
           const f = await face.appearance(res.file);
           this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: tag.kind, prompt, face: f, epoch });
+        }
+        // motion: when the video engine is up, every look also becomes a clip of her doing it
+        const vh = await video.health();
+        if (vh.ok && vh.model_present) {
+          this.send({ type: 'look', stage: 'animating', kind: tag.kind, prompt, epoch });
+          await video.makeRoom();
+          const c = await video.clip(res.file, prompt);
+          if (this.closed) return;
+          this.currentClip = c.path;
+          const f2 = await face.appearance(c.path);
+          this.send({ type: 'look', stage: f2?.ok ? 'moving' : 'clip-only', kind: tag.kind, prompt, clip: { seconds: c.seconds, frames: c.frames }, face: f2, epoch });
         }
       } catch (e) {
         this.log('look failed', e.message);
@@ -216,7 +229,7 @@ wss.on('connection', ws => {
   s.log('connected');
   s.send({ type: 'hello', session: s.id, wakeWord: cfg.wakeWord });
   ws.on('message', raw => s.onMessage(raw.toString()));
-  ws.on('close', () => { s.interrupt('closed'); sessions.delete(s); s.log('closed'); });
+  ws.on('close', () => { s.closed = true; s.interrupt('closed'); sessions.delete(s); s.log('closed'); });
 });
 
 setInterval(() => face.health(), 5000);   // keeps face.isLive() current so sentences get mirrored when she is up
