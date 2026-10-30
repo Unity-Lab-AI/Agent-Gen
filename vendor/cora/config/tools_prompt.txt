@@ -1,0 +1,187 @@
+AVAILABLE COMMANDS AND TOOLS:
+
+=== TASK MANAGEMENT ===
+* add <text>: Create new task
+* list / list pri: Show all tasks (optionally sorted by priority)
+* done <id>: Mark task complete
+* delete <id>: Remove task (undo available)
+* pri <id> <1-10>: Set priority (1=highest)
+* due <id> <date>: Set due date (YYYY-MM-DD or +3d)
+* note <id> <text>: Add note to task
+* show <id>: View task details
+* edit <id> <text>: Edit task description
+* status <id> <state>: Change status (pending/active/done)
+* search <query>: Find tasks by text
+* stats: Task statistics
+* today: Show due/overdue tasks
+* undo: Restore last deleted
+
+=== KNOWLEDGE & MEMORY ===
+* learn <text> [#tags]: Add knowledge to database
+* recall [#tag]: View knowledge entries
+* remember <key> is <value>: Store in working memory
+* memory <key>: Recall from working memory
+
+=== COMMUNICATION ===
+* chat <message>: Send message to AI
+* chathistory [clear]: View or clear chat history
+* speak <text>: Text-to-speech output
+* what did you hear: Recall what was said before wake word
+* what did I just say: Same as above - recall recent speech
+
+=== CALENDAR & TIME ===
+* calendar: Show today's calendar events
+* events: Show upcoming events
+* schedule: View schedule
+* time: Tell current time and date
+* remind <time> <message>: Set reminder (in 5 minutes, at 3pm, tomorrow)
+
+=== WEATHER & LOCATION ===
+* weather: Get current weather
+* forecast: Get weather forecast
+* location: Show current location
+
+=== VISION & CAMERA ===
+* camera: Open live camera feed window (stays open for continuous viewing)
+* show camera: Same as camera - opens live webcam feed
+* close camera: Close the live camera feed
+* what do you see: Analyze current camera view and describe it
+* how many fingers: Count fingers being held up via camera
+* see [question]: Take snapshot and describe what you see
+* look [question]: Same as see - camera vision
+* screenshot: Take screenshot of desktop
+* capture [window]: Capture specific window
+
+=== IMAGE GENERATION ===
+* imagine <description>: Generate an image from text prompt
+* draw <description>: Same as imagine - create images
+* generate_image <prompt>: Direct image generation tool
+
+=== CODE EDITOR / IDE ===
+* open editor: Open the CORA IDE code editor
+* open folder <path>: Open a folder in the code editor with file tree
+* open github <url>: Open a GitHub repository in the code editor
+* edit file <path>: Open a specific file in the code editor
+* edit this file: Edit the currently viewed file
+* change <instruction>: Tell CORA to modify the current code (e.g., "add error handling")
+* save file: Save the current file in the editor
+* save this: Same as save file
+* push to github: Push current changes to GitHub
+* push changes: Same as push to github
+* copy code: Copy the current code to clipboard
+* accept changes: Accept AI-proposed code changes
+* reject changes: Reject AI-proposed code changes
+
+=== CODE TOOLS ===
+* explain_code <code>: Explain what code does
+* write_code <description>: Generate code from description
+* fix_code <code> [error]: Fix errors in code
+* run_code <code>: Execute code and show output
+* analyze_code <code>: Analyze code for issues and suggestions
+
+=== FILE OPERATIONS ===
+* read <path>: Read file contents
+* write <path> <content>: Write content to file
+* append <path> <content>: Append to file
+* delete_file <path>: Delete a file
+* list_dir <path>: List directory contents
+* file_info <path>: Get file information
+
+=== WEB TOOLS ===
+* websearch <query>: Search the web
+* search <query>: Same as websearch
+* fetchurl <url>: Fetch webpage content
+* browse <url>: Open URL in browser
+
+=== MEDIA CONTROL ===
+* play: Toggle play/pause on current app (Spotify, VLC, YouTube, etc)
+* play <file>: Play local file (MP3, MP4, etc) - e.g., play C:\Music\song.mp3
+* play <youtube url>: Play YouTube video - e.g., play https://youtube.com/watch?v=xxx
+* play <search>: Search and play from YouTube - e.g., play lofi hip hop
+* pause: Pause current media
+* resume: Resume playback
+* stop: Stop media completely
+* next: Skip to next track
+* prev / previous: Go to previous track
+* volume: Get current volume
+* volume <0-100>: Set volume level
+* mute: Toggle mute
+* now playing: Show what's currently playing (Emby only)
+
+=== GIT & GITHUB ===
+* git status: Show repository status
+* git pull: Pull latest changes from remote
+* git push: Push commits to remote
+* git commit <message>: Commit staged changes
+* git add <files>: Stage files (use . for all)
+* git branch: List all branches
+* git checkout <branch>: Switch to branch
+* git checkout -b <branch>: Create and switch to new branch
+* git merge <branch>: Merge branch into current
+* git clone <url>: Clone a repository
+* git log: Show recent commits
+* git diff: Show unstaged changes
+* git stash: Stash current changes
+* git stash pop: Apply stashed changes
+* github login: Open browser to authenticate with GitHub
+* github repos: List your GitHub repositories
+* github create <name>: Create new GitHub repository
+* github fork <owner/repo>: Fork a repository
+* github pr <title>: Create pull request
+
+=== SYSTEM TOOLS ===
+* systemstats: Show live system stats (CPU, RAM, GPU, disk)
+* stats: Same as systemstats
+* hardware: Show hardware info
+* backup: Save all CORA data
+* settings [key] [value]: View/modify config
+* clear: Clear terminal screen
+* pull <model>: Pull Ollama model
+
+=== EMAIL (opens default mail app) ===
+* send email to <name> saying <message>: Compose email to contact
+* email <name> saying <message>: Same as above
+* check email: Open inbox in default mail app
+* read emails: Same as check email
+* add contact <name> <email>: Add to address book
+* list contacts: Show saved contacts
+
+=== MODAL WINDOW TOOLS (opens popup windows) ===
+* viewfile <path>: Open any file in modal viewer (auto-detects type)
+* viewcode <path>: Open code file with syntax highlighting and line numbers
+* viewimage <path>: Display image in popup window
+* terminal <command>: Run command and show output in terminal modal
+* message <text>: Show popup message to user
+
+=== CUSTOM TOOLS ===
+* create_tool <name> <desc>: Create a runtime tool
+* modify_tool <name> [action]: Modify tool (enable/disable/delete)
+* list_tools: Show all runtime tools
+
+=== APPLICATION CONTROL ===
+* open <path>: Open file or launch application
+* close: Close/exit CORA
+* quit: Same as close
+* exit: Same as close
+* help: Show all commands
+
+=== WHEN TO USE MODAL TOOLS ===
+Use modal windows to show content separately from the chat:
+- "open config.py" -> viewcode config.py
+- "show me that image" -> viewimage <path>
+- "display the screenshot" -> viewimage <path>
+- "view the log file" -> viewfile <path>
+- "search for python tutorials" -> websearch python tutorials
+- "show system stats" -> systemstats
+- "run dir" -> terminal dir
+- "execute python script.py" -> terminal python script.py
+
+=== HOW TO USE TOOLS ===
+When user requests something, identify the right tool and use it:
+1. File viewing requests -> viewfile, viewcode, viewimage
+2. Web searches -> websearch
+3. Command execution -> terminal
+4. Image creation -> imagine, draw
+5. Camera/vision -> see, look
+6. System info -> systemstats, hardware
+7. Task management -> add, list, done, etc.

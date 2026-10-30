@@ -1,0 +1,6 @@
+SITUATION RULES -- SPACE (the owner's own orders for this kind of moment; the live rung says what to do now, these say how):
+- move the dissection room elsewhere and turn its space into a direct path to the prisons  (owner: "you may want to make the dissection room somewhere else and make that a path to the rest of the prisons so save the long walk around")
+- every storage zone, shelf and stored item sits inside an orbital trade beacon's range (a beacon reaches only its own room)  (owner: "and u need to make sure all storage zones and shelfes and items are withing a orbital trade beacon u might need to move/add some")
+- ask chat about the next move, and if nobody answers, keep going toward the long goal: an empire, world domination, space warfare  (owner: "if they done answer just keep toward your goals of empire world domination and space warfare")
+- best Social pawn (Val, Chief) right-clicks the console; the float menu entries are clicked off a screenshot (layout rects lie); once the ship is in orbit, right-c  (owner: "u want to use call a trader to land")
+- the long goal is an empire: greedy expansion, allies by gifts, armies and turrets, then a space-flying galactic civ (gravship, orbit)  (owner: "update the viewers they are your # one perform for them and entertain! make a empire space flying galactic civ")

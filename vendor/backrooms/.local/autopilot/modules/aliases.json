@@ -1,0 +1,9 @@
+{
+ "start": "setup",
+ "configuration": "setup",
+ "war": "combat",
+ "endgame": "space",
+ "royalty": "growth",
+ "ideology-biotech-anomaly": "growth",
+ "meta": "setup"
+}

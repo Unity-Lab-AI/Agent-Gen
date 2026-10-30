@@ -1,0 +1,1904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unity 3D Equational Model</title>
+<!--
+  index.html — `U3E-2.199`. ONE DOOR INTO EVERY PART OF THE PROJECT.
+
+  ⛔⛔ GEE, VERBATIM: *"i want a easy page opener like a index.html for this whole
+    project looking gorgeous to open every part of it up from the updated viewer
+    for teraining like the one i told you to update it to, from the banker, and
+    all of that and a corpus viewer showing the training and all of that even the
+    live training like the tech viewer you weree to have already updated our
+    trainer)(need rename to \"Teechuh\")"*.
+
+  ⭐ IT OPENS FROM `file://` BY DOUBLE-CLICK. No server has to be running for the
+    PAGE to work — that is the point of a launcher. ⚠ Which means it cannot use
+    an ordinary `fetch` to check whether a service is up: a cross-origin request
+    from `file://` to `127.0.0.1` is blocked before it leaves. **`mode: 'no-cors'`
+    resolves opaque on connect and rejects on refusal**, which is exactly and
+    only the question being asked: *is something listening?*
+
+  ⛔ A DOWN SERVICE SAYS SO AND SAYS WHAT TO RUN. It is never hidden, never
+    greyed into silence — the same rule `501 absent` follows on the wire and the
+    same defect `U3E-5.57` fixed in the player, where a disabled button silenced
+    its own explanation.
+
+  ⚠ HONEST ABOUT WHAT IS NOT BUILT. Rows marked `planned` are surfaces this
+    project does not have yet. Showing them as if they existed would make the
+    launcher the most confident liar in the repository.
+-->
+<style>
+  :root{
+    --bg:#0b0b0e; --panel:#15151b; --panel2:#1b1b23; --line:#26262e;
+    --ink:#e9e7ee; --dim:#8b8896; --accent:#a98bd8; --accent2:#6ee7d0;
+    --ok:#5bbf7a; --warn:#d8a13a; --bad:#c85560;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:
+      radial-gradient(1100px 620px at 12% -8%, #221a33 0%, transparent 60%),
+      radial-gradient(900px 520px at 92% 4%, #10262b 0%, transparent 62%),
+      var(--bg);
+    color:var(--ink); font:15px/1.6 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+    min-height:100vh; padding:38px 22px 70px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+  header{margin-bottom:26px}
+  h1{
+    font-size:31px;margin:0;letter-spacing:-.02em;font-weight:650;
+    background:linear-gradient(92deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{color:var(--dim);font-size:14px;margin-top:5px;max-width:74ch}
+  .sub b{color:var(--ink);font-weight:600}
+  h2{
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--dim);
+    margin:32px 0 12px;font-weight:600;
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(322px,1fr));gap:14px}
+  .card{
+    background:linear-gradient(168deg,var(--panel2),var(--panel));
+    border:1px solid var(--line); border-radius:15px; padding:16px 17px;
+    display:flex; flex-direction:column; gap:9px; position:relative;
+    transition:border-color .16s, transform .16s;
+  }
+  .card:hover{border-color:#3a3a48; transform:translateY(-1px)}
+  .card.down{opacity:.82}
+  .card.planned{border-style:dashed; opacity:.62}
+  .top{display:flex;align-items:baseline;gap:9px}
+  .name{font-size:16.5px;font-weight:620;letter-spacing:-.01em}
+  .port{color:var(--dim);font:12px ui-monospace,monospace;margin-left:auto}
+  .what{color:var(--dim);font-size:13.2px;flex:1}
+  .what em{color:var(--ink);font-style:normal}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3a3a48;flex:none;
+       box-shadow:0 0 0 3px rgba(255,255,255,.03)}
+  .dot.up{background:var(--ok);box-shadow:0 0 0 3px rgba(91,191,122,.16)}
+  .dot.down{background:var(--bad);box-shadow:0 0 0 3px rgba(200,85,96,.14)}
+  .dot.plan{background:var(--warn)}
+  .row{display:flex;gap:8px;align-items:center;margin-top:3px}
+  a.btn,button.btn{
+    appearance:none;border:1px solid var(--line);background:#101017;color:var(--ink);
+    border-radius:9px;padding:7px 13px;font:inherit;font-size:13.5px;cursor:pointer;
+    text-decoration:none;transition:border-color .15s,background .15s;
+  }
+  a.btn:hover,button.btn:hover{border-color:var(--accent);background:#171722}
+  a.btn.primary{border-color:var(--accent);color:var(--accent)}
+  a.btn[aria-disabled=true]{opacity:.4;pointer-events:none}
+  .howto{
+    font:11.6px/1.55 ui-monospace,monospace;color:var(--warn);
+    background:#1c1710;border:1px solid #33291a;border-radius:8px;
+    padding:7px 9px;display:none;white-space:pre-wrap;word-break:break-word;
+  }
+  .card.down .howto{display:block}
+  .note{color:var(--dim);font-size:12.6px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  .note b{color:var(--ink)}
+  .pill{font:10.5px ui-monospace,monospace;color:var(--dim);border:1px solid var(--line);
+        border-radius:99px;padding:1px 7px}
+  .bar{display:flex;gap:9px;align-items:center;margin-top:14px;flex-wrap:wrap}
+
+  /* ── U3E-2.199b — the switchboard controls ───────────────────────────── */
+  .sw{display:flex;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .sw button{
+    appearance:none;border:0;background:#101017;color:var(--dim);
+    padding:7px 11px;font:inherit;font-size:12.5px;cursor:pointer;transition:.14s;
+  }
+  .sw button+button{border-left:1px solid var(--line)}
+  .sw button:hover:not(:disabled){background:#171722;color:var(--ink)}
+  .sw button.on{background:rgba(91,191,122,.14);color:var(--ok)}
+  .sw button.off{background:rgba(200,85,96,.14);color:var(--bad)}
+  .sw button:disabled{opacity:.35;cursor:not-allowed}
+  .auto{
+    display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
+    cursor:pointer;user-select:none;margin-left:auto;
+  }
+  .auto input{accent-color:var(--accent);cursor:pointer;margin:0}
+  .auto.on{color:var(--accent2)}
+  .busy{color:var(--warn);font-size:12px}
+  /* ⛔ The banner that appears when the switchboard is NOT reachable. It is a
+     statement of absence with the fix in it — never a disabled row in silence. */
+  #noctl{
+    display:none;border:1px solid #33291a;background:#1c1710;border-radius:11px;
+    padding:12px 14px;margin-top:14px;color:var(--warn);font-size:13px;line-height:1.55;
+  }
+  #noctl code{
+    display:block;margin-top:7px;font:12.5px ui-monospace,monospace;color:var(--ink);
+    background:#101017;border:1px solid var(--line);border-radius:7px;padding:7px 9px;
+  }
+  #ddbar{display:none;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  #ddbar.live{display:flex}
+  #ddpath{font:12.5px ui-monospace,monospace;color:var(--ink);background:#101017;
+          border:1px solid var(--line);border-radius:7px;padding:5px 9px;
+          max-width:52ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #ddcov.part{color:var(--bad)}
+  #ddcov.whole{color:var(--ok)}
+  #ctlbar{display:none;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  #ctlbar.live{display:flex}
+
+  /* ── U3E-2.199d — the pipeline: every step numbered, every tick earned ─── */
+  .pipehead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+  .pipecount{font:22px/1 ui-monospace,monospace;color:var(--ink)}
+  .pipecount b{color:var(--accent2);font-weight:700}
+  .pipebar{flex:1;min-width:220px;height:7px;border-radius:99px;background:#101017;
+           border:1px solid var(--line);overflow:hidden;display:flex}
+  .pipebar i{display:block;height:100%}
+  .pipebar i.d{background:var(--ok)}
+  .pipebar i.u{background:var(--warn);opacity:.55}
+  .step{
+    display:grid;grid-template-columns:34px 1fr auto;gap:11px;align-items:start;
+    border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:7px;
+    background:linear-gradient(168deg,var(--panel2),var(--panel));
+  }
+  .step.done{opacity:.72}
+  .step.needs{border-color:var(--accent);background:linear-gradient(168deg,#221a33,var(--panel))}
+  .step.unver{border-style:dashed}
+  .stepn{font:13px ui-monospace,monospace;color:var(--dim);text-align:right;padding-top:2px}
+  .step.done .stepn{color:var(--ok)}
+  .steptitle{font-size:14.6px;font-weight:600;letter-spacing:-.01em}
+  .stepdetail{font:12.4px ui-monospace,monospace;margin-top:3px;color:var(--dim);
+              word-break:break-word;white-space:pre-wrap}
+  .step.done .stepdetail{color:var(--ok)}
+  .step.open .stepdetail{color:var(--ink)}
+  .step.unver .stepdetail{color:var(--warn)}
+  /* ⭐ U3E-5.83 — `pre-wrap` because a `why` is COMPUTED now and puts the live
+     answer on its own line under the principle. Without it every step's reason
+     collapsed into one run-on paragraph the moment it stopped being a literal. */
+  .stepwhy{font-size:12.3px;color:var(--dim);margin-top:5px;opacity:.82;max-width:82ch;
+           white-space:pre-wrap}
+  .stepact{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+  .mini{
+    appearance:none;border:1px solid var(--line);background:#101017;color:var(--ink);
+    border-radius:8px;padding:5px 10px;font:inherit;font-size:12.3px;cursor:pointer;white-space:nowrap;
+  }
+  .mini:hover{border-color:var(--accent);background:#171722}
+  .mini.you{border-color:var(--accent);color:var(--accent)}
+  .mini.heavy{border-color:#5a3a20;color:var(--warn)}
+  .mini:disabled{opacity:.4;cursor:not-allowed}
+  /* ⭐ `U3E-5.98o` — a step's viewer is an ANCHOR wearing the button's clothes.
+     `.mini` was written for <button>, which is inline-block and never
+     underlined; an <a> needs both said explicitly or the "open the viewer"
+     control renders as a link-coloured sentence instead of a control. */
+  a.mini{display:inline-block;text-decoration:none;color:var(--accent2)}
+  a.mini:hover{border-color:var(--accent2)}
+  .tag{font:10.5px ui-monospace,monospace;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+  .tag.you{border-color:var(--accent);color:var(--accent)}
+  /* ⛔ `U3E-5.98o` — WAS 10.5px LIKE EVERY OTHER TAG, which is how a live
+     multi-day job announced itself in a footnote. A running job is the single
+     most important thing a row can say and it is now sized like it. */
+  .tag.run{border-color:var(--ok);color:var(--ok);font-size:12px;font-weight:600;
+           padding:2px 9px;background:rgba(91,191,122,.10)}
+  /* ⭐ THE LIVE NOTE, on the row. The rewriter's heartbeat carries
+     "pass 1 · chunk 2/16 try 1/6 · thermodynamics" and nothing displayed it. */
+  .joblive{font:12px ui-monospace,monospace;color:var(--accent2);margin-top:4px;
+           padding:3px 8px;border-left:2px solid var(--accent2);
+           background:rgba(127,216,192,.07);word-break:break-word}
+  /* U3E-2.209 — the reason a step has no button. It is DASHED and carries a
+     tooltip with the command, so an empty action cell can never mean "nothing
+     you can do" by accident again. */
+  .tag.none{border-style:dashed;border-color:var(--warn);color:var(--warn);cursor:help}
+  .phasehdr{font:11px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;
+            color:var(--dim);margin:16px 0 7px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Unity 3D Equational Model</h1>
+  <p class="sub">One transformer, one vocabulary, every modality — she talks, she draws, she sees,
+    she speaks, she hears. Images and voice are emitted as <b>CDF 9/7 wavelet coefficient fields</b>,
+    never pixels, so <b>vision is the input side of drawing</b> and hearing is the input side of speaking.</p>
+  <div class="bar">
+    <span class="pill">double-click this file — no server needed for the page itself</span>
+    <button class="btn" id="recheck" title="Re-runs every probe on this page — services, dependencies and pipeline steps — against the machine as it is right now.&#10;&#10;Nothing on this page is cached; a stale reading is impossible, but a slow one is not. If the switchboard is down the service pills go grey and say so rather than reporting the last value they saw.">Re-check all</button>
+    <span class="pill" id="ctlpill">switchboard: checking…</span>
+  </div>
+
+  <!--
+    U3E-2.199f — where /data lives. Gee: "we need to be able to set in the main
+    page where the /data folder is being saved to so that it doesnt conflicting
+    shit and can be change and moved at will".
+
+    THE COVERAGE FRACTION IS NOT DECORATION. A setting only some tools honour
+    puts the corpus in two places, both halves looking healthy, every count
+    right about the half it can see. The number is printed beside the control
+    so the offer can never read as bigger than it is.
+  -->
+  <div id="ddbar">
+    <span class="pill">data folder</span>
+    <code id="ddpath">—</code>
+    <span class="pill" id="ddsrc"></span>
+    <button class="btn" id="ddset" title="Points the whole project at a different /data folder, and writes the choice to .u3e-paths.json.&#10;&#10;⛔ It INSPECTS the candidate first and REFUSES a path it would have to create — a typo'd folder silently mkdir'd is how a corpus ends up half in one place and half in another, with every count right about the half it can see.&#10;⚠ Running services keep the root they booted with. Restart them or they will write to the old one.">Change…</button>
+    <span class="busy" id="ddcov"></span>
+  </div>
+
+  <div id="ctlbar">
+    <button class="btn primary" id="startall" title="Starts every service marked for auto-start, in dependency order, and waits for each to answer bytes before starting the next.&#10;&#10;⚠ It does NOT start the banker or the captioner — those are long jobs with their own control files, started from their own cards.&#10;⛔ If a port is already held the card turns red and names the pid rather than reporting a launch that did not happen.">▶ Start everything</button>
+    <button class="btn" id="stopall" title="Stops every service this page started, in reverse order.&#10;&#10;⛔ COOPERATIVE, not a kill. A long job is asked to stop at its next item boundary, because killing one mid-write can cost the manifest — which is the corpus's index.&#10;⚠ A job that was not started from this page is left alone; the card says so instead of pretending to own it.">■ Stop everything</button>
+    <label class="auto" style="margin-left:0">
+      <input type="checkbox" id="autoopen" title="When ticked, opening this page starts the services marked for auto-start — the same set as ▶ Start everything.&#10;&#10;⚠ Stored on this machine only, never in the repo. A fresh clone opens with it off.&#10;⛔ It cannot start anything from a file:// page — a browser may not spawn a process. Without the switchboard running, ticking this does nothing and the banner above says why."> auto-start marked services when this page opens
+    </label>
+    <span class="busy" id="ctlbusy"></span>
+  </div>
+
+  <!-- ⛔ ABSENT SAYS ABSENT, AND NAMES THE FIX. The switch controls simply do
+       not exist without the switchboard, so the page says which one command
+       brings them into being instead of rendering dead buttons. -->
+  <div id="noctl">
+    ⛔ <b>The switchboard is not running, so nothing here can be turned on or off.</b>
+    A page opened from <code style="display:inline;padding:1px 5px">file://</code> cannot start a
+    process — that is a browser rule, not a missing feature. Start it once and this page grows
+    on/off switches on every card:
+    <code>node serve/launcher.mjs</code>
+    <span style="color:var(--dim)">or double-click <b>launcher.bat</b> (Windows) / <b>launcher.sh</b>,
+    which starts the switchboard and opens this page.</span>
+  </div>
+</header>
+
+<h2>Before anything runs &mdash; what this machine has</h2>
+<div class="pipehead">
+  <span class="pipecount" id="depcount">—</span>
+  <button class="btn" id="depcheck" title="RUNS each dependency rather than reading a manifest — imports torch, calls node --version, asks the interpreter that will actually do the work.&#10;&#10;⛔ A requirements.txt listing torch proves somebody typed it. Importing it proves it is installed, for THIS interpreter, on THIS machine.&#10;⚠ torch is reported as TWO facts: installed, and CUDA-capable. A CPU-only build imports perfectly and makes a training run impossible.">Check</button>
+  <button class="btn primary" id="depall" title="Installs every dependency the check above found missing, one at a time, printing each command before it runs.&#10;&#10;⛔ It will NOT silently pick a torch build. CUDA vs CPU is a machine decision with a multi-gigabyte download behind it, so that one is offered with its index URL and left to you.&#10;⚠ A failed install is reported with the installer's own output — never swallowed and never retried behind your back.">⬇ Install everything missing</button>
+  <span class="busy" id="depbusy"></span>
+</div>
+<div id="deps"></div>
+<p class="note" style="margin-top:12px">
+  ⛔ <b>Every check RUNS the thing rather than trusting a file.</b> A
+  <code>requirements.txt</code> that lists torch proves somebody typed it; importing it proves it
+  is installed, for this interpreter, on this machine — and the version it reports is the one that
+  will actually run.<br>
+  ⛔⛔ <b>And torch is two questions, not one.</b> A CPU-only torch imports perfectly, reports a
+  version, and makes the entire run impossible. <b>"installed" and "can train" are different facts</b>
+  and this page says them separately, because collapsing them is the commonest way a machine reads
+  ready and is not.
+</p>
+
+<h2>The road to a finished model</h2>
+<div class="pipehead">
+  <span class="pipecount" id="pipecount">—</span>
+  <span class="pipebar" id="pipebar"></span>
+  <button class="btn primary" id="pipenext" title="Runs the first pipeline step below that is not already green, and only that one.&#10;&#10;⛔ A tick here is never earned by something having run — it is a RECEIPT on disk carrying the number that closed it. So this button can be pressed twice safely: a step already satisfied re-measures and stays green.&#10;⚠ Some steps are long (a shard build is hours). The card shows live progress and the button disarms while one is in flight.">▶ Run the next step</button>
+</div>
+<div id="pipe"></div>
+<p class="note" style="margin-top:14px">
+  ⛔ <b>No step is ticked because something ran — every tick is a number on disk, and the number is
+  printed beside it.</b> A pipeline that marks itself complete on exit code 0 is the instrument that
+  lies, which is the failure this whole project is built against.<br>
+  ⚠ <b>Three states, not two.</b> <span style="color:var(--ok)">done</span> means measured and past the
+  bar · <span style="color:var(--ink)">open</span> means measured and short ·
+  <span style="color:var(--warn)">unverified</span> means <b>nothing has measured this yet</b> — which
+  is neither of the other two, and collapsing it into either would be reporting health we cannot know.<br>
+  ⛔ Steps marked <span class="tag you">needs you</span> are <b>judgements, not commands</b>. The
+  automatic run halts on them and no button can sign them off.
+</p>
+
+<h2>Her</h2>
+<div class="grid" id="g-her"></div>
+
+<h2>Teaching &amp; training</h2>
+<div class="grid" id="g-train"></div>
+
+<h2>Corpus</h2>
+<div class="grid" id="g-corpus"></div>
+
+<h2>Documentation</h2>
+<div class="grid" id="g-docs"></div>
+
+<p class="note">
+  ⛔ <b>A service that is down says so and says what to run.</b> Nothing here is hidden when it is
+  unreachable — that is the same rule <code>501 absent</code> follows on the wire, and the same defect
+  that made the player's mute button grey and silent.<br>
+  ⚠ Rows marked <b>planned</b> do not exist yet. Showing them as though they did would make this page
+  the most confident liar in the repository.
+</p>
+
+</div>
+<script>
+/**
+ * ⛔ THE SURFACES, EACH WITH THE COMMAND THAT STARTS IT. A launcher that lists a
+ *   thing without saying how to bring it up is a menu of disappointments.
+ */
+const SURFACES = [
+  // ⭐ NAMED BY GEE, 2026-09-05: *"the player needs to renamed Talker"*.
+  //   ⚠ Applied to the LIVE SURFACE and current docs only — `docs/FINALIZED.md`
+  //   and historical TODO rows keep saying "player", the same rule the Teechuh
+  //   rename followed: a ledger rewritten to match a later decision stops being
+  //   evidence.
+  /**
+   * ⚠ `U3E-5.103` — THE `what` NAMES THE DEPENDENCIES NOW, and that is the
+   *   deeper half of Gee's *"why did the run button not start it up correctly"*.
+   *   ⛔ The old text promised *"her pictures inline … her voice"* on a card
+   *   whose ▶ On starts ONE process that can do neither by itself. The button
+   *   was honest; **the description was not**, and a card that implies more than
+   *   its switch delivers sends you to press the right control for the wrong job.
+   */
+  { g:'g-her', id:'player', name:'Talker', port:8790, path:'/',
+    what:'The orb. Chat, her pictures inline, the gallery, the viewer, her voice — and the '
+       + '<em>Model</em> dropdown that switches backend without a restart. '
+       + '⛔ <em>This is the SURFACE only.</em> On its own it can do nothing: text needs the '
+       + 'wrapper (:4545), pictures need the image model (:7860), voice needs Unity One '
+       + '(:7861), and the trained model needs the sidecar (:8797). '
+       + 'Its <em>Model</em> dropdown reports which of them are up.',
+    run:'node serve/server.mjs' },
+  { g:'g-her', id:'sidecar', name:'Inference sidecar', port:8797, path:'/state',
+    what:'The Python side of the slot — real weights, KV cache, the bit-exact decoder. '
+       + 'The player refuses to serve a trained model without it.',
+    run:'python train/infer.py --model models/unity-tiny-v1' },
+  { g:'g-her', id:'voice', name:'Unity One voice', port:7861, path:'/state',
+    what:'piper <em>hfc_female</em> for her voice, faster-whisper for her ears. '
+       + 'The wire still carries a field, never a WAV.',
+    run:'python "Unity 18+/voice-server/voice_server.py"' },
+
+  { g:'g-train', id:'teechuh', name:'Teechuh', port:8796, path:'/', primary:true,
+    what:'<em>Live training.</em> Loss, MFU, tokens/sec, the checkpoint cadence, and the run '
+       + 'configuration set before it starts. Formerly “the TeachViewer”.',
+    run:'node monitor/model.mjs' },
+  /**
+   * ⭐⭐ `U3E-5.98m` — GEE: *"this also needs its own viewer like the banker and
+   *   teechuh have … so i can see the text and stuff all being saved and all of
+   *   that infomation and stuff as needed"*, about pipeline step 8.
+   *
+   * ⛔ Step 8 is a MULTI-DAY job that reported one line on a launcher card. Every
+   *   real defect in it — the exemplar leak, the padding, the opener stamp — was
+   *   found by READING THE OUTPUT, and there was nowhere to read it.
+   * ⚠ READ-ONLY on purpose: the switchboard owns the `rewrite` job, and a second
+   *   surface that could also start it would be a second writer on a 68 MB
+   *   manifest (`U3E-5.98j`).
+   */
+  { g:'g-train', id:'voicemon', name:'Voicing monitor', port:8794, path:'/',
+    what:'<em>Step 8, watchable.</em> The before/after text as it lands, the accept journal '
+       + 'that makes a kill survivable, the chunk bank draining, and every check each '
+       + 'refused attempt failed.',
+    run:'node monitor/voice.mjs' },
+  /**
+   * ⛔⛔⛔ `U3E-5.100` — THE WRITER HAD NO CARD, AND IT IS THE LONGEST-RUNNING
+   *   THING IN THE PROJECT.
+   *
+   *   Gee, with it alive at pid 9544: *"i dont swee the writter is on"*.
+   *   ⛔ **He was reading the page correctly.** Every card above is backed by a
+   *   PORT, `/api/state` returned only `services`, and the rewriter is a bare
+   *   process with nothing listening — so it could never appear here however
+   *   long it ran. Its state existed only on the numbered pipeline row for
+   *   step 8, which is a different part of the page.
+   *
+   * ⭐ SO THIS CARD IS BACKED BY A **JOB**, not a port: `job:'rewrite'` reads
+   *   the heartbeat the switchboard now publishes on `/api/state`.
+   * ⚠ `viewer:8794` because a job has nothing to open — "Open" goes to the
+   *   Voicing monitor, which is the surface that shows what it is writing. A
+   *   card whose Open button opened nothing would be worse than no button.
+   */
+  { g:'g-train', name:'The writer', job:'rewrite', viewer:8794,
+    what:'<em>Step 8, running.</em> Puts every lesson into her voice, one chunk at a time — '
+       + 'a multi-day job with no port, so this card reads its <em>heartbeat</em> rather than '
+       + 'a socket. The live line below is the record it is on right now.',
+    run:'python -u datatools/curriculum-rewrite.py --passes 2 --tries 6' },
+  { g:'g-train', id:'bank', name:'Bank monitor', port:8795, path:'/',
+    what:'The bank build and the caption pass, watchable and steerable — how many cells, '
+       + 'how many banked, what the captioner is saying right now.',
+    run:'node monitor/bank.mjs' },
+  { g:'g-train', id:'wrapper', name:'Local wrapper', port:4545, path:'/api/state',
+    what:'ollama text + local Stable Diffusion behind her persona file. The player calls this '
+       + '“Default”. Not the trained model, and every response says so. '
+       + '⚠ It is the TEXT half only — pictures come from the image model below.',
+    run:'node "Unity 18+/server/server.mjs"' },
+  /**
+   * ⛔⛔ `U3E-5.103` — THIS CARD DID NOT EXIST, AND THE TALKER CANNOT DRAW
+   *   WITHOUT IT. Gee: *"so why did the run button not start it up correctly on
+   *   the main index.html page?"* — with the Talker card reading `● running`,
+   *   which it truthfully was.
+   *
+   * ⭐ The Talker's ▶ On starts `serve/server.mjs` and nothing else. Its three
+   *   dependencies are separate services, and **:7860 was on no card at all**,
+   *   so `▶ Start everything` could not reach it either. Pressing every control
+   *   on this page still left her unable to draw, with nothing on screen naming
+   *   the missing piece. ⚠ Same defect as the writer having no card.
+   */
+  { g:'g-train', id:'sd', name:'Image model (Stable Diffusion)', port:7860, path:'/sdapi/v1/options',
+    what:'Where her pictures actually come from — <em>realistic-vision-v51</em>, local, '
+       + 'no safety checker, ~150 lines of diffusers speaking the AUTOMATIC1111 API. '
+       + '⛔ The Talker needs BOTH this and the wrapper to draw; with only the wrapper up '
+       + 'it can talk and cannot draw.',
+    run:'python -u "Unity 18+/image-server/sd_server.py"' },
+
+  { g:'g-corpus', id:'portal', name:'Banking portal', port:8788, path:'/',
+    what:'Where images are found, judged and banked into the corpus, cell by cell.',
+    run:'node datatools/portal/server.mjs --searx http://127.0.0.1:8888' },
+  /**
+   * ⛔⛔ THIS CARD SAID `planned` AND THE VIEWER HAD EXISTED ALL ALONG.
+   *   Gee: *"something is wrong with the cel;l viewer says site cant be reached
+   *   when trying to review images banked"*. Two faults, and the second is worse:
+   *     ① `datatools/corpus-review.mjs` was simply NOT RUNNING on :8789.
+   *     ② I had marked it **planned / does not exist** one commit earlier.
+   *   ⚠ This page's own note warns that showing an unbuilt thing as built would
+   *   make it *"the most confident liar in the repository"*. **I committed the
+   *   mirror image of that — declaring a built thing unbuilt — which sends
+   *   someone to write a viewer that is already there.** Absent must be measured,
+   *   never assumed, in BOTH directions.
+   */
+  { g:'g-corpus', id:'corpus', name:'Corpus viewer', port:8789, path:'/',
+    what:'Every banked field, <em>reconstructed in the browser from the coefficients</em> — '
+       + 'what she actually learns from, not the source image. Wide sampling across '
+       + 'concepts, so it is not just the first twenty.',
+    run:'node datatools/corpus-review.mjs' },
+  { g:'g-docs', id:'player', name:'Documentation', port:8790, path:'/app/docs.html', primary:true,
+    what:'Every <em>shipped</em> document, rendered as pages with a sidebar — what it is, how it '
+       + 'works, how to run it, and every measured number with its conditions.',
+    run:'node serve/server.mjs' },
+  { g:'g-docs', name:'Codebase wiki', planned:true,
+    what:'The in-house wiki (<em>34 pages</em>) is build-time material and does NOT ship. '
+       + 'It is read from the repo, not served here.',
+    run:'in-house only — wiki/index.md' },
+
+  /**
+   * ⛔⛔ `U3E-2.199c` — SWEEP REVIEW (:8787) WAS REMOVED FROM THIS PAGE, AND THE
+   *   REASON IS THAT ITS OWN REASON EXPIRED. Gee: *"wtf is 8787??? we have 8795
+   *   running already doing this"*.
+   *
+   *   ⚠ He is right that it is dead weight, and it is worth being exact about
+   *   why, because the three are NOT the same tool:
+   *       :8795  bank monitor   THE RUN     — banking + captioning, live
+   *       :8789  corpus viewer  THE RESULT  — banked fields, rebuilt from coeffs
+   *       :8787  sweep review   THE SEARCH  — what a lane RETURNS, pre-banking
+   *
+   *   ⛔ `datatools/sweep-review.mjs`'s own header states the premise it was built on:
+   *   *"The TRAINING corpus is at 0 of 11,950 … there is no real training corpus
+   *   to sweep yet"*. **That was true when it was written. There are 41,319
+   *   banked images now**, so the question it answers — "what could we get?" —
+   *   has been replaced by "look at what we got", which is :8789.
+   *
+   *   ⚠ THE FILE IS NOT DELETED. It still runs, it still needs the portal on
+   *   :8788, and a pre-acquisition scout is the right tool again the day a new
+   *   cell is added to `taxonomy.json`. It is simply no longer a front door.
+   */
+
+  // ⛔ `U3E-2.207` — WAS "Gee chose". The FACT is which voice won; who picked it
+  //   is in the receipt and the ledger, not on a card in a shipped page.
+  { g:'g-corpus', name:'Voice audition', file:'data/.voice-audition/index.html',
+    what:'Six candidate voices, three of her own lines each. The chosen voice is '
+       + '<em>en_US-hfc_female-medium</em>.' },
+];
+
+/**
+ * ⛔⛔ THIS LIST USED TO CARRY `TODO.md` AND `FINALIZED.md` AND THAT WAS WRONG.
+ *   Gee: *"all the docs from product ship, not our inhouse build docs and
+ *   workflow docs"*. ⚠ **The rule already existed in this codebase and I did not
+ *   apply it** — `app/main.js` carries `U3E-8.32` verbatim: *"The shipped product
+ *   carries setup and layout documentation only; no in-house documents go out …
+ *   naming an internal board in the UI of a product is its own leak."*
+ *
+ * ⭐ So the launcher points at ONE door — the documentation viewer — and the
+ *   ship/in-house split lives in exactly one place, `app/docs.html`'s `SHIP`
+ *   list. Two lists would drift, and the one that drifts is the one that leaks.
+ */
+const DOCS = [];
+
+const el = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstChild; };
+
+/**
+ * ⭐⭐ `U3E-2.199b` — THE SWITCHBOARD. Gee: *"a way to turn on and off each cards
+ *   dependacnces and start it auto like ... so the person can just open this one
+ *   page and do everything"*.
+ *
+ * ⛔ A `file://` page CANNOT start a process — no browser will ever let it, and a
+ *   button that pretended otherwise would be this page's own worst sin. So
+ *   `serve/launcher.mjs` holds the shell and this page holds the switches.
+ *
+ * ⭐ AND ITS PRESENCE UPGRADES THE HEALTH CHECK. Without it the only question
+ *   `file://` can ask is `no-cors` "did the socket open"; WITH it, the state
+ *   comes back as real JSON from a process that opened a TCP connection to each
+ *   port and knows which PID answered.
+ */
+const CTL = 'http://127.0.0.1:8799';
+// ⭐ `U3E-5.100` — `ctlJobs` holds the PORTLESS jobs. `ctlState` is keyed by
+//   service id and a job is not a service; sharing one map would have made the
+//   writer collide with the `bank` SERVICE, which has the same id as the `bank`
+//   JOB. Two namespaces, two maps, on purpose.
+let ctlUp = false, ctlState = new Map(), ctlJobs = new Map();
+
+const AUTO_KEY = 'u3e.autostart';
+const autoSet = new Set(JSON.parse(localStorage.getItem(AUTO_KEY) || '[]'));
+const saveAuto = () => localStorage.setItem(AUTO_KEY, JSON.stringify([...autoSet]));
+
+function card(s) {
+  // ⭐ `U3E-5.100` — A JOB CARD OPENS ITS VIEWER, because a job has no port of
+  //   its own. `viewer` is a port number belonging to a DIFFERENT card, and that
+  //   is deliberate: the writer is watched at :8794, it does not serve anything.
+  const base = s.port ? `http://127.0.0.1:${s.port}`
+             : (s.viewer ? `http://127.0.0.1:${s.viewer}` : null);
+  const href = s.file ? s.file : (base ? base + (s.path === '/state' ? '/' : (s.path || '/')) : '#');
+  const c = el(`
+    <div class="card${s.planned ? ' planned' : ''}">
+      <div class="top">
+        <span class="dot ${s.planned ? 'plan' : ''}"></span>
+        <span class="name">${s.name}</span>
+        <span class="port">${s.planned ? 'planned' : (s.port ? ':' + s.port : (s.job ? 'job' : 'file'))}</span>
+      </div>
+      <div class="what">${s.what}</div>
+      <div class="joblive" hidden></div>
+      <div class="row">
+        <a class="btn${s.primary ? ' primary' : ''}" target="_blank" rel="noopener"
+           href="${href}" ${s.planned ? 'aria-disabled="true"' : ''}
+           title="${s.planned
+             ? 'PLANNED, not built — this opens nothing yet. The card is here so the gap is visible rather than absent.'
+             : s.job
+               ? `Opens the Voicing monitor at ${href} — this job has NO PORT of its own, so there is nothing else to open.&#10;&#10;⚠ That is a different card and it can be down while this job runs perfectly well. The dot here reads the job HEARTBEAT, not a socket.`
+               : `Opens ${s.name} in a new tab at ${href}.&#10;&#10;⚠ If the service is not running the tab loads nothing — the dot on this card is the thing to read first, and the command to start it is printed below.`}">Open</a>
+        ${s.id ? `<span class="sw" hidden>
+            <button data-act="start" title="Starts ${s.name} through the switchboard and waits until it answers bytes before turning the dot green.&#10;&#10;⛔ It does not report a launch it did not verify. If the port is already held, the card names the pid instead.">▶ On</button>
+            <button data-act="stop" title="Asks ${s.name} to stop.&#10;&#10;⛔ COOPERATIVE for long jobs — a banker or captioner stops at its next item boundary, because killing one mid-write can cost the manifest.&#10;⚠ A service this page did not start is left alone and says so.">■ Off</button>
+          </span>
+          <label class="auto" hidden title="start this automatically when the page opens">
+            <input type="checkbox" title="Marks ${s.name} to start when this page opens, if the auto-start box at the top is ticked.&#10;&#10;⚠ Stored on this machine only — a fresh clone opens with nothing marked."> auto
+          </label>` : ''}
+        ${s.job ? `<span class="sw" hidden>
+            <button data-act="jobstart" title="Runs this job through the switchboard.&#10;&#10;⛔ Disabled while it is already running — two writers on one manifest is how 43 captions were lost once, and both do a whole-file load-modify-write of a 68 MB file.">▶ On</button>
+            <button data-act="jobstop" title="A long writer is NOT killed from this page.&#10;&#10;⛔ It is stopped at a shell, so the single-writer guard and the accept journal can do their work — a kill mid-flush can publish a truncated manifest under a name that says it is complete.">■ Off</button>
+          </span>` : ''}
+      </div>
+      ${s.run ? `<div class="howto">${s.planned ? '' : 'not running — start it:\n'}${s.run}</div>` : ''}
+    </div>`);
+  c._probe = (base && !s.job) ? base + (s.path || '/') : null;
+  c._planned = !!s.planned;
+  c._id = s.id || null;
+  c._job = s.job || null;
+
+  if (s.job) {
+    const sw = c.querySelector('.sw');
+    const [on, off] = sw.querySelectorAll('button');
+    // ⛔ OFF IS PERMANENTLY DISARMED AND SAYS WHY, rather than absent. A control
+    //   that vanishes takes its explanation with it — the same defect U3E-2.209
+    //   fixed on the pipeline rows.
+    off.disabled = true;
+    on.onclick = async () => {
+      setBusy(`starting ${s.name}…`);
+      on.disabled = true;
+      try {
+        await fetch(`${CTL}/api/job?id=${encodeURIComponent(s.job)}`, { method: 'POST' });
+      } catch { /* the refresh below reports the truth either way */ }
+      setTimeout(() => { refresh(); setBusy(''); }, 1800);
+    };
+  }
+
+  if (s.id) {
+    const sw = c.querySelector('.sw');
+    const lab = c.querySelector('.auto');
+    const box = lab.querySelector('input');
+    box.checked = autoSet.has(s.id);
+    lab.classList.toggle('on', box.checked);
+    box.onchange = () => {
+      box.checked ? autoSet.add(s.id) : autoSet.delete(s.id);
+      lab.classList.toggle('on', box.checked);
+      saveAuto();
+    };
+    for (const b of sw.querySelectorAll('button')) {
+      b.onclick = async () => {
+        const act = b.dataset.act;
+        setBusy(`${act === 'start' ? 'starting' : 'stopping'} ${s.name}…`);
+        sw.querySelectorAll('button').forEach(x => x.disabled = true);
+        try {
+          await fetch(`${CTL}/api/${act}?id=${encodeURIComponent(s.id)}`, { method: 'POST' });
+        } catch { /* refresh below reports the truth either way */ }
+        // ⚠ A service needs a moment between "spawned" and "listening". The
+        //   refresh is delayed rather than instant so the dot does not flash
+        //   red at something that is coming up perfectly well.
+        setTimeout(() => { refresh(); setBusy(''); }, 1400);
+      };
+    }
+  }
+  return c;
+}
+
+const cards = [];
+for (const s of SURFACES) {
+  const c = card(s);
+  document.getElementById(s.g).appendChild(c);
+  cards.push(c);
+}
+
+const setBusy = (t) => { document.getElementById('ctlbusy').textContent = t; };
+
+function paint(c, up, job) {
+  const dot = c.querySelector('.dot');
+  dot.className = up ? 'dot up' : 'dot down';
+  c.classList.toggle('down', !up);
+
+  /**
+   * ⭐⭐ `U3E-5.100` — THE LIVE LINE ON THE CARD, not only in a tooltip.
+   *   `U3E-5.98o` already learned this on the pipeline rows: *"a progress line
+   *   nobody can see without hovering is a progress line for one person"*. The
+   *   heartbeat carries "pass 1 · chunk 14/16 try 5/6 · hypothermia" and a card
+   *   that showed a green dot and nothing else would be reporting liveness
+   *   while withholding the only detail that proves it.
+   */
+  const live = c.querySelector('.joblive');
+  if (live) {
+    const txt = job && job.running && job.note ? job.note : '';
+    live.textContent = txt;
+    live.hidden = !txt;
+  }
+
+  const sw = c.querySelector('.sw');
+  if (!sw) return;
+  sw.hidden = !ctlUp;
+  // ⚠ A JOB CARD HAS NO auto BOX. Auto-start marks SERVICES; a multi-day writer
+  //   started because a page was opened would be the worst kind of helpful, and
+  //   querying an element that is not there threw here on the first cut.
+  const auto = c.querySelector('.auto');
+  if (auto) auto.hidden = !ctlUp;
+
+  const [on, off] = sw.querySelectorAll('button');
+  on.classList.toggle('on', up);
+
+  if (c._job) {
+    // ⛔ OFF STAYS DISARMED for a job — see the button title. `foreign` is the
+    //   fact that decides the wording: "running" and "this page cannot stop it"
+    //   are different things and only one of them sends you looking for a
+    //   switch that does not exist.
+    on.disabled = up || !ctlUp;
+    off.disabled = true;
+    off.classList.remove('off');
+    on.textContent = up ? (job && job.foreign ? '● running (not ours)' : '● running') : '▶ On';
+    if (up) {
+      on.title = (job && job.foreign
+          ? 'Running, but NOT as a child of the switchboard — started from a terminal, '
+            + 'so this page cannot stop it.'
+          : 'Running, started by the switchboard.')
+        + (job && job.pid ? '\n\npid ' + job.pid : '')
+        + (job && job.heartbeatAgeMs != null
+          ? '\nlast heartbeat ' + Math.round(job.heartbeatAgeMs / 1000) + 's ago' : '')
+        + (job && job.note ? '\n\n' + job.note : '');
+    }
+    return;
+  }
+
+  on.disabled = up; off.disabled = !up;
+  off.classList.toggle('off', !up);
+  on.textContent = up ? '● running' : '▶ On';
+}
+
+/**
+ * ⛔ ONE REFRESH, TWO SOURCES OF TRUTH, AND IT SAYS WHICH ONE IT USED.
+ *   With the switchboard: real per-port state from a process that can actually
+ *   look. Without it: the `no-cors` socket probe, which is all `file://` has.
+ */
+async function refresh() {
+  try {
+    const r = await fetch(CTL + '/api/state', { signal: AbortSignal.timeout(3000) });
+    const j = await r.json();
+    ctlUp = true;
+    ctlState = new Map(j.services.map(s => [s.id, s]));
+    // ⭐ `U3E-5.100` — the portless jobs, from the same response. See
+    //   `jobsSnapshot` in serve/launcher.mjs for why they ride on this route.
+    // ⚠ `|| []` because an OLDER switchboard still running from before that
+    //   change answers without the key, and the writer card must then read
+    //   "not running" rather than throwing and taking the whole grid with it.
+    ctlJobs = new Map((j.jobs || []).map(x => [x.id, x]));
+  } catch {
+    ctlUp = false;
+    ctlState = new Map();
+    ctlJobs = new Map();
+  }
+
+  document.getElementById('ctlbar').classList.toggle('live', ctlUp);
+  document.getElementById('ddbar').classList.toggle('live', ctlUp);
+  if (ctlUp) refreshDataDir();
+  document.getElementById('noctl').style.display = ctlUp ? 'none' : 'block';
+  document.getElementById('ctlpill').textContent =
+    ctlUp ? `switchboard :8799 — live control` : 'switchboard: not running';
+
+  for (const c of cards) {
+    if (c._planned) continue;
+    /**
+     * ⛔ A JOB CARD HAS NO SOCKET TO PROBE, so it must be answered FIRST and
+     *   must never fall through to the `no-cors` branch — that branch would ask
+     *   the Voicing monitor whether the WRITER is up, which is a different
+     *   process entirely and would report a live writer as dead whenever its
+     *   viewer happened to be off.
+     * ⚠ Without the switchboard there is no answer at all: `file://` cannot read
+     *   a heartbeat file. The dot goes down and the card prints the command,
+     *   which is honest — absent says absent.
+     */
+    if (c._job) {
+      const job = ctlUp ? ctlJobs.get(c._job) : null;
+      paint(c, !!(job && job.running), job);
+      continue;
+    }
+    if (ctlUp && c._id && ctlState.has(c._id)) {
+      paint(c, ctlState.get(c._id).up);
+    } else if (c._probe) {
+      // ⚠ The fallback, unchanged: `no-cors` resolves OPAQUE on connect and
+      //   rejects on refusal — the only question `file://` can ask alone.
+      try {
+        await fetch(c._probe, { mode: 'no-cors', signal: AbortSignal.timeout(2500) });
+        paint(c, true);
+      } catch { paint(c, false); }
+    }
+  }
+}
+for (const [f, what] of DOCS) {
+  document.getElementById('g-docs').appendChild(el(`
+    <div class="card">
+      <div class="top"><span class="dot up"></span><span class="name">${f}</span></div>
+      <div class="what">${what}</div>
+      <div class="row"><a class="btn" target="_blank" rel="noopener" href="docs/${f}"
+        title="Opens ${f} raw, straight from disk.&#10;&#10;⚠ This is the IN-HOUSE copy with its YAML front matter intact. The rendered product version — front matter stripped, navigation added — is served by the app at /docs/ when the player is running.">Open</a></div>
+    </div>`));
+}
+
+document.getElementById('recheck').onclick = refresh;
+
+document.getElementById('startall').onclick = async () => {
+  setBusy('starting everything…');
+  try { await fetch(CTL + '/api/start-all', { method: 'POST' }); } catch { /* refresh tells */ }
+  setTimeout(() => { refresh(); setBusy(''); }, 2600);
+};
+document.getElementById('stopall').onclick = async () => {
+  // ⚠ CONFIRMED, because this reaches processes the launcher did not start —
+  //   including a terminal somebody is watching.
+  if (!confirm('Stop every service?\n\nThis kills whatever is listening on those '
+             + 'ports, including services you started yourself in a terminal.')) return;
+  setBusy('stopping everything…');
+  try { await fetch(CTL + '/api/stop-all', { method: 'POST' }); } catch { /* refresh tells */ }
+  setTimeout(() => { refresh(); setBusy(''); }, 1600);
+};
+
+/**
+ * ⭐ *"start it auto like when just clicking open"*. The per-card `auto` boxes
+ *   and this master switch live in `localStorage`, so the choice survives the
+ *   page being closed — which is the only way "when it opens" can mean anything.
+ *
+ * ⛔ IT IS OFF UNTIL TURNED ON. A launcher that silently spawned nine processes
+ *   the first time it was opened would be a page that took over the machine for
+ *   looking at it.
+ */
+const AUTOOPEN_KEY = 'u3e.autoopen';
+const autoOpenBox = document.getElementById('autoopen');
+autoOpenBox.checked = localStorage.getItem(AUTOOPEN_KEY) === '1';
+autoOpenBox.onchange = () =>
+  localStorage.setItem(AUTOOPEN_KEY, autoOpenBox.checked ? '1' : '0');
+
+async function autoStart() {
+  if (!autoOpenBox.checked || !ctlUp || !autoSet.size) return;
+  const want = [...autoSet].filter(id => ctlState.get(id) && !ctlState.get(id).up);
+  if (!want.length) return;
+  setBusy(`auto-starting ${want.length} service(s)…`);
+  for (const id of want) {
+    try { await fetch(`${CTL}/api/start?id=${encodeURIComponent(id)}`, { method: 'POST' }); }
+    catch { /* refresh reports it */ }
+  }
+  setTimeout(() => { refresh(); setBusy(''); }, 2600);
+}
+
+/**
+ * ⭐⭐ `U3E-2.199d` — THE PIPELINE. Gee: *"step 1. step2. ect ect on every card
+ *   and a checked count for all till the completet model is complete ... and the
+ *   whole process is automatic with user input where needed"*.
+ *
+ * ⛔ EVERY TICK PRINTS THE NUMBER THAT EARNED IT. `serve/pipeline.mjs` reads the
+ *   filesystem on every request and returns the measurement; this only draws it.
+ *   Nothing here decides whether a step is done.
+ */
+const MARK = { done: '✅', open: '⛔', unverified: '⚠' };
+let lastPipe = null;
+
+function drawPipe(p) {
+  lastPipe = p;
+  const host = document.getElementById('pipe');
+  host.textContent = '';
+  let phase = '';
+  for (const s of p.steps) {
+    if (s.phase !== phase) {
+      phase = s.phase;
+      const h = document.createElement('div');
+      h.className = 'phasehdr'; h.textContent = phase;
+      host.appendChild(h);
+    }
+    const job = (p.jobs || []).find(j => j.id === s.run);
+    const cls = s.state === 'done' ? 'done' : s.state === 'unverified' ? 'unver open' : 'open';
+    const d = el(`
+      <div class="step ${cls}${s.needsUser ? ' needs' : ''}">
+        <div class="stepn">${MARK[s.state]}<br>${s.n}.</div>
+        <div>
+          <div class="steptitle">${s.name}</div>
+          <div class="stepdetail"></div>
+          <div class="stepwhy"></div>
+        </div>
+        <div class="stepact"></div>
+      </div>`);
+    // ⚠ `textContent`, not markup. A detail string carries filenames and
+    //   measured values straight off disk and must never be able to inject.
+    d.querySelector('.stepdetail').textContent = s.detail;
+    /**
+     * ⛔⛔ `U3E-5.83` — `why` WAS INTERPOLATED INTO innerHTML, THREE LINES UNDER A
+     *   COMMENT EXPLAINING WHY `detail` MUST NOT BE.
+     *
+     *   It was `<div class="stepwhy">${s.why}</div>` and that was survivable only
+     *   while every `why` was a hardcoded literal. ⛔ **They are computed now** —
+     *   step 12's includes `r.verbatim`, which is TEXT THE OPERATOR TYPED into a
+     *   sign-off prompt and which the switchboard wrote to `.receipts/`. A `<img
+     *   onerror=…>` in a sign-off would have executed on every page load.
+     * ⭐ Same treatment as `detail`, for the same reason, from the same source of
+     *   truth: anything off disk is TEXT.
+     */
+    d.querySelector('.stepwhy').textContent = s.why;
+
+    /**
+     * ⛔⛔ `U3E-2.209` — EVERY UNFINISHED STEP DRAWS SOMETHING, OR SAYS WHY NOT.
+     *   Gee: *"some #ed items in the main page of check list dont even have an
+     *   option to rectify it"*. **He was looking at two different holes:**
+     *
+     *     ① step 17 names run:'eval' and NO SUCH JOB IS REGISTERED — so it drew
+     *        an empty cell, switchboard up or down, permanently.
+     *     ② with the switchboard DOWN, this branch required `ctlUp`, so 8 of 9
+     *        open steps silently lost their button and no row said why.
+     *
+     *   ⛔ ② is this project's own `NO FALLBACK THAT HIDES A FAILURE` law failing
+     *   on the front door: a control that vanishes takes its explanation with it.
+     *   ⭐ An unfinished step now ALWAYS puts a control or a stated reason in the
+     *   action cell. Absent says ABSENT, here as on the wire.
+     */
+    const act = d.querySelector('.stepact');
+    const why = (txt, hint) => {
+      const w = el(`<span class="tag none"></span>`);
+      w.textContent = txt;
+      if (hint) w.title = hint;
+      act.appendChild(w);
+    };
+    if (s.needsUser) {
+      const t = el(`<span class="tag you">needs you</span>`);
+      act.appendChild(t);
+      if (s.state !== 'done') {
+        const b = el(`<button class="mini you">Sign this off…</button>`);
+        b.title = `Step ${s.n} cannot be closed by a machine — it needs YOU to look and say so.
+
+`
+          + `⛔ Nothing here measures taste, register or whether a picture is any good, so this `
+          + `step stays open until you sign it. The signature is written to a receipt with the `
+          + `date, and it is what the tick above reads.
+`
+          + `⚠ A regression VOIDS it: if the underlying number falls, the step reopens.`;
+        b.onclick = () => signOff(s);
+        act.appendChild(b);
+      }
+    } else if (s.state === 'done') {
+      /**
+       * ⭐⭐ `U3E-5.79` — A FINISHED STEP IS NOT A SEALED STEP. Gee: *"once
+       *   something is in i cant tell it to reverify or start new."*
+       *
+       *   The old comment here read *"a finished step needs no control"* and that
+       *   was the one-way latch: `fitcheck` measured VRAM once, on a different
+       *   `seqLen` and a different shard set, and nothing could ask it to look
+       *   again. ⛔ **A measurement with no way to invalidate it is a cache
+       *   pretending to be a fact.**
+       * ⚠ Re-verify CLEARS the receipt and never writes one — the step drops to
+       *   `unverified` (*"nothing has measured this"*) and its own runner takes
+       *   the number again.
+       */
+      if (s.accepted) {
+        const t = el(`<span class="tag you"></span>`);
+        t.textContent = `accepted at ${(s.accepted.have ?? 0).toLocaleString()}`;
+        t.title = `Closed by decision, not by the number being met.\n`
+          + `by ${s.accepted.by} on ${String(s.accepted.at).slice(0, 10)}`;
+        act.appendChild(t);
+      }
+      if (s.receiptName && ctlUp) {
+        const b = el(`<button class="mini">↻ ${s.accepted ? 'un-accept' : 're-verify'}</button>`);
+        b.title = s.accepted
+          ? `Removes your acceptance. Step ${s.n} reopens at its real number.`
+          : `Clears .receipts/${s.receiptName}.json so step ${s.n} reads "nothing has `
+            + `measured this", then run it again to take a fresh number.`;
+        b.onclick = () => clearReceipt(s);
+        act.appendChild(b);
+      }
+      if (s.rebuild && ctlUp) {
+        const b = el(`<button class="mini heavy">↻ start fresh</button>`);
+        b.title = `Step ${s.n} is green from a FROZEN build plan, not a receipt — clearing `
+          + `evidence would do nothing. This runs "${s.rebuild.job} ${s.rebuild.flag}", which `
+          + `discards the plan and partitions the corpus again from scratch.`;
+        b.onclick = () => rebuildStep(s);
+        act.appendChild(b);
+      }
+    } else if (s.acceptable && ctlUp) {
+      /**
+       * ⭐ THE ACCEPT BUTTON SITS BESIDE THE RUNNER, NEVER INSTEAD OF IT. A row
+       *   that can be worked on AND closed by decision must offer both, or the
+       *   easy path quietly becomes the only path.
+       */
+      if (job) {
+        const b = el(`<button class="mini${job.heavy ? ' heavy' : ''}">${
+          job.running ? '● running' : '▶ ' + job.label}</button>`);
+        b.title = job.running
+          ? `"${job.label}" is running now. The button is disabled so a second copy cannot be `
+            + `started on top of it — two writers on one manifest is how 43 captions were lost once.`
+          : `Runs "${job.label}" through the switchboard and writes its output to .launcher-logs/.
+
+`
+            + (job.heavy
+              ? `⛔ HEAVY — this one takes hours and holds the card. Nothing else should be `
+                + `competing for the GPU while it runs.
+`
+                : ``)
+            + `⚠ Progress appears on this card as it goes. If the switchboard is not running the `
+            + `button is absent rather than dead, because a page opened from file:// cannot spawn `
+            + `a process.`;
+        b.disabled = !!job.running;
+        b.onclick = () => runJob(job);
+        act.appendChild(b);
+      }
+      const a = el(`<button class="mini you">✓ accept as is</button>`);
+      a.title = `Close step ${s.n} at ${(s.have ?? 0).toLocaleString()} of `
+        + `${(s.want ?? 0).toLocaleString()}. The tick will STATE the shortfall, and if the `
+        + `number ever falls below this the acceptance is void.`;
+      a.onclick = () => acceptStep(s);
+      act.appendChild(a);
+    } else if (job && ctlUp) {
+      const b = el(`<button class="mini${job.heavy ? ' heavy' : ''}">${
+        job.running ? '● running' : (job.heavy ? '▶ ' + job.label + ' (heavy)' : '▶ ' + job.label)
+      }</button>`);
+      b.title = job.running
+        ? `"${job.label}" is running now. Disabled so a second copy cannot start on top of it.`
+        : `Runs "${job.label}" — the command that would close step ${s.n}.
+
+`
+          + (job.heavy
+            ? `⛔ HEAVY — hours, and it holds the card.
+`
+            : ``)
+          + `⚠ The step does not go green because this ran. It goes green when the RECEIPT this `
+          + `writes carries a number that meets the bar — so pressing it twice is safe.`;
+      b.disabled = !!job.running;
+      b.onclick = () => runJob(job);
+      act.appendChild(b);
+    } else if (job && !ctlUp) {
+      // ⭐ THE BUTTON EXISTS — the thing that would press it is not running. That
+      //   is a different fact from "there is nothing you can do", and the row
+      //   now carries the one command that fixes every row at once.
+      why('⛔ switchboard down', 'This step CAN be run — start the switchboard:\n'
+        + 'node serve/launcher.mjs');
+    } else if (s.run) {
+      // ⛔⛔ A STEP THAT NAMES A RUNNER NOBODY REGISTERED. This is step 17's
+      //   defect and it was invisible: `missingCmds` only audited script paths
+      //   printed in DETAIL text, never the `run` id itself.
+      why(`⛔ no runner "${s.run}"`, `Step ${s.n} asks for job "${s.run}" and the `
+        + `switchboard has no such job registered. This is a defect in the `
+        + `pipeline, not something you can press past.`);
+    } else {
+      why('⚠ no runner', `Step ${s.n} has no automatic runner. It is completed by `
+        + `the evidence its detail names, not by a button.`);
+    }
+    /**
+     * ⭐⭐⭐ `U3E-5.90` — CHOOSE THE SHARD SET. Gee: *"our shard is done but #13
+     *   isnt updateing and i dont correctly have to option to select them"*.
+     *
+     * ⛔ THIS SITS OUTSIDE THE BRANCH CHAIN ABOVE, ON PURPOSE. That chain picks
+     *   ONE control per row by verdict — and choosing which set the run eats is
+     *   not conditional on the row's verdict. A green row still needs it (the
+     *   configured set is fine and a newer one exists, which is exactly the state
+     *   Gee found) and a red one needs it more.
+     * ⚠ REBUILD AND SELECT ARE DIFFERENT ACTS. `↻ start fresh` spends hours
+     *   re-partitioning the corpus; this points the trainer at a set that is
+     *   ALREADY BUILT. Offering only the first made "use the set I just built"
+     *   cost a rebuild.
+     */
+    if (s.select && ctlUp) {
+      const n = (s.select.sets || []).filter(x => x.isSet && !x.current).length;
+      const b = el(`<button class="mini">⇄ choose the set${n ? ' (' + n + ' other)' : ''}</button>`);
+      b.title = `Points the trainer at a DIFFERENT shard set — one that is already built.
+
+⭐ It lists every set on this machine with its own measured numbers, so the choice can be judged rather than typed. A typed path is a guess; an enumeration is an offer.
+⛔ It does NOT build, move or delete anything. A run already in flight keeps the shards it loaded — this takes effect on the NEXT run.
+⚠ It writes the PORTABLE spelling, never a drive letter: train/.train-config.json is git-tracked, and an absolute path in it would travel to people who do not have that drive.
+⚠ Step 11's mix measurement describes whichever set it was taken against, so re-run "measure the mix the shards ACTUALLY have" after changing this.`;
+      b.onclick = () => chooseShardSet(s);
+      act.appendChild(b);
+    }
+    /**
+     * ⛔⛔ `U3E-5.98o` — "RUNNING" WAS A 10.5px PILL WITH ONE WORD IN IT.
+     *
+     *   Gee: *"step 8 doesnt show its running and i dont have a button that i
+     *   need to open its viewer to monitor whats being writeten"*.
+     *
+     * ⚠ THE DATA WAS ALL ON THE WIRE — `running:true, foreign:true,
+     *   heartbeatAgeMs:204, note:"pass 1 · chunk 2/16 try 1/6 · endianness"`.
+     *   ⛔ The page threw away everything except the boolean, printed the word
+     *   `running` in a monospace pill the size of a footnote, and put a DISABLED
+     *   button saying `● running` beside it — so the row carried the same word
+     *   twice, both times looking like a dead control, and the live note
+     *   nowhere at all.
+     *
+     * ⭐ A LIVE JOB NOW SAYS WHAT IT IS DOING, on the row, in words. That is the
+     *   whole reason `U3E-5.98l` made the heartbeat beat per chunk-attempt —
+     *   producing a note nobody displayed would have been the instrument
+     *   built and left unread.
+     * ⚠ AND `foreign` IS SAID OUT LOUD. "It is running" and "this page cannot
+     *   stop it" are different facts, and the second one is what stops someone
+     *   hunting for an off switch that is not there.
+     */
+    if (job && job.running) {
+      const t = el(`<span class="tag run"></span>`);
+      t.textContent = job.foreign ? '● running (not ours)' : '● running';
+      t.title = (job.foreign
+        ? 'This job is running, but NOT as a child of the switchboard — it was '
+          + 'started from a terminal, so this page cannot stop it.\n\n'
+          + '⛔ It is detected from the job\'s own heartbeat file rather than from '
+          + 'a process list, so the start button beside it is correctly disarmed: '
+          + 'two writers on one manifest is how 43 captions were lost once.\n\n'
+        : 'Started by the switchboard, which can also stop it.\n\n')
+        + (job.pid ? 'pid ' + job.pid + '\n' : '')
+        + (job.heartbeatAgeMs != null
+          ? 'last heartbeat ' + Math.round(job.heartbeatAgeMs / 1000) + 's ago\n' : '')
+        + (job.note ? '\n' + job.note : '');
+      act.appendChild(t);
+      // ⭐ THE NOTE ON THE ROW, not only in a tooltip. A progress line nobody
+      //   can see without hovering is a progress line for one person.
+      if (job.note) {
+        const nb = el(`<div class="joblive"></div>`);
+        nb.textContent = job.note;
+        d.querySelector('.stepdetail').after(nb);
+      }
+    }
+    /**
+     * ⭐⭐ `U3E-5.98o` — THE SURFACE IS A LINK NOW, NOT A DEAD PORT NUMBER.
+     *   It rendered `<span class="tag">:8795</span>` — a pill you cannot click,
+     *   on a row whose whole point is that there is something to look at.
+     * ⚠ It stays a plain tag when the service is DOWN, and says so: a link that
+     *   opens a refused connection is worse than a label, because it blames the
+     *   browser for a service nobody started.
+     */
+    if (s.service) {
+      const svc = ctlState.get(s.service) || {};
+      const port = svc.port || null;
+      if (port && svc.up) {
+        const a = el(`<a class="mini" target="_blank" rel="noopener"></a>`);
+        a.href = 'http://127.0.0.1:' + port + '/';
+        a.textContent = '◫ open the viewer';
+        a.title = `Opens ${svc.name || s.service} at :${port} in a new tab — the live `
+          + `view of what this step is doing.\n\n⚠ Read-only: it watches the run, it `
+          + `does not start or stop it.`;
+        act.appendChild(a);
+      } else {
+        const t = el(`<span class="tag none"></span>`);
+        t.textContent = port ? '◫ viewer down :' + port : '◫ viewer ' + s.service;
+        // ⚠ `cmd`, NOT `run`. The switchboard's /api/state calls it `cmd`; the
+        //   SURFACES table on this page calls the same thing `run`, and reading
+        //   the wrong one gives a tooltip that silently omits the fix.
+        t.title = svc.cmd
+          ? 'This step has a live viewer and it is NOT running. Start it:\n' + svc.cmd
+          : 'This step names a viewer the switchboard does not know about.';
+        act.appendChild(t);
+      }
+    }
+    host.appendChild(d);
+  }
+
+  /**
+   * ⭐ `U3E-5.86` — SAY WHOSE LOGIC ANSWERED. Gee: *"thats why i told you the
+   *   dasshboard of index is wrong"* — step 13 was printing text that had
+   *   already been replaced on disk, because the switchboard imported
+   *   `pipeline.mjs` once at boot. It hot-reloads on mtime now, and the page
+   *   states which module answered so a stale one can never be silent again.
+   * ⛔ A reload FAILURE is louder than a reload: the switchboard keeps serving
+   *   the last good module rather than dying on a half-saved file, and that is
+   *   exactly the situation a reader must be told about.
+   */
+  const lg = p.logic || null;
+  const logicNote = !lg ? ''
+    : lg.reloadError
+      ? ` · <span style="color:var(--bad)">⛔ pipeline reload FAILED — serving older logic: ${lg.reloadError}</span>`
+      : lg.source === 'boot import'
+        ? ' · <span style="color:var(--dim)">logic: as loaded at boot</span>'
+        : ` · <span style="color:var(--dim)">logic: live (${String(lg.loadedAt).slice(11, 19)})</span>`;
+  document.getElementById('pipecount').innerHTML =
+    `<b>${p.done}</b> of ${p.total} complete` +
+    (p.unverified ? ` · <span style="color:var(--warn)">${p.unverified} unverified</span>` : '') +
+    logicNote;
+  const bar = document.getElementById('pipebar');
+  bar.textContent = '';
+  const w = (k) => `${(k / p.total) * 100}%`;
+  const dEl = document.createElement('i'); dEl.className = 'd'; dEl.style.width = w(p.done);
+  const uEl = document.createElement('i'); uEl.className = 'u'; uEl.style.width = w(p.unverified);
+  bar.append(dEl, uEl);
+
+  const nextBtn = document.getElementById('pipenext');
+  const nextStep = p.steps.find(s => s.n === p.next);
+  if (!nextStep) {
+    nextBtn.textContent = '⭐ every step complete';
+    nextBtn.disabled = true;
+  } else if (nextStep.needsUser) {
+    // ⛔ THE AUTOMATIC RUN STOPS HERE AND SAYS WHOSE TURN IT IS. It does not skip
+    //   to a later runnable step: the order is the pipeline, and running step 13
+    //   because step 12 is unapproved would be doing the work the approval gates.
+    nextBtn.textContent = `⛔ step ${nextStep.n} is yours — ${nextStep.name}`;
+    nextBtn.disabled = false;
+    nextBtn.onclick = () => signOff(nextStep);
+  } else {
+    const job = (p.jobs || []).find(j => j.id === nextStep.run);
+    nextBtn.disabled = !ctlUp || !job || job.running;
+    nextBtn.textContent = job
+      ? (job.running ? `● step ${nextStep.n} running — ${job.label}` : `▶ step ${nextStep.n} — ${job.label}`)
+      : `step ${nextStep.n} has no runner — ${nextStep.name}`;
+    nextBtn.onclick = () => job && runJob(job);
+  }
+}
+
+async function runJob(job) {
+  // ⛔ HEAVY JOBS ARE CONFIRMED. A shard build or a training run takes the card
+  //   for hours, and a page that started one from a stray click would be the
+  //   worst kind of helpful.
+  if (job.heavy && !confirm(
+    `Start "${job.label}"?\n\nThis is a HEAVY job — it takes the GPU for hours.`)) return;
+  setBusy(`starting ${job.label}…`);
+  try { await fetch(`${CTL}/api/job?id=${encodeURIComponent(job.id)}`, { method: 'POST' }); }
+  catch { /* the refresh below reports the truth */ }
+  setTimeout(() => { refresh(); setBusy(''); }, 1600);
+}
+
+/**
+ * ⛔⛔ THE TWO STEPS A BUTTON MUST NOT TAKE. Approving the model size and saying
+ *   she passed are judgements. The page collects them EXPLICITLY — typed, not
+ *   inferred — and `serve/launcher.mjs` refuses to write any receipt but these
+ *   two, so a job can never sign its own homework.
+ */
+async function signOff(step) {
+  let name = null, body = null;
+  if (step.n === 12) {
+    /**
+     * ⛔⛔ GEE: *"i need to knwo what medium im approving"*. The old prompt gave
+     *   four numbers and no way to weigh them. **An approval nobody can judge is
+     *   a rubber stamp**, and this one gates six rows below it.
+     *
+     * ⛔⛔⛔ `U3E-5.94` — AND IT WAS BOTH HARDCODED AND WRONG. Gee: *"we shouldnt
+     *   be set to use only one size it all needs to auto set up depending which
+     *   one i select in the teecha"*.
+     *
+     *   The whole block was a fixed wall describing `medium`, quoting a table
+     *   whose `tiny 23 M · 45% work · 295 tok/param` row **this repository had
+     *   already recorded as FALSE** under `U3E-2.219` — at the seqLen actually
+     *   configured that shape is **36.0 M at 29.5% work and 191.8 tok/param.**
+     *   ⛔ And the last line wrote `{ preset: 'medium' }` **whatever was
+     *   selected**, so a `small` run got approved as `medium`.
+     *
+     * ⭐ EVERY NUMBER BELOW IS NOW PRICED BY `train/model-shapes.mjs` — the same
+     *   module the CLI and Teechuh read — for the seqLen, batch, checkpointing
+     *   and card ACTUALLY configured, and it records the CONFIGURED preset.
+     * ⚠ It travels on `step.approve` because this page is `file://` and cannot
+     *   reach Teechuh's `/api/sizes`; the switchboard publishes it.
+     */
+    const a = step.approve || {};
+    const live = a.configured;
+    if (!live || !a.shape) {
+      // ⛔ ABSENT SAYS ABSENT, and names the fix rather than approving a guess.
+      alert(['Nothing is configured to approve.', '',
+        'train/.train-config.json carries no preset and no shape.', '',
+        'Open Teechuh (:8796), choose a size, and press',
+        '"save this configuration" — then approve it here.'].join(NL));
+      return;
+    }
+    const row = (a.sizes || []).find(x => x.name === live) || null;
+    const lines = [
+      'APPROVE THE MODEL SIZE', '',
+      'YOU ARE APPROVING THE SIZE THAT IS CONFIGURED RIGHT NOW: ' + live.toUpperCase(),
+      '',
+      '  ' + a.shape.layers + ' layers x ' + a.shape.dModel + ' wide'
+        + ', seqLen ' + Number(a.shape.seqLen).toLocaleString(),
+      '  batch ' + a.shape.batchSize + ' x accum ' + a.shape.gradAccum
+        + '  ·  ' + a.shape.optimizer + '  ·  lr ' + a.shape.lr,
+    ];
+    if (row) {
+      lines.push('  ' + row.paramsM + ' M parameters - ' + row.workPct
+        + '% doing WORK, ' + row.embPct + '% the position table');
+      lines.push('  ~' + row.vramGiB + ' GiB VRAM at 16 bytes/param'
+        + ' (AdamW fp32: weights + grad + 2 moments)');
+      lines.push('  ' + (row.tokPerParam == null ? 'no token budget yet'
+        : row.tokPerParam + ' tokens per parameter against the '
+          + (a.budgetTokens / 1e9).toFixed(2) + ' B-token corpus'));
+      lines.push('  verdict: ' + row.verdict);
+    }
+    lines.push('');
+    lines.push('EVERY SIZE, PRICED FOR THIS seqLen AND THIS CARD:');
+    for (const x of (a.sizes || [])) {
+      lines.push('  ' + (x.name === live ? '-> ' : '   ')
+        + x.name.padEnd(12)
+        + String(x.paramsM).padStart(7) + ' M '
+        + String(x.workPct).padStart(3) + '% work '
+        + String(x.tokPerParam == null ? '-' : x.tokPerParam).padStart(5) + ' t/p '
+        + String(x.vramGiB).padStart(6) + ' GiB  ' + x.verdict);
+    }
+    lines.push('');
+    lines.push('Chinchilla-optimal is ~20 tokens/parameter. Far above it and the');
+    lines.push('model has nowhere to put what it sees; far below and it is starved');
+    lines.push('of data for its size.');
+    if (a.approved && a.approved.preset !== live) {
+      lines.push('');
+      lines.push('** ' + a.approved.preset.toUpperCase() + ' WAS APPROVED BEFORE, ON '
+        + String(a.approved.at).slice(0, 10) + ' **');
+      lines.push('The run uses the CONFIG, not the receipt. This replaces it.');
+    }
+    lines.push('');
+    lines.push('What this does NOT prove: the VRAM above is an ESTIMATE. Step 14');
+    lines.push('runs train/fitcheck.py to measure the real number on the real');
+    lines.push('card. That is a separate step because an estimate has already');
+    lines.push('been wrong here - the old VRAM panel said FITS for a');
+    lines.push('configuration that crashed at step one.');
+    lines.push('');
+    lines.push('Approving unblocks the shard rebuild and the run. Type your name:');
+    const who = prompt(lines.join(NL));
+    if (!who) return;
+    /**
+     * ⭐ THE RECEIPT CARRIES THE NUMBERS IT WAS SIGNED AGAINST, not just a name.
+     *   `U3E-5.79`'s rule for acceptance: *"an approval with no number behind it
+     *   is the 'ticked because something ran' failure wearing a signature."*
+     */
+    name = 'size-approved';
+    body = {
+      preset: live, by: who,
+      summary: live + ' (' + a.shape.layers + 'L x ' + a.shape.dModel
+        + ', seqLen ' + Number(a.shape.seqLen).toLocaleString()
+        + (row ? ', ' + row.paramsM + ' M params, ' + row.vramGiB + ' GiB' : '') + ')',
+      config: Object.assign({}, a.shape, row ? {
+        paramsM: row.paramsM, workPct: row.workPct, tokPerParam: row.tokPerParam,
+        vramGiB: row.vramGiB, fits: row.fits, verdict: row.verdict,
+      } : {}),
+      budgetTokens: a.budgetTokens,
+      pricedBy: 'train/model-shapes.mjs via serve/pipeline.mjs step 12',
+      caveat: 'The VRAM figure is an ESTIMATE. train/fitcheck.py (step 14) is the '
+        + 'measurement, and an estimate has been wrong here before.',
+      supersedes: a.approved ? (a.approved.preset + ' approved ' + String(a.approved.at).slice(0, 10)) : null,
+    };
+  } else if (step.n === 18) {
+    /**
+     * ⛔ GEE: *"and what i need to test"*. Each modality names WHERE to do it and
+     *   WHAT counts as a pass — *"did chat pass?"* with no criterion collects an
+     *   opinion, not a test.
+     */
+    const modes = [
+      ['chat', 'Talker :8790 — type to her. PASS = coherent English in HER voice, not garbled tokens.'],
+      ['draw', 'Talker :8790 — ask for a picture. PASS = a recognisable image of what you asked for, from HER weights.'],
+      ['see', 'Talker :8790 — give her an image. PASS = she describes what is actually in it.'],
+      ['speak', 'Talker :8790 — ask her to say something. PASS = intelligible speech in her voice.'],
+      ['hear', 'Talker :8790 — talk to her. PASS = she transcribes roughly what you said.'],
+    ];
+    const result = {}; const flags = [];
+    for (const [m, how] of modes) {
+      const v = prompt([`TEST: ${m}`, '', how, '',
+        'Type "pass" — or type what is wrong with it, in your words.'].join(NL));
+      if (v === null) return;
+      if (v.trim().toLowerCase() === 'pass') result[m] = 'pass';
+      // ⭐ A FLAG IS THE POINT, NOT A FAILURE OF THE FORM. Gee: "tested with user
+      //   flagging where needed" — what is wrong is recorded in his words.
+      else { result[m] = 'flagged'; flags.push(`${m}: ${v.trim()}`); }
+    }
+    name = 'user-test'; body = { modalities: result, flags };
+  } else return;
+
+  try {
+    await fetch(`${CTL}/api/receipt?name=${name}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch { alert('The switchboard did not answer — nothing was recorded.'); }
+  refresh();
+}
+
+/**
+ * ⭐⭐⭐ `U3E-5.79` — ACCEPT A ROW AT THE NUMBER IT IS AT.
+ *   Gee: *"4,5,&8 nered option for user to accept as is so they go green."*
+ *
+ * ⛔ THE PROMPT QUOTES THE NUMBERS BACK. `signOff` for step 12 exists because
+ *   *"an approval nobody can judge is a rubber stamp"* — the same rule binds
+ *   here, so the shortfall is stated in the prompt rather than left implied by
+ *   the word "accept".
+ * ⚠ IT ALSO STATES WHAT ACCEPTANCE DOES **NOT** DO, because the honest worry is
+ *   that a green tick lets bad data train. It does not: the gates that matter
+ *   are in `shard.mjs`, which refuses a caption-less pair and (with
+ *   `--exclude-needs-rewrite`) every third-person body regardless of this page.
+ */
+async function acceptStep(step) {
+  const have = step.have ?? 0, want = step.want ?? 0;
+  const short = Math.max(0, want - have);
+  const who = prompt([
+    `ACCEPT STEP ${step.n} AS IS — "${step.name}"`,
+    '',
+    `Where it stands:  ${have.toLocaleString()} of ${want.toLocaleString()}`,
+    `Short by:         ${short.toLocaleString()} (${want ? (100 * short / want).toFixed(1) : '0'}%)`,
+    '',
+    'What this DOES:',
+    '  - closes the row by DECISION, not by the number being met',
+    '  - the green tick will STATE the shortfall, permanently',
+    `  - records ${have.toLocaleString()} as the number you accepted`,
+    '  - if the number ever falls BELOW that, the acceptance is VOID and the row reopens',
+    '',
+    'What this does NOT do:',
+    '  - it does not let unfinished data train. shard.mjs refuses a caption-less',
+    '    pair and, with --exclude-needs-rewrite, every third-person body — and it',
+    '    does that whatever this page says.',
+    '',
+    'Type your name to accept:',
+  ].join(NL));
+  if (!who) return;
+  try {
+    await fetch(`${CTL}/api/receipt?name=accepted-${step.n}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ by: who, have, want, step: step.n, name: step.name }),
+    });
+  } catch { alert('The switchboard did not answer — nothing was recorded.'); }
+  refreshPipe();
+}
+
+/**
+ * ⭐⭐ `U3E-5.79` — CLEAR THE EVIDENCE SO IT CAN BE TAKEN AGAIN.
+ *   Gee: *"once something is in i cant tell it to reverify or start new."*
+ * ⛔ IT DELETES AND NEVER WRITES. The step drops to `unverified` — *"nothing has
+ *   measured this"* — and the job that took the old number takes a new one.
+ */
+async function clearReceipt(step) {
+  const isAccept = !!step.accepted;
+  const ok = confirm([
+    isAccept ? `UN-ACCEPT STEP ${step.n}` : `RE-VERIFY STEP ${step.n}`,
+    `"${step.name}"`,
+    '',
+    isAccept
+      ? `Removes your acceptance (recorded at ${(step.accepted.have ?? 0).toLocaleString()}).`
+        + NL + 'The row reopens at whatever the real number is now.'
+      : `Deletes .receipts/${step.receiptName}.json.`
+        + NL + 'The row will read "nothing has measured this" until you run it again.'
+        + NL + NL + 'Nothing else is touched — no corpus, no shards, no checkpoint.',
+    '',
+    'Proceed?',
+  ].join(NL));
+  if (!ok) return;
+  try {
+    const r = await (await fetch(`${CTL}/api/receipt/clear?name=${step.receiptName}`,
+      { method: 'POST' })).json();
+    if (!r.ok) alert(`Not cleared — ${r.why}`);
+  } catch { alert('The switchboard did not answer — nothing was cleared.'); }
+  refreshPipe();
+}
+
+/**
+ * ⭐⭐ `U3E-5.79` — START FRESH, for the one step whose green is a FROZEN PLAN.
+ *
+ * ⛔ Step 13 is not receipt-backed. Its `done` comes from `build-plan.json` +
+ *   `build-progress.json` agreeing, so clearing a receipt would do NOTHING — the
+ *   flag that discards a plan is `--rebuild`, and `U3E-5.34` is why it exists:
+ *   resuming a plan under different flags writes shards that disagree with the
+ *   ones on disk **while still passing their own checksums.**
+ * ⚠ The old shards are NOT deleted by `--rebuild`, and the prompt says so —
+ *   `shard.mjs` prints the command rather than removing a gigabyte of someone
+ *   else's build, and this button inherits that restraint.
+ */
+async function rebuildStep(step) {
+  const ok = confirm([
+    `START STEP ${step.n} FRESH — "${step.name}"`,
+    '',
+    `Runs the registered job: ${step.rebuild.job}`,
+    '',
+    'Why a rebuild and not a re-verify: this row is green because a FROZEN build',
+    'plan and its progress file agree. There is no receipt to clear. --rebuild',
+    'discards the plan and partitions the corpus again from scratch.',
+    '',
+    'It does NOT delete the existing shards. They are overwritten shard by shard',
+    'as the new plan reaches them, and the old SHA256SUMS is replaced when it',
+    'finishes. If you want the old set kept, move it aside FIRST.',
+    '',
+    'This is heavy — the last full build was 597 shards.',
+    '',
+    'Proceed?',
+  ].join(NL));
+  if (!ok) return;
+  try {
+    await fetch(`${CTL}/api/job?id=${encodeURIComponent(step.rebuild.job)}`,
+      { method: 'POST' });
+  } catch { alert('The switchboard did not answer — nothing was started.'); }
+  setTimeout(refreshPipe, 1500);
+}
+
+/**
+ * ⭐⭐⭐ `U3E-5.90` — POINT THE RUN AT A SET THAT IS ALREADY BUILT.
+ *   Gee: *"our shard is done but #13 isnt updateing and i dont correctly have to
+ *   option to select them"*.
+ *
+ * ⛔ THE LIST CARRIES EVERY SET'S OWN NUMBERS, and that is not decoration. Step
+ *   12's sign-off exists because *"an approval nobody can judge is a rubber
+ *   stamp"* — the same rule binds here. Choosing between `shards-v3` and
+ *   `shards-v4` on their names alone is choosing a corpus by filename.
+ *
+ * ⚠ PLAIN ASCII INSIDE THE PROMPT, like `signOff` and `acceptStep`. A native
+ *   dialog is not this page's stylesheet and the marks do not render as they do
+ *   in the cards.
+ * ⚠ ARRAY-JOINED ON `NL`, never escaped inline. Four separate escaping slips
+ *   broke this page's script while writing these blocks, and one of them —
+ *   `installer's` with a bare apostrophe — cost ~40 minutes with the API
+ *   returning perfect data the whole time, because line 1 of a broken script
+ *   never runs.
+ */
+async function chooseShardSet(step) {
+  const sel = step.select || {};
+  const sets = (sel.sets || []).filter(x => x.isSet);
+  if (!sets.length) {
+    // ⛔ ABSENT SAYS ABSENT. A dialog offering nothing would read as a broken
+    //   control rather than as an empty machine.
+    alert(['No shard set was found on this machine.', '',
+      'Looked in the repository train/ folder and in the data root:',
+      '  ' + (sel.dataRoot || '?'), '',
+      'Build one with "build the shards" on this row.'].join(NL));
+    return;
+  }
+  const lines = [
+    'CHOOSE THE SHARD SET THE RUN EATS', '',
+    'configured now:  ' + sel.current,
+    'resolves to:     ' + sel.currentDir,
+    'data root:       ' + sel.dataRoot, '',
+  ];
+  sets.forEach((x, i) => {
+    lines.push((i + 1) + ')  ' + x.spec + (x.current ? '     <-- LIVE NOW' : ''));
+    lines.push('      ' + Number(x.files).toLocaleString() + ' of '
+      + Number(x.wantFiles).toLocaleString() + ' shards'
+      + (x.complete ? ' (complete)' : '  ** INCOMPLETE **')
+      + '  ·  ' + (x.tokens / 1e9).toFixed(3) + ' B tokens'
+      + '  ·  ' + Number(x.entries).toLocaleString() + ' entries');
+    lines.push('      sources ' + (x.kinds || []).join(' ')
+      + (x.oneModality ? '   ** IMAGE ONLY - audio and text absent **' : '')
+      + '  ·  vocab ' + x.vocab
+      + '  ·  stamped ' + String(x.stamp).slice(0, 19));
+    lines.push('      ' + (x.mixEnforced && x.share
+      ? 'mix enforced - image ' + (100 * (x.share.image || 0)).toFixed(1)
+        + '% / audio ' + (100 * (x.share.audio || 0)).toFixed(1)
+        + '% / text ' + (100 * (x.share.text || 0)).toFixed(1) + '%'
+      : 'mix NOT enforced in this set - shard.mjs did not read the plan'));
+    if (!x.portable) {
+      lines.push('      ** MACHINE-LOCAL path - a clone cannot resolve it **');
+    }
+    if ((x.alsoKnownAs || []).length) {
+      lines.push('      also reachable as ' + x.alsoKnownAs.join(', '));
+    }
+    lines.push('');
+  });
+  lines.push('Nothing is built, moved or deleted - this only points the trainer.');
+  lines.push('A run already in flight keeps the shards it loaded.');
+  lines.push('');
+  lines.push('Type a number from 1 to ' + sets.length + ':');
+  const pick = prompt(lines.join(NL));
+  if (pick === null) return;
+  const i = parseInt(pick, 10);
+  if (!Number.isFinite(i) || i < 1 || i > sets.length) {
+    alert('"' + pick + '" is not one of the listed numbers. Nothing changed.');
+    return;
+  }
+  const want = sets[i - 1];
+  if (want.current) {
+    // ⚠ Said plainly rather than posting a no-op. A control that appears to work
+    //   and changes nothing is this page's own worst sin.
+    alert(want.spec + ' is ALREADY the live set. Nothing changed.');
+    return;
+  }
+  /**
+   * ⛔ THE OBJECTIONS ARE QUOTED INTO THE CONFIRMATION, NOT USED TO REFUSE.
+   *   An incomplete or image-only set is a legitimate thing to select on
+   *   purpose — to watch this row go red and read why. ⚠ `U3E-5.79`'s rule:
+   *   *"a step that can only go green at 100% is not a gate, it is a nag"*, and
+   *   a selector that refuses the operator's choice is that nag one layer down.
+   */
+  const warn = [];
+  if (!want.complete) {
+    warn.push('** THAT SET IS INCOMPLETE ** - ' + want.files + ' of ' + want.wantFiles
+      + ' shards. load_shards() reads the directory ONCE, so a run would freeze on'
+      + ' this fragment and look healthy (U3E-5.38).');
+  }
+  if (want.oneModality) {
+    warn.push('** THAT SET IS IMAGE ONLY ** - audio and text carry no examples, which'
+      + ' is exactly the defect this row exists to catch. The 73,452-step checkpoint'
+      + ' could not hear because of it.');
+  }
+  if (!want.mixEnforced) {
+    warn.push('** THE MIX WAS NOT ENFORCED IN THAT SET ** - shard.mjs did not read the'
+      + ' plan, so the modality shares are whatever fell out (U3E-5.76).');
+  }
+  if (!confirm([
+    'POINT THE RUN AT: ' + want.spec, '',
+    want.dir, '',
+    'from:  ' + sel.current,
+    '       ' + sel.currentDir, '',
+    ...(warn.length ? warn.concat(['']) : []),
+    'What this DOES:',
+    '  - writes shardDir in train/.train-config.json, MERGED (every other key kept)',
+    '  - writes the PORTABLE spelling, never a drive letter - that file is tracked',
+    '  - leaves shardDirBasis alone: it records WHY an earlier set was chosen,',
+    '    and rewriting it to match a new choice would destroy evidence',
+    '',
+    'What this does NOT do:',
+    '  - it builds nothing, moves nothing and deletes nothing',
+    '  - a run in flight keeps the shards it loaded; this is for the NEXT run',
+    '  - step 11 still reports the mix of whichever set it was MEASURED against,',
+    '    so re-run "measure the mix the shards ACTUALLY have" afterwards',
+    '',
+    'Proceed?',
+  ].join(NL))) return;
+  let r;
+  try {
+    r = await (await fetch(CTL + '/api/shards/set?by=' + encodeURIComponent('main page')
+      + '&to=' + encodeURIComponent(want.spec), { method: 'POST' })).json();
+  } catch {
+    alert('The switchboard did not answer - nothing was changed.');
+    return;
+  }
+  if (!r.ok) {
+    alert(['Refused - ' + r.why, '',
+      r.probe ? 'resolved to ' + r.probe.dir : ''].join(NL));
+    return;
+  }
+  // ⭐ THE MERGE, PROVEN BY A NUMBER, in the message. `U3E-5.91`: the other
+  //   writer of this file destroys 13 of its 34 keys, so "nothing was dropped"
+  //   is a claim that has to carry its evidence.
+  alert(['shardDir = ' + r.spec, '',
+    r.dir, '',
+    'was:  ' + (r.previous || '(unset)'),
+    'config keys ' + r.keysBefore + ' -> ' + r.keysAfter + ' (merged, nothing dropped)',
+    r.portable ? '' : '** NOT PORTABLE ** - ' + r.portableVia,
+    '', r.note].join(NL));
+  refreshPipe();
+}
+
+/**
+ * U3E-2.199f — WHERE /data LIVES.
+ *
+ * THE COVERAGE FRACTION IS THE HONEST GUARD AND IT IS SHOWN WHETHER OR NOT IT
+ * FLATTERS THE FEATURE. Until every tool resolves through the resolver, moving
+ * the folder puts half the corpus in the new place and half in the old, and the
+ * page says that in words rather than offering a tidy input box that implies
+ * otherwise.
+ */
+async function refreshDataDir() {
+  let j;
+  try { j = await (await fetch(CTL + '/api/datadir', { signal: AbortSignal.timeout(6000) })).json(); }
+  catch { document.getElementById('ddpath').textContent = 'switchboard down'; return; }
+  document.getElementById('ddpath').textContent = j.dir;
+  document.getElementById('ddpath').title = j.dir;
+  document.getElementById('ddsrc').textContent = j.source;
+  const a = j.audit || {};
+  const cov = document.getElementById('ddcov');
+  cov.className = 'busy ' + (a.complete ? 'whole' : 'part');
+  /**
+   * ⛔⛔ `U3E-5.98n` — THIS LINE WAS ARITHMETICALLY WRONG AND IT WAS WRONG IN
+   *   THE ALARMING DIRECTION.
+   *
+   *   Gee pasted it back: *"⛔ only 75 of 82 tools resolve it — moving now
+   *   SPLITS the corpus"*. ⚠ It printed `honours / total`, but the audit's own
+   *   arithmetic is **`honours + partial + hardcodes + exempt = total`** — so
+   *   every one of the SIX deliberate, printed, reasoned exemptions was being
+   *   counted as a broken tool. ⛔ **The measured backlog was
+   *   `hardcodes: 0 · partial: 1`, and the page reported SEVEN.**
+   *
+   * ⛔ AND `datadir.mjs`'s own header names this exact failure as the thing the
+   *   audit exists to prevent: *"a measurement that is wrong in the alarming
+   *   direction is still wrong"*. A coverage figure that cries wolf is the
+   *   instrument nobody trusts — the same reasoning `import-check.mjs` records
+   *   about not warning on the standard library.
+   *
+   * ⭐ SO IT REPORTS THE BACKLOG, AND NAMES THE EXEMPTIONS SEPARATELY, because
+   *   "nothing hardcodes a data path" and "six files are exempt for stated
+   *   reasons" are different facts and only the first one blocks a move.
+   */
+  const backlog = (a.hardcodes || 0) + (a.partial || 0);
+  const exN = (a.exempt || []).length;
+  // ⚠ AND IT NO LONGER SAYS "a move is safe", WHICH MY OWN FIRST CUT DID. The
+  //   audit measures ONE thing — that no tool builds a data path itself — and
+  //   `datadir.mjs` names two limits it deliberately stays silent about: the
+  //   four file-level exemptions, and the git-tracked dot-artefacts that are
+  //   written through the resolver and would leave the repo on a move. **Saying
+  //   "safe" claims the audit answered questions it did not ask.**
+  cov.textContent = a.complete
+    ? '⭐ no tool hardcodes a data path'
+      + (exN ? ' · ' + exN + ' exempt, with reasons' : '')
+    : '⛔ ' + backlog + ' of ' + a.total + ' tool(s) still hardcode a data path'
+      + ' — moving now SPLITS the corpus';
+  // ⚠ The tooltip lists exactly which files are at fault and, separately, which
+  //   are exempt and why — so the fraction is actionable rather than merely
+  //   discouraging, and an exemption can be argued with rather than trusted.
+  const lines = [];
+  const bad = [
+    ...(a.hardcodedFiles || []).map(f => 'HARDCODES  ' + (f.file || f)),
+    ...(a.partialFiles || []).map(f => 'PARTIAL    ' + (f.file || f)),
+  ];
+  if (a.hardcodedMore) bad.push('... and ' + a.hardcodedMore + ' more hardcoding');
+  if (a.partialMore) bad.push('... and ' + a.partialMore + ' more partial');
+  lines.push(bad.length ? bad.join('\n') : 'Nothing hardcodes a data path.');
+  if (exN) {
+    lines.push('', 'EXEMPT — deliberate, each with a reason:',
+      ...(a.exempt || []).map(e => '  ' + e.file + ' — ' + e.why));
+  }
+  // ⛔ WHAT THIS NUMBER DOES NOT COVER, said here rather than implied by silence.
+  lines.push('',
+    'This measures ONE thing: that no tool builds a data path itself.',
+    'It does NOT cover: (a) the exemptions above are FILE-level, so a new',
+    'hardcode added to one of those files would hide behind it; (b) the',
+    'git-tracked dot-artefacts (.bank-progress.json and friends) are written',
+    'THROUGH the resolver, so a move takes them out of the repo and they stop',
+    'being tracked — datadir.mjs deliberately stays silent on that rather than',
+    'inventing a verdict; (c) running services keep the root they booted with.');
+  cov.title = lines.join('\n');
+}
+
+// ⚠ Built as an ARRAY joined on a newline rather than escaped literals. Three
+//   separate escaping slips broke this page's script while writing this block,
+//   each one caught by page-check.mjs before it was ever opened — a page whose
+//   script does not parse renders every field as a placeholder and says nothing.
+const NL = String.fromCharCode(10);
+document.getElementById('ddset').onclick = async () => {
+  const now = document.getElementById('ddpath').textContent;
+  const to = prompt([
+    'Where should the data folder live?', '',
+    'Nothing is copied or moved — this only points the tools at a location.',
+    'Running services keep the OLD one until you restart them.', '',
+    'Absolute path:',
+  ].join(NL), now);
+  if (!to) return;
+  let r;
+  try {
+    r = await (await fetch(CTL + '/api/datadir?probe=' + encodeURIComponent(to))).json();
+  } catch { alert('The switchboard did not answer.'); return; }
+  const p = r.probe || {};
+  if (!p.ok) {
+    // A path that cannot be used is REFUSED with the reason, never silently created.
+    const create = /does not exist/.test((p.reasons || []).join(' '))
+      && confirm(['That folder does not exist.', '', p.path, '', 'Create it?'].join(NL));
+    if (!create) { alert('Not changed — ' + (p.reasons || ['unusable']).join('; ')); return; }
+    const res = await (await fetch(CTL + '/api/datadir/set?create=1&to=' + encodeURIComponent(to),
+      { method: 'POST' })).json();
+    alert(res.ok ? res.note : 'Refused — ' + (res.reasons || []).join('; '));
+  } else {
+    // ⚠ `holds` says what is ALREADY at the destination. Pointing at a populated
+    //   folder is legitimate; doing it by accident is how you think you moved.
+    if (!confirm([p.path, '', p.holds, '', 'Point the tools here?'].join(NL))) return;
+    const res = await (await fetch(CTL + '/api/datadir/set?to=' + encodeURIComponent(to),
+      { method: 'POST' })).json();
+    alert(res.ok ? res.note : 'Refused — ' + (res.reasons || []).join('; '));
+  }
+  refreshDataDir();
+};
+
+/**
+ * U3E-9.0 — the dependency preflight. Gee: "need to install all dependancyies
+ * too" / "on auto like".
+ *
+ * IT IS ON DEMAND, NOT ON A POLL. The check starts a python interpreter and
+ * shells out to four tools; running that every eight seconds would make the
+ * page a load generator.
+ */
+const DMARK = { present: '✅', missing: '⛔', unknown: '⚠' };
+async function refreshDeps(force) {
+  if (!ctlUp) { document.getElementById('depcount').textContent = 'switchboard down'; return; }
+  const host = document.getElementById('deps');
+  if (force) { document.getElementById('depcount').textContent = 'checking…'; host.textContent = ''; }
+  let j;
+  try { j = await (await fetch(CTL + '/api/deps', { signal: AbortSignal.timeout(120000) })).json(); }
+  catch { document.getElementById('depcount').textContent = 'check failed'; return; }
+
+  document.getElementById('depcount').innerHTML = (j.missing
+    ? '<b style="color:var(--bad)">' + j.missing + '</b> missing'
+    : '<b>nothing missing</b>')
+    + ' · ' + (j.trainable
+      ? '<span style="color:var(--ok)">' + j.note + '</span>'
+      : '<span style="color:var(--bad)">⛔ ' + j.note + '</span>');
+
+  host.textContent = '';
+  const section = (title, rows) => {
+    const h = document.createElement('div');
+    h.className = 'phasehdr'; h.textContent = title;
+    host.appendChild(h);
+    for (const r of rows) host.appendChild(r);
+  };
+  const row = (mark, label, detail, why, btn) => {
+    const d = el('<div class="step"><div class="stepn"></div><div>'
+      + '<div class="steptitle"></div><div class="stepdetail"></div><div class="stepwhy"></div>'
+      + '</div><div class="stepact"></div></div>');
+    d.querySelector('.stepn').textContent = mark;
+    d.querySelector('.steptitle').textContent = label;
+    d.querySelector('.stepdetail').textContent = detail;
+    d.querySelector('.stepwhy').textContent = why;
+    if (btn) d.querySelector('.stepact').appendChild(btn);
+    return d;
+  };
+  const installBtn = (id, label) => {
+    /* ⛔⛔ THE TOOLTIP BELOW IS A TEMPLATE LITERAL, AND THE REASON IS A SCAR.
+     *   The first version was a `+`-joined single-quoted string, and it broke the
+     *   ENTIRE client script twice over: a `\n` escape collapsed into a real
+     *   newline, and the word `installer's` with an unescaped apostrophe.
+     * ⚠ `wiki/modules/monitors.md` records that apostrophe defect as instance 3
+     *   of 4 in this codebase — *"unescaped apostrophe in '…the target card's…'"* —
+     *   and it cost ~40 minutes with the API returning perfect data the whole
+     *   time, because line 1 of a broken script never runs.
+     * ⭐ Backticks make both classes impossible, and there is no `PAGE` literal
+     *   to terminate: this file's script is a real `<script>` block.
+     * ⚠ AND THE COMMENT SITS ABOVE THE PAIR, NOT BETWEEN THEM. Eleven lines
+     *   between a control and its `.title =` made `monitor/tooltip-check.mjs`
+     *   report this button as untitled — a comment explaining a tooltip belongs
+     *   before the thing it explains.
+     */
+    const b = el('<button class="mini">⬇ install ' + label + '</button>');
+    b.title = `Installs ${label} and prints the command it used first.
+
+⛔ It will not choose a torch build for you — CUDA versus CPU is a machine decision with a multi-gigabyte download behind it.
+⚠ A failure is reported with the installer's own output, never swallowed and never retried behind your back. Watch .launcher-logs/ while it runs.`;
+    b.onclick = async () => {
+      document.getElementById('depbusy').textContent = 'installing ' + label + '… (watch .launcher-logs/)';
+      try { await fetch(CTL + '/api/deps/install?id=' + encodeURIComponent(id), { method: 'POST' }); }
+      catch { /* the re-check below reports the truth */ }
+      // ⚠ pip is slow. The re-check is delayed and the log path is named, so a
+      //   long install does not read as a dead button.
+      setTimeout(() => { refreshDeps(true); document.getElementById('depbusy').textContent = ''; }, 20000);
+    };
+    return b;
+  };
+
+  section('Tools', j.tools.map(t => row(
+    t.present ? '✅' : '⛔', t.label,
+    t.present ? t.version : (t.install ? 'ABSENT — install from ' + t.install : 'ABSENT'),
+    t.why, null)));
+  section('Python packages', j.deps.map(d => row(
+    DMARK[d.state] || '⚠', d.label + (d.optional ? '  (optional)' : ''),
+    d.state === 'present' ? (d.version || 'installed')
+      : d.state === 'unknown' ? 'python did not answer — fix Python first, not this'
+      : 'MISSING',
+    d.why,
+    d.state === 'missing' ? installBtn(d.id, d.label) : null)));
+  section('Models', j.models.map(m => row(
+    m.present ? '✅' : '⛔', m.label, m.note || (m.present ? 'installed' : 'MISSING'), m.why,
+    (!m.present && m.installable) ? installBtn(m.id, m.label) : null)));
+}
+
+document.getElementById('depcheck').onclick = () => refreshDeps(true);
+document.getElementById('depall').onclick = async () => {
+  const busy = document.getElementById('depbusy');
+  busy.textContent = 'checking what is missing…';
+  let j;
+  try { j = await (await fetch(CTL + '/api/deps', { signal: AbortSignal.timeout(120000) })).json(); }
+  catch { busy.textContent = 'check failed'; return; }
+  // Optional packages are NOT installed by "everything": bitsandbytes is
+  // optional because the trainer falls back loudly, and a kit that installs it
+  // anyway is a kit that fails on a machine where it cannot build.
+  const want = [...j.deps.filter(d => d.state === 'missing' && !d.optional).map(d => d.id),
+                ...j.models.filter(m => !m.present && m.installable).map(m => m.id)];
+  if (!want.length) { busy.textContent = 'nothing missing'; setTimeout(() => { busy.textContent = ''; }, 3000); return; }
+  // ⚠ Array-joined on NL, not escaped inline. Four separate escaping slips
+  //   broke this page's script while writing these blocks, every one caught by
+  //   page-check.mjs before it was opened.
+  if (!confirm([
+    'Install ' + want.length + ' missing dependency(ies)?', '',
+    want.join(', '), '',
+    'This downloads packages and can take several minutes.',
+  ].join(NL))) { busy.textContent = ''; return; }
+  for (const id of want) {
+    busy.textContent = 'installing ' + id + '…';
+    try { await fetch(CTL + '/api/deps/install?id=' + encodeURIComponent(id), { method: 'POST' }); }
+    catch { /* reported by the re-check */ }
+  }
+  setTimeout(() => { refreshDeps(true); busy.textContent = ''; }, 25000);
+};
+
+/**
+ * ⛔⛔⛔ `U3E-5.98l` — A MEASUREMENT THAT CANNOT BE TAKEN **CLEARS THE ROWS**.
+ *
+ *   Gee: *"html index has regression on this step and shows it as complete"*,
+ *   about step 8 — *"Every lesson is in her own voice"*.
+ *
+ *   ⭐ **THE BACKEND WAS RIGHT.** `serve/pipeline.mjs` reported step 8 as
+ *   `open` with *"⛔ ACCEPTANCE VOID — signed off at 2,296, now 677"*: voiced
+ *   fell because `U3E-5.98`/`U3E-5.98i` requeued ~2,600 bodies for not being in
+ *   her register, and `acceptable()`'s regression rule voided the sign-off
+ *   exactly as designed.
+ *
+ * ⛔⛔ **THE BUG WAS HERE, AND IT WAS AN EARLY `return`.** This function used to
+ *   set a COUNT LABEL and leave — so the last successfully-painted rows stayed
+ *   on screen. The moment the switchboard went down, or the page was reopened
+ *   from `file://` after a session where it was up, **step 8 kept showing the
+ *   green tick it earned while the acceptance was still valid.**
+ *
+ * ⛔⛔⛔ **AND THAT IS THIS PROJECT'S OWN LAW BROKEN ON ITS FRONT DOOR.**
+ *   `NO FALLBACK THAT HIDES A FAILURE` — *"an instrument that reads healthy when
+ *   the thing behind it is dead is worse than no instrument."* Same class as the
+ *   progress file that read `running` for 24 h behind a dead pid, and as
+ *   `U3E-2.209`'s vanishing button: **a control that vanishes takes its
+ *   explanation with it, and a TICK that persists takes its measurement's death
+ *   with it.**
+ *
+ * ⚠ THE OLD LABEL WAS TRUE AND NOT LOAD-BEARING. *"steps cannot be measured"*
+ *   in a small count field, above a wall of rows each showing a confident
+ *   state — **the strongest signal on the screen contradicted the weakest, and
+ *   the strong one wins.** So the rows go, and what replaces them says the same
+ *   thing where the rows were.
+ */
+function pipeUnmeasured(headline, why) {
+  lastPipe = null;
+  const host = document.getElementById('pipe');
+  host.textContent = '';
+  // ⚠ Static literals only in the markup; the two variable strings go in by
+  //   `textContent`, the same rule `drawPipe` follows for `detail` and `why`.
+  const box = el(`
+    <div class="step unver open">
+      <div class="stepn">⚠<br>—</div>
+      <div>
+        <div class="steptitle"></div>
+        <div class="stepdetail"></div>
+        <div class="stepwhy">Every tick on this page is a number read off disk at the moment
+          you asked. With nothing to read it from, the honest state is NOT the last
+          state — it is no state. The rows are cleared rather than left standing,
+          because a stale ✅ is the one thing this page must never show.</div>
+      </div>
+      <div class="stepact"></div>
+    </div>`);
+  box.querySelector('.steptitle').textContent = headline;
+  box.querySelector('.stepdetail').textContent = why;
+  const act = box.querySelector('.stepact');
+  const cmd = el(`<span class="tag none"></span>`);
+  cmd.textContent = 'node serve/launcher.mjs';
+  cmd.title = 'Start the switchboard and this page measures every step again on '
+    + 'its next refresh (12s), or press "Re-check all".';
+  act.appendChild(cmd);
+  host.appendChild(box);
+
+  // ⭐ THE SUMMARY GOES WITH THE ROWS IT SUMMARISED. A "9 of 18 complete" left
+  //   above a cleared list is the same lie one level up.
+  document.getElementById('pipecount').textContent = headline;
+  document.getElementById('pipebar').textContent = '';
+  const nextBtn = document.getElementById('pipenext');
+  nextBtn.disabled = true;
+  nextBtn.textContent = '⛔ nothing to run — steps unmeasured';
+  nextBtn.onclick = null;
+}
+
+async function refreshPipe() {
+  if (!ctlUp) {
+    pipeUnmeasured(
+      '⛔ steps cannot be measured — switchboard down',
+      'The step checks read the filesystem through serve/pipeline.mjs, and a page opened '
+      + 'from file:// cannot do that itself. Nothing below is known right now — not open, '
+      + 'not done, not unverified.');
+    return;
+  }
+  try {
+    const r = await fetch(CTL + '/api/steps', { signal: AbortSignal.timeout(8000) });
+    drawPipe(await r.json());
+  } catch (e) {
+    // ⚠ DIFFERENT FACT, DIFFERENT MESSAGE. "the switchboard is not running" and
+    //   "the switchboard is running and the step check threw" are two states, and
+    //   `501 absent` vs `500 failed` is this project's rule for exactly that.
+    pipeUnmeasured(
+      '⛔ the step check FAILED — the switchboard is up',
+      'This is not the same as the switchboard being down: it answered, and reading the '
+      + 'steps threw. ' + ((e && (e.message || e.name)) || 'no reason reported')
+      + ' — the switchboard log has the stack.');
+  }
+}
+
+refresh().then(() => { autoStart(); refreshPipe(); refreshDeps(true); });
+setInterval(refreshPipe, 12000);
+// ⚠ Slow enough not to hammer nine loopback ports forever, fast enough that a
+//   service you just started turns green before you go looking for why it did not.
+setInterval(refresh, 8000);
+</script>
+</body>
+</html>

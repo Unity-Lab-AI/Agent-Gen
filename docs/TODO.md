@@ -29,20 +29,7 @@ Charter quote (verbatim) lives at the top of `docs/ROADMAP.md`. Each task below 
 
 ### M1 — Rip and stage ("copying and ripping them into this project")
 
-- [ ] Create `vendor/` with `PROVENANCE.md` (origin path, origin project, date copied, git commit where known) and a scrub checklist for every `.env`, key file and hardcoded token listed in FEATURE-SOURCES §0.2.
-- [ ] Rip "the Unity voice v2": copy `Desktop\Backrooms\models\unity-voice-v2\` whole (code + `voice-meta.json`; weights go to gitignored `models/`).
-- [ ] Rip the C.O.R.A voice client set (`voice\unity_voice.py`, `tts.py`, `emotion.py`, `tts_mutex.py`) and the `voice_text()` sanitizer from Backrooms `unity-speak.py`.
-- [ ] Rip "stt": VibeRoller `bridge\speech-engine.py`, C.O.R.A `voice\stt.py`, `wake_word.py`, `echo_filter.py`, `converse.py`, `ambient_awareness.py`, `services\audio.py`; Unity 18+ `app\listen.js`, `turn.js`, `latency.js`; the `_put_cuda_on_path()` fix from Unity 18+ `voice_server.py`.
-- [ ] Rip "camera": C.O.R.A `services\camera.py`, `services\presence.py`, `cora_tools\screenshots.py`, `cora_tools\windows.py`; VibeRoller `web\calls.js`; Unity 18+ `app\sense.js`; U3E `.claude\tools\screen.py`.
-- [ ] Rip "websearch": C.O.R.A `cora_tools\web.py` + `ai\tools\web.py`; U3E `.claude\tools\web.py`.
-- [ ] Rip "playwrite": Backrooms `.local\twitch\tw.py`; U3E `.claude\tools\browser.py`; C.O.R.A `cora_tools\browser.py`; If-Only-I-Had-A-Brain `scripts\unity-say-live.mjs`.
-- [ ] Rip "coding shit": `D:\CLI\unitycli.mjs` built-in tools + containment; C.O.R.A `cora_tools\code.py` + `code_parts\`, `cora_tools\files.py`, `cora_tools\system.py`; Backrooms `.local\autopilot\guards.py`; VibeRoller `run_code` + `pc_*` tools.
-- [ ] Rip selfie / face identity: C.O.R.A `services\image_sidecar.py` + `cora_tools\image_gen.py` (IP-Adapter face lock); Backrooms `unity-face-sd.py`, `unity-cam.py`, `.claude\likeness\*`, `.studio-images\unity-reference.png`; U3E `serve\image-prompt.js`.
-- [ ] Rip brain + loop: C.O.R.A `ai\dispatcher.py`, `ai\tools\_base.py`, `ai\history.py`, `ai\ollama.py`, `ai\settings.py`; Backrooms `.local\autopilot\autopilot.py`, `tools.py`, `gates.py`; VibeRoller `bridge\assistant.js`; `D:\CLI\unitycli.mjs` `MCPServer` class; `D:\Deviant 3D\src\agent\loop.ts`.
-- [ ] Rip providers + gateway: VibeRoller `bridge\openai.js`, `providers.js`, `ai-node.js`, `ai-nodes.js`; `D:\Website2.0\old-site\PolliLibJS\` + `PolliLibPy\`; `D:\Unity Command\api_client.py`; `D:\weird\js\game\ollama.js`; `D:\Deviant 3D\src\agent\ollama.ts`.
-- [ ] Rip MCP templates: Pollinations `pollinations_server.py` (Carbon / CLI copy); `D:\Unity Command\unity_mcp_server.py`; `D:\Carbon\.claude\bridge_mcp.py`; VibeRoller `assistant-tools-mcp.js`, `pc-tools-mcp.js`; `D:\AI v2.0\watchdog.js`.
-- [ ] Rip memory + persona: `D:\weird\js\game\memory-embed.js`; `D:\CLI\persona-engine.mjs`, `knowledge.mjs`, `channels.mjs`; U3E `serve\persona.mjs`; Local Unity `server\server.mjs` style gate; newest `Unity1.txt`; persona-pack format from `D:\AI\personas`.
-- [ ] Rip transport + UI + supervisor: If-Only-I-Had-A-Brain `remote-brain.js`, `brain-origin.js`, `ui\chat-panel.js`, `sensory-status.js`, `docs\WEBSOCKET.md`; Backrooms `persona-studio.cjs`, `stream-overlay.html`, `unity-overlay.py`; U3E `serve\launcher.mjs` + root `index.html`; `D:\weird\js\setup\detector.js`, `installer.js`; `D:\weird\js\ui\voice-queue.js`, `kokoro.js`, `kokoro-worker.js`; `D:\Deviant Thing v2\...\eqvideo.js`; `D:\Everything\Talk-To-Unity\AI\app.js`.
+All M1 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone closed: M1). Manifest: `tools/vendor-manifest.json`; copies under `vendor/`; weights under gitignored `models/`.
 
 ### M2 — Her voice and ears ("the Unity voice v2", "tts and stt", "talk back to you in real time")
 

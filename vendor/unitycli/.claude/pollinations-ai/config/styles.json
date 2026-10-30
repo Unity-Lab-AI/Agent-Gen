@@ -1,0 +1,34 @@
+{
+  "photorealistic": {
+    "suffix": "photorealistic, high detail, 8k, sharp focus, professional photography",
+    "negative": "cartoon, anime, painting, blurry, low quality, artificial"
+  },
+  "anime": {
+    "suffix": "anime style, cel shaded, vibrant colors, clean lines",
+    "negative": "photorealistic, 3d render, blurry, western cartoon"
+  },
+  "oil-painting": {
+    "suffix": "oil painting, textured canvas, visible brushstrokes, fine art",
+    "negative": "digital art, photography, flat colors, vector"
+  },
+  "pixel-art": {
+    "suffix": "pixel art, 16-bit, retro game style, clean pixels",
+    "negative": "photorealistic, smooth, high resolution, 3d"
+  },
+  "watercolor": {
+    "suffix": "watercolor painting, soft edges, flowing colors, paper texture",
+    "negative": "digital art, sharp lines, photography, vector"
+  },
+  "cinematic": {
+    "suffix": "cinematic, dramatic lighting, film grain, shallow depth of field, movie still",
+    "negative": "cartoon, flat lighting, amateur, low quality"
+  },
+  "sketch": {
+    "suffix": "pencil sketch, hand drawn, graphite, detailed linework",
+    "negative": "color, painting, photography, digital"
+  },
+  "cyberpunk": {
+    "suffix": "cyberpunk, neon lights, dark city, futuristic, rain, holographic",
+    "negative": "nature, daylight, pastoral, vintage, rustic"
+  }
+}

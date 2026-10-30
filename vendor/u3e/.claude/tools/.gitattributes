@@ -1,0 +1,13 @@
+# ⛔ OURS, NOT UPSTREAM'S — see PROVENANCE.md. The root .gitattributes of this
+#   repository carries only `* text=auto` plus the Git-LFS rules, and
+#   core.autocrlf is true on this machine. Without the pin below, install.sh
+#   checks out with CRLF on Windows and git-bash dies on the shebang with
+#   `bad interpreter: /usr/bin/env bash^M` — a dead tool that copied cleanly.
+*.sh  text eol=lf
+
+# PowerShell is happiest with CRLF in the working tree.
+*.ps1 text eol=crlf
+
+# Default output filenames of screen.py / browser.py, if anyone writes them here.
+*.png binary
+*.pdf binary

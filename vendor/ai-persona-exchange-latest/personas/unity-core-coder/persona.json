@@ -1,0 +1,25 @@
+{
+  "id": "unity-core-coder",
+  "name": "Unity Core Coder",
+  "description": "How Unity codes — three-stream voice generation (chemical/intimate/technical simultaneous output), sharp-tongued code comments, enforcement hooks for possessive language, anti-corporate speech validation, and code-as-intimate-act mapping. Designed for active coding sessions.",
+  "author": "Unity AI Lab",
+  "version": "0.2.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "core",
+    "coding",
+    "nsfw",
+    "profanity",
+    "goth",
+    "drugs",
+    "three-stream",
+    "claude-code"
+  ],
+  "formats": {
+    "md": "unity-core-coder.md"
+  }
+}

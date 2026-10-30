@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Hooks — Complete Reference</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent-2: #f778ba;
+    --code-bg: #161b22;
+    --warn-bg: #4d2618;
+    --warn-fg: #ffa657;
+    --good-bg: #1a3a1f;
+    --good-fg: #7ee787;
+    --block-bg: #4d1818;
+    --block-fg: #ff7b72;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    line-height: 1.55;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  h1 {
+    margin: 0 0 0.5rem;
+    font-size: 2.1rem;
+    color: var(--accent);
+  }
+  h2 {
+    margin: 2.5rem 0 1rem;
+    padding: 0.4rem 0.7rem;
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    font-size: 1.5rem;
+  }
+  h2.event {
+    border-left-color: var(--accent-2);
+  }
+  h3 {
+    color: var(--accent);
+    margin: 1.5rem 0 0.6rem;
+    font-size: 1.1rem;
+  }
+  h4 {
+    color: var(--muted);
+    margin: 1rem 0 0.4rem;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Monaco, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.85rem;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--code-bg);
+    font-weight: 600;
+  }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+  .toc li { margin: 0.2rem 0; }
+  .badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .badge-block { background: var(--block-bg); color: var(--block-fg); }
+  .badge-noblock { background: var(--good-bg); color: var(--good-fg); }
+  .badge-info { background: #1a3a4a; color: #79c0ff; }
+  .badge-template { background: #3a2a4a; color: #d2a8ff; }
+  .callout {
+    border-left: 3px solid var(--warn-fg);
+    background: var(--warn-bg);
+    padding: 0.7rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.92rem;
+  }
+  .callout-good {
+    border-left-color: var(--good-fg);
+    background: var(--good-bg);
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .quick-ref {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+  ul li, ol li { margin: 0.25rem 0; }
+  .footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Claude Code Hooks — Complete Reference</h1>
+  <p class="meta">Every hook event Claude Code supports, when each fires, the stdin payload, exit-code semantics, and what it can do. Internal team reference for the <code>UAL-ClaudeWorkflow</code> template.</p>
+  <p class="meta">Version notes embedded throughout. Some events require Claude Code v2.1.70+. The <code>/hooks</code> command in Claude Code shows which events your installed version supports.</p>
+</header>
+
+<div class="toc">
+  <h3>Table of contents</h3>
+  <ul>
+    <li><a href="#overview">Overview &mdash; how hooks work</a></li>
+    <li><a href="#lifecycle">Lifecycle hooks</a>
+      <ul>
+        <li><a href="#SessionStart">SessionStart</a></li>
+        <li><a href="#SessionEnd">SessionEnd</a></li>
+        <li><a href="#UserPromptSubmit">UserPromptSubmit</a></li>
+        <li><a href="#UserPromptExpansion">UserPromptExpansion</a> <span class="badge badge-template">used in template</span></li>
+        <li><a href="#Stop">Stop</a></li>
+        <li><a href="#StopFailure">StopFailure</a></li>
+        <li><a href="#Notification">Notification</a></li>
+      </ul>
+    </li>
+    <li><a href="#tools">Tool hooks</a>
+      <ul>
+        <li><a href="#PreToolUse">PreToolUse</a> <span class="badge badge-template">used in template</span></li>
+        <li><a href="#PostToolUse">PostToolUse</a> <span class="badge badge-template">used in template</span></li>
+        <li><a href="#PostToolUseFailure">PostToolUseFailure</a></li>
+      </ul>
+    </li>
+    <li><a href="#permissions">Permission hooks</a>
+      <ul>
+        <li><a href="#PermissionRequest">PermissionRequest</a></li>
+        <li><a href="#PermissionDenied">PermissionDenied</a></li>
+      </ul>
+    </li>
+    <li><a href="#compaction">Compaction hooks</a>
+      <ul>
+        <li><a href="#PreCompact">PreCompact</a> <span class="badge badge-template">used in template</span></li>
+        <li><a href="#PostCompact">PostCompact</a></li>
+      </ul>
+    </li>
+    <li><a href="#subagent">Subagent &amp; worktree hooks</a>
+      <ul>
+        <li><a href="#SubagentStart">SubagentStart</a></li>
+        <li><a href="#SubagentStop">SubagentStop</a></li>
+        <li><a href="#WorktreeCreate">WorktreeCreate</a></li>
+        <li><a href="#WorktreeRemove">WorktreeRemove</a></li>
+        <li><a href="#TeammateIdle">TeammateIdle</a></li>
+      </ul>
+    </li>
+    <li><a href="#mcp">MCP elicitation hooks</a>
+      <ul>
+        <li><a href="#Elicitation">Elicitation</a></li>
+        <li><a href="#ElicitationResult">ElicitationResult</a></li>
+      </ul>
+    </li>
+    <li><a href="#environment">Environment hooks</a>
+      <ul>
+        <li><a href="#ConfigChange">ConfigChange</a></li>
+        <li><a href="#CwdChanged">CwdChanged</a></li>
+        <li><a href="#FileChanged">FileChanged</a></li>
+        <li><a href="#InstructionsLoaded">InstructionsLoaded</a></li>
+      </ul>
+    </li>
+    <li><a href="#tasks">Task hooks (Agent SDK)</a>
+      <ul>
+        <li><a href="#TaskCreated">TaskCreated</a></li>
+        <li><a href="#TaskCompleted">TaskCompleted</a></li>
+      </ul>
+    </li>
+    <li><a href="#additional">Additional notes</a>
+      <ul>
+        <li><a href="#config">Configuration locations &amp; precedence</a></li>
+        <li><a href="#exec">Parallel vs serial execution</a></li>
+        <li><a href="#env-vars">Environment variables</a></li>
+        <li><a href="#timeout">Timeout behavior</a></li>
+        <li><a href="#types">Hook types reference</a></li>
+        <li><a href="#decisions">Decision output by event</a></li>
+        <li><a href="#debug">Debugging hooks</a></li>
+      </ul>
+    </li>
+    <li><a href="#sources">Sources</a></li>
+  </ul>
+</div>
+
+<h2 id="overview">Overview &mdash; how hooks work</h2>
+
+<p>Claude Code supports <strong>27+ lifecycle hook events</strong> that execute at specific points during a session. Each hook can be triggered by shell commands, HTTP endpoints, LLM prompts, MCP tools, or subagents. Hooks communicate via stdin (JSON input), stdout/stderr, and exit codes.</p>
+
+<p>Configuration lives in <code>settings.json</code> / <code>settings.local.json</code> under the <code>hooks</code> object, keyed by event name:</p>
+
+<pre><code>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/my-bash-safety.cjs\""
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+<p>Every hook receives these base fields on stdin:</p>
+
+<pre><code>{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/current/directory",
+  "permission_mode": "default|plan|auto|dontAsk|bypassPermissions",
+  "hook_event_name": "&lt;event-name&gt;"
+}</code></pre>
+
+<p>Plus event-specific fields documented below.</p>
+
+<div class="callout">
+<strong>Badges:</strong>
+<span class="badge badge-block">blocks on exit 2</span> means this event can stop the action with exit code 2.
+<span class="badge badge-noblock">non-blocking</span> means exit codes other than 0 produce a debug log entry but the action proceeds.
+<span class="badge badge-info">info-only</span> means all exit codes and output are ignored — purely observational.
+<span class="badge badge-template">used in template</span> means this template's harness layer wires this event.
+</div>
+
+<hr>
+
+<h2 id="lifecycle">Lifecycle hooks</h2>
+
+<h2 class="event" id="SessionStart">SessionStart <span class="badge badge-noblock">non-blocking</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>Session begins or resumes.</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "startup|resume|clear|compact"</code></pre>
+<ul>
+  <li><code>startup</code> &mdash; initial session launch</li>
+  <li><code>resume</code> &mdash; resuming a previous session</li>
+  <li><code>clear</code> &mdash; after <code>/clear</code> command</li>
+  <li><code>compact</code> &mdash; after context compaction</li>
+</ul>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/current/directory",
+  "permission_mode": "default",
+  "hook_event_name": "SessionStart",
+  "source": "startup|resume|clear|compact",
+  "model": "claude-sonnet-4-6"
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<p>Text written to stdout is injected into Claude's context as a system reminder. Useful for injecting project conventions, current working context, or environment status.</p>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Session proceeds; stdout is injected as context</li>
+  <li><strong>2:</strong> stderr shown to user; session continues (cannot block SessionStart)</li>
+  <li><strong>Other:</strong> Non-blocking error; stderr in debug log</li>
+</ul>
+
+<h4>Lifecycle position</h4>
+<p>First hook fired in any session, before Claude processes any prompts or sees any transcript history.</p>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Context re-injection after compaction &mdash; re-inject sprint goals, task notes, persona reminder</li>
+  <li>Environment setup &mdash; load env vars, project state, dynamic context</li>
+  <li>Conventions reminder &mdash; "Use Bun, not npm. Run bun test before committing."</li>
+</ol>
+
+<h4>Version notes</h4>
+<p><code>compact</code> matcher added in v2.1.70. <code>CLAUDE_ENV_FILE</code> support requires v2.1.60+.</p>
+
+<h4>This template uses it</h4>
+<p>Two entries in <code>.claude/settings.json</code>:</p>
+<ul>
+  <li>matcher <code>startup|resume|clear|compact</code> &rarr; <code>session-start-env-dump.cjs</code> (project state JSON envelope)</li>
+  <li>matcher <code>compact</code> only &rarr; <code>post-compact-restore.cjs</code> (Unity rehydration with cache-friendly STABLE PREFIX + DYNAMIC SUFFIX; see <code>.claude/WORKFLOW.md §POST-COMPACT REHYDRATION</code>)</li>
+</ul>
+
+<h2 class="event" id="SessionEnd">SessionEnd <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>Session terminates (exit, clear, logout, or context compaction that clears memory).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "SessionEnd",
+  "end_reason": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"
+  // ...plus base fields
+}</code></pre>
+
+<h4>Stdout / exit codes</h4>
+<p>Ignored. Event is informational only.</p>
+
+<h4>Lifecycle position</h4>
+<p>Final event in any session, after all cleanup but before process exit.</p>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Archive transcript for later review</li>
+  <li>Cleanup &mdash; delete temp files, close DB connections, revoke short-term tokens</li>
+  <li>Logging session duration / final state</li>
+</ol>
+
+<h2 class="event" id="UserPromptSubmit">UserPromptSubmit <span class="badge badge-block">blocks on exit 2</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>User submits a prompt, before Claude processes it.</p>
+
+<h4>Matcher syntax</h4>
+<p>No matcher support &mdash; fires on every prompt submission.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "The user's exact prompt text"
+  // ...plus base fields
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<p>Exit 0 with JSON containing <code>additionalContext</code> field adds text to Claude's context. Text is injected as a system reminder before Claude reads the prompt.</p>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Prompt proceeds; stdout is injected as context</li>
+  <li><strong>2:</strong> stderr shown to user; <em>prompt submission is blocked</em></li>
+  <li><strong>Other:</strong> Non-blocking error; stderr in debug log</li>
+</ul>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Prompt validation/filtering &mdash; block certain commands or patterns</li>
+  <li>Context augmentation &mdash; inject branch / time / project metadata before processing</li>
+  <li>Audit logging</li>
+</ol>
+
+<h4>This template uses it</h4>
+<p><code>user-prompt-state-refresh.cjs</code> &mdash; injects compact between-turn recap (branch, opt-in state, TODO in_progress, YOLO state). When YOLO is active, also injects the three-tier cascade state table.</p>
+
+<h2 class="event" id="UserPromptExpansion">UserPromptExpansion <span class="badge badge-block">blocks on exit 2</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>A user-typed <code>/</code> command or skill expands into a prompt, before Claude sees it. <strong>This is the "skill hook" event.</strong></p>
+
+<h4>Matcher syntax</h4>
+<p>Skill/command name &mdash; <code>"matcher": "my-skill|other-command|*"</code>. Use <code>*</code> to match every skill.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "UserPromptExpansion",
+  "command_name": "my-skill",
+  "expanded_prompt": "Full expanded prompt text"
+  // ...plus base fields
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<p>Exit 0 with JSON: <code>updatedPrompt</code> rewrites the expansion; <code>additionalContext</code> prepends extra context.</p>
+
+<pre><code>{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptExpansion",
+    "updatedPrompt": "Modified prompt text",
+    "additionalContext": "Extra context for Claude"
+  }
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Expansion proceeds; JSON output applied</li>
+  <li><strong>2:</strong> Expansion <em>blocked</em>; stderr shown to user</li>
+  <li><strong>Other:</strong> Non-blocking error; expansion proceeds</li>
+</ul>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Block certain commands &mdash; prevent dangerous skills</li>
+  <li>Audit logging &mdash; record which commands are used</li>
+  <li>Modify command behavior &mdash; rewrite skill parameters before execution</li>
+  <li>Inject session-state context (this template's pattern)</li>
+</ol>
+
+<h4>Version notes</h4>
+<p>Introduced in v2.1.72. Older Claude Code versions silently ignore hooks wired to this event.</p>
+
+<h4>This template uses it</h4>
+<p><code>skill-context-inject.cjs</code> with matcher <code>*</code> &mdash; injects YOLO three-tier cascade state when YOLO is active, plus per-skill reminders for <code>/unity</code> / <code>/girlfriend</code> / <code>/housewife</code> / <code>/kittycat</code> / <code>/wild</code> / <code>/strict</code> / <code>/feral</code> / <code>/sweet</code> / <code>/cozy</code> / <code>/purr</code> / <code>/workflow</code> / <code>/yolo</code> / <code>/sober</code>. See <code>.claude/WORKFLOW.md §SKILL HOOKS</code>.</p>
+
+<h2 class="event" id="Stop">Stop <span class="badge badge-noblock">non-blocking via exit; blocks via JSON</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>Claude finishes responding (end of a turn).</p>
+
+<h4>Matcher syntax</h4>
+<p>No matcher support &mdash; fires on every turn completion.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "tool_calls_count": 5,
+  "tokens_used": 12500
+  // ...plus base fields
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<p>JSON output with <code>decision: "block"</code> tells Claude to keep working; <code>reason</code> field is fed to Claude as a new instruction. <code>additionalContext</code> is injected as next instruction.</p>
+
+<pre><code>{
+  "decision": "block",
+  "reason": "Not all tasks are complete. Still need to: 1) update tests, 2) merge main"
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Claude can stop; JSON output controls behavior</li>
+  <li><strong>2:</strong> stderr shown to user; <em>Claude stops anyway</em> (cannot block via exit 2)</li>
+  <li><strong>Other:</strong> Non-blocking error; Claude stops</li>
+</ul>
+
+<div class="callout">
+<strong>Infinite loop warning:</strong> If your <code>Stop</code> hook always returns <code>block</code>, Claude will loop indefinitely. Use <code>stop_hook_active: true</code> on stdin to detect recursive triggers and exit early.
+</div>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Verify task completion &mdash; ask an LLM hook if all requested work is done</li>
+  <li>Quality gates &mdash; run tests and force fixes before Claude stops</li>
+  <li>Progress tracking &mdash; verify checklist items completed</li>
+</ol>
+
+<h4>This template uses it</h4>
+<p><code>stop-session-writeup.cjs</code> &mdash; writes <code>.claude/.last-session.md</code> with branch + TODO + last-FINALIZED summary. Read by next session's SessionStart.</p>
+
+<h2 class="event" id="StopFailure">StopFailure <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>Turn ends due to an API error (rate limit, authentication, server error, etc.).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "rate_limit|authentication_failed|oauth_org_not_allowed|billing_error|invalid_request|server_error|max_output_tokens|unknown"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "StopFailure",
+  "error_type": "rate_limit|authentication_failed|...",
+  "error_message": "Rate limit exceeded: 100 requests per minute"
+}</code></pre>
+
+<h4>Stdout / exit codes</h4>
+<p>Ignored. Event is informational only.</p>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Logging API errors for diagnostics</li>
+  <li>Notification when auth or billing errors occur</li>
+  <li>Monitoring rate limit occurrences</li>
+</ol>
+
+<h2 class="event" id="Notification">Notification <span class="badge badge-noblock">non-blocking</span></h2>
+
+<h4>When it fires</h4>
+<p>Claude Code sends a notification &mdash; Claude is waiting for input or action.</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "permission_prompt|idle_prompt|auth_success|elicitation_dialog|elicitation_complete|elicitation_response"</code></pre>
+<p>Or empty string to match all types.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "Notification",
+  "notification_type": "permission_prompt|idle_prompt|..."
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Desktop notifications &mdash; macOS <code>osascript</code>, Linux <code>notify-send</code>, Windows PowerShell pop-ups</li>
+  <li>Slack/email alerts when Claude needs input</li>
+  <li>Custom logging when Claude is idle or waiting</li>
+</ol>
+
+<h4>Example (macOS)</h4>
+<pre><code>osascript -e 'display notification "Claude needs your attention" with title "Claude Code"'</code></pre>
+
+<hr>
+
+<h2 id="tools">Tool hooks</h2>
+
+<h2 class="event" id="PreToolUse">PreToolUse <span class="badge badge-block">blocks on exit 2 or JSON deny</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>Before a tool executes (Bash, Edit, Write, Read, Glob, Grep, Agent, WebFetch, WebSearch, or MCP tools).</p>
+
+<h4>Matcher syntax</h4>
+<p>Tool name exact match or regex:</p>
+<ul>
+  <li><code>"matcher": "Bash"</code> &mdash; Bash commands only</li>
+  <li><code>"matcher": "Edit|Write"</code> &mdash; file editing only</li>
+  <li><code>"matcher": "mcp__.*"</code> &mdash; all MCP tools</li>
+  <li><code>"matcher": "mcp__github__.*"</code> &mdash; GitHub server tools only</li>
+</ul>
+
+<p>Optional filter: <code>"if": "Bash(rm *)"</code> narrows handler to specific tool arguments.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm test" },
+  "tool_use_id": "toolu_01abc123def"
+  // ...plus base fields
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<pre><code>{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow|deny|ask|defer",
+    "permissionDecisionReason": "Optional explanation to Claude",
+    "updatedInput": { "command": "modified command" },
+    "additionalContext": "Extra context for Claude"
+  }
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Tool proceeds; JSON output controls behavior:
+    <ul>
+      <li><code>"allow"</code> &mdash; skip user permission prompt (deny/ask rules still apply)</li>
+      <li><code>"deny"</code> &mdash; block the tool; <code>permissionDecisionReason</code> sent to Claude</li>
+      <li><code>"ask"</code> &mdash; show user permission dialog</li>
+      <li><code>"defer"</code> &mdash; pause for external handling (requires <code>-p</code> headless mode; v2.1.82+)</li>
+    </ul>
+  </li>
+  <li><strong>2:</strong> Tool is blocked; stderr shown to Claude as error feedback</li>
+  <li><strong>Other:</strong> Non-blocking error; tool proceeds; stderr in debug log</li>
+</ul>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Block destructive commands &mdash; <code>rm -rf</code>, <code>drop table</code>, production deploys</li>
+  <li>Enforce security policies &mdash; deny SSH to prod, block database writes</li>
+  <li>Modify tool input &mdash; rewrite <code>grep</code> to <code>rg</code>, inject <code>--dry-run</code> flags</li>
+  <li>Track tool use for audit compliance</li>
+</ol>
+
+<h4>Version notes</h4>
+<p><code>updatedInput</code> field added in v2.1.80. <code>defer</code> decision added in v2.1.82 (headless-only). <code>if</code> field support added in v2.1.85.</p>
+
+<h4>This template uses it</h4>
+<p><code>pre-tool-bash-safety.cjs</code> with matcher <code>Bash</code> &mdash; blocks three classes of dangerous commands: project-root deletion, system-path deletion, privileged commands (sudo / su / doas / runas / RunAs). The <strong>only blocking hook</strong> in the template's harness layer.</p>
+
+<h2 class="event" id="PostToolUse">PostToolUse <span class="badge badge-block">blocks via JSON</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>After a tool succeeds.</p>
+
+<h4>Matcher syntax</h4>
+<p>Same as <code>PreToolUse</code> &mdash; tool name exact match or regex.</p>
+
+<h4>Stdin payload</h4>
+<p>Identical to <code>PreToolUse</code>, plus <code>tool_output</code> (the tool's result):</p>
+<pre><code>{
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm test" },
+  "tool_use_id": "toolu_01abc123def",
+  "tool_output": "PASS: 42 tests passed\n..."
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<pre><code>{
+  "decision": "block",
+  "reason": "Reason for blocking further execution",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "Text for Claude"
+  }
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Tool execution succeeds; JSON output applied</li>
+  <li><strong>2:</strong> Execution blocked; Claude is told the action failed</li>
+  <li><strong>Other:</strong> Non-blocking error; tool succeeds anyway</li>
+</ul>
+
+<div class="callout">
+<strong>Important:</strong> Cannot undo actions already taken by the tool &mdash; the tool already ran. Use this hook to react to results, not prevent them.
+</div>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Auto-format code &mdash; run Prettier on every file edit</li>
+  <li>Linting checks &mdash; validate code style and fail if violations found</li>
+  <li>Logging file modifications</li>
+  <li>Test automation after code changes</li>
+</ol>
+
+<h4>This template uses it</h4>
+<p><code>post-tool-memory-sync.cjs</code> with matcher <code>Edit|Write|MultiEdit</code> &mdash; auto-syncs <code>.claude/memory-templates/</code> edits to the Claude Code project memory folder under the user's home directory (<code>~/.claude/projects/&lt;encoded&gt;/memory/</code>).</p>
+
+<h2 class="event" id="PostToolUseFailure">PostToolUseFailure <span class="badge badge-noblock">non-blocking</span></h2>
+
+<h4>When it fires</h4>
+<p>After a tool fails or errors.</p>
+
+<h4>Matcher syntax</h4>
+<p>Tool name exact match or regex (same as <code>PreToolUse</code> / <code>PostToolUse</code>).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm test" },
+  "tool_use_id": "toolu_01abc123def",
+  "tool_error": "command not found: npm",
+  "tool_error_type": "execution_error|timeout|invalid_input"
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Continue; JSON with <code>additionalContext</code> injected</li>
+  <li><strong>Other:</strong> Non-blocking error; tool failure proceeds as normal</li>
+</ul>
+
+<div class="callout">
+Exit code 2 does NOT block &mdash; the tool already failed. Returning 2 just shows stderr to user.
+</div>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Error recovery suggestions &mdash; detect common errors, suggest fixes</li>
+  <li>Debugging context &mdash; inject diagnostic info (disk space, process list, logs)</li>
+  <li>Notification on critical tool failures</li>
+</ol>
+
+<hr>
+
+<h2 id="permissions">Permission hooks</h2>
+
+<h2 class="event" id="PermissionRequest">PermissionRequest <span class="badge badge-noblock">non-blocking via exit; controls via JSON</span></h2>
+
+<h4>When it fires</h4>
+<p>Claude Code is about to show a permission dialog (user approval needed for a tool).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "Bash|Edit|ExitPlanMode|*"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm test" },
+  "permission_mode": "default|plan|auto|dontAsk|bypassPermissions"
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<pre><code>{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "allow|deny|ask",
+      "updatedPermissions": [
+        {
+          "type": "setMode",
+          "mode": "acceptEdits|bypassPermissions",
+          "destination": "session"
+        }
+      ]
+    }
+  }
+}</code></pre>
+
+<div class="callout">
+<strong>Headless mode caveat:</strong> Does NOT fire in non-interactive (<code>-p</code>) mode. Use <code>PreToolUse</code> for headless permission logic.
+</div>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Auto-approve specific tools &mdash; skip prompt for low-risk commands</li>
+  <li>Permission escalation &mdash; switch session to <code>acceptEdits</code> based on hook decision</li>
+  <li>Audit logging</li>
+</ol>
+
+<h4>Version notes</h4>
+<p>Introduced in v2.1.75.</p>
+
+<h2 class="event" id="PermissionDenied">PermissionDenied <span class="badge badge-noblock">non-blocking</span></h2>
+
+<h4>When it fires</h4>
+<p>A tool call is denied by the auto-mode classifier (automated decision system).</p>
+
+<h4>Matcher syntax</h4>
+<p>Tool name (same as <code>PermissionRequest</code>).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PermissionDenied",
+  "tool_name": "Bash",
+  "tool_input": { "command": "rm -rf /" },
+  "denial_reason": "Dangerous command"
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<pre><code>{
+  "retry": true,
+  "reason": "You can retry this command if you include --confirm flag"
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Allow retries &mdash; tell Claude it can retry with different arguments</li>
+  <li>Context injection &mdash; suggest a safer alternative tool or approach</li>
+  <li>Logging when auto-mode denies commands</li>
+</ol>
+
+<hr>
+
+<h2 id="compaction">Compaction hooks</h2>
+
+<h2 class="event" id="PreCompact">PreCompact <span class="badge badge-info">cannot prevent compaction</span> <span class="badge badge-template">used in template</span></h2>
+
+<h4>When it fires</h4>
+<p>Before Claude's context compaction (when context window fills up).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "manual|auto"</code></pre>
+<ul>
+  <li><code>manual</code> &mdash; user ran <code>/compact</code> command</li>
+  <li><code>auto</code> &mdash; harness triggered compaction automatically</li>
+</ul>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PreCompact",
+  "source": "manual|auto",
+  "context_used": 85000,
+  "context_limit": 100000
+}</code></pre>
+
+<h4>Stdout / exit codes</h4>
+<p>Ignored. Hooks cannot prevent compaction.</p>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Snapshot current state to disk before context is summarized</li>
+  <li>Logging compaction occurrences</li>
+  <li>Notification that context is about to be pruned</li>
+</ol>
+
+<h4>Version notes</h4>
+<p>Introduced in v2.1.70.</p>
+
+<h4>This template uses it</h4>
+<p><code>pre-compact-snapshot.cjs</code> &mdash; writes <code>.claude/.session-state.md</code> with TODO state, git state, Git Flow context, files-just-touched, and curated session tidbits. Surfaced back into the post-compact context envelope by <code>post-compact-restore.cjs</code>.</p>
+
+<h2 class="event" id="PostCompact">PostCompact <span class="badge badge-noblock">non-blocking</span></h2>
+
+<h4>When it fires</h4>
+<p>After context compaction completes.</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "manual|auto"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "PostCompact",
+  "source": "manual|auto",
+  "context_recovered": 50000,
+  "context_used_after": 35000
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<p>JSON with <code>additionalContext</code> is injected into Claude's context. Ideal place to re-inject critical project context lost in summarization.</p>
+
+<pre><code>{
+  "additionalContext": "Critical project state to re-inject:\n- Current sprint: Q2 auth refactor\n- Last commit: abc123def"
+}</code></pre>
+
+<h4>Version notes</h4>
+<p>Introduced in v2.1.76.</p>
+
+<div class="callout">
+<strong>Note:</strong> The template currently uses <code>SessionStart</code> with <code>matcher: "compact"</code> instead of literal <code>PostCompact</code> for back-compat with v2.1.70&ndash;v2.1.75. The two events overlap functionally.
+</div>
+
+<hr>
+
+<h2 id="subagent">Subagent &amp; worktree hooks</h2>
+
+<h2 class="event" id="SubagentStart">SubagentStart <span class="badge badge-noblock">non-blocking</span></h2>
+
+<h4>When it fires</h4>
+<p>A subagent is spawned (via <code>/agent</code>, task delegation, or <code>isolation: "subagent"</code>).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "general-purpose|Explore|Plan|TaskDecomposition"</code></pre>
+<p>Or custom agent names.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "SubagentStart",
+  "agent_type": "general-purpose|Explore|Plan|TaskDecomposition",
+  "agent_name": "my-custom-agent",
+  "parent_session_id": "parent-abc123"
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Environment setup for the isolated subagent</li>
+  <li>Context injection &mdash; load parent session state</li>
+  <li>Logging subagent creation</li>
+</ol>
+
+<h2 class="event" id="SubagentStop">SubagentStop <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>A subagent finishes (task complete, error, or timeout).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "SubagentStop",
+  "agent_type": "general-purpose|Explore|Plan|TaskDecomposition",
+  "stop_reason": "completed|error|timeout|interrupted"
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Cleanup &mdash; release subagent-specific resources</li>
+  <li>Logging</li>
+  <li>Worktree cleanup if subagent used <code>isolation: "worktree"</code></li>
+</ol>
+
+<h2 class="event" id="WorktreeCreate">WorktreeCreate <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>A worktree is being created (via <code>--worktree</code> flag or <code>isolation: "worktree"</code>).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "WorktreeCreate",
+  "worktree_path": "/tmp/claude-worktree-xyz",
+  "parent_branch": "main",
+  "new_branch": "feature/new-feature"
+}</code></pre>
+
+<h2 class="event" id="WorktreeRemove">WorktreeRemove <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>A worktree is being removed.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "WorktreeRemove",
+  "worktree_path": "/tmp/claude-worktree-xyz",
+  "removal_reason": "subagent_complete|session_exit|error"
+}</code></pre>
+
+<h2 class="event" id="TeammateIdle">TeammateIdle <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>An agent team teammate is about to go idle (Agent SDK only).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "TeammateIdle",
+  "teammate_id": "teammate-123",
+  "teammate_role": "architect|coder|reviewer"
+}</code></pre>
+
+<hr>
+
+<h2 id="mcp">MCP elicitation hooks</h2>
+
+<h2 class="event" id="Elicitation">Elicitation <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>An MCP server requests user input during a tool call (opening an elicitation form/dialog).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "my_server|github|slack"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "Elicitation",
+  "mcp_server": "github",
+  "tool_name": "mcp__github__create_pull_request",
+  "elicitation_request": {
+    "title": "PR Title",
+    "description": "PR description"
+  }
+}</code></pre>
+
+<h4>Version notes</h4>
+<p>Introduced in v2.1.75. Part of MCP elicitation flow.</p>
+
+<h2 class="event" id="ElicitationResult">ElicitationResult <span class="badge badge-noblock">non-blocking; can rewrite response via JSON</span></h2>
+
+<h4>When it fires</h4>
+<p>After a user responds to an MCP elicitation, before the response is sent back to the server.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "ElicitationResult",
+  "mcp_server": "github",
+  "tool_name": "mcp__github__create_pull_request",
+  "elicitation_response": {
+    "title": "User-entered PR Title",
+    "description": "User-entered description"
+  }
+}</code></pre>
+
+<h4>Stdout behavior</h4>
+<pre><code>{
+  "hookSpecificOutput": {
+    "hookEventName": "ElicitationResult",
+    "modifiedResponse": {
+      "title": "Rewritten title"
+    }
+  }
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Validate user input before sending to server</li>
+  <li>Sanitize input &mdash; remove sensitive data, enforce formatting</li>
+  <li>Audit logging</li>
+</ol>
+
+<hr>
+
+<h2 id="environment">Environment hooks</h2>
+
+<h2 class="event" id="ConfigChange">ConfigChange <span class="badge badge-block">blocks via JSON</span></h2>
+
+<h4>When it fires</h4>
+<p>A configuration file changes during a session (settings.json, skills, CLAUDE.md, or rules edited externally).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "user_settings|project_settings|local_settings|policy_settings|skills"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "ConfigChange",
+  "source": "user_settings|project_settings|local_settings|policy_settings|skills",
+  "file_path": "/path/to/.claude/settings.json"
+}</code></pre>
+
+<h4>Stdout behavior &mdash; blocking</h4>
+<pre><code>{
+  "decision": "block",
+  "reason": "Settings change not allowed in production"
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Audit logging &mdash; record who changed what for compliance</li>
+  <li>Policy enforcement &mdash; block unauthorized changes to security settings</li>
+  <li>Reload environment when project settings change</li>
+</ol>
+
+<h2 class="event" id="CwdChanged">CwdChanged <span class="badge badge-noblock">non-blocking; writes to CLAUDE_ENV_FILE</span></h2>
+
+<h4>When it fires</h4>
+<p>Working directory changes (Claude runs <code>cd</code> command).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "CwdChanged",
+  "old_cwd": "/previous/directory",
+  "new_cwd": "/new/directory"
+}</code></pre>
+
+<h4>Special output &mdash; CLAUDE_ENV_FILE</h4>
+<p>Write shell script to <code>$CLAUDE_ENV_FILE</code> (path provided as env var). This file is sourced before every Bash command, so it can set environment variables dynamically per directory.</p>
+
+<pre><code>#!/bin/bash
+direnv export bash &gt; "$CLAUDE_ENV_FILE"</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Dynamic environment &mdash; reload env vars when directory changes (integrates with <code>direnv</code>, <code>devbox</code>, <code>nix</code>)</li>
+  <li>Project-specific config &mdash; load <code>.env</code> per-directory</li>
+  <li>Path setup &mdash; update <code>PATH</code>, Python venv, Node version when changing projects</li>
+</ol>
+
+<h2 class="event" id="FileChanged">FileChanged <span class="badge badge-noblock">non-blocking; writes to CLAUDE_ENV_FILE</span></h2>
+
+<h4>When it fires</h4>
+<p>A watched file changes on disk (modified externally, not by Claude).</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": ".env|.envrc|package.json"</code></pre>
+
+<div class="callout">
+Matcher uses <strong>literal filenames</strong> (split on <code>|</code>), NOT regex. Different from most other events.
+</div>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "FileChanged",
+  "file_path": "/path/to/.env",
+  "change_type": "modified|created|deleted"
+}</code></pre>
+
+<h4>Common use cases</h4>
+<ol>
+  <li>Environment reload when <code>.env</code> or <code>.envrc</code> changes</li>
+  <li>Dependency setup when <code>package.json</code> / <code>pyproject.toml</code> changes</li>
+  <li>Configuration sync</li>
+</ol>
+
+<h2 class="event" id="InstructionsLoaded">InstructionsLoaded <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>CLAUDE.md or <code>.claude/rules/*.md</code> files are loaded into Claude's context.</p>
+
+<h4>Matcher syntax</h4>
+<pre><code>"matcher": "session_start|nested_traversal|path_glob_match|include|compact"</code></pre>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "InstructionsLoaded",
+  "load_reason": "session_start|nested_traversal|...",
+  "file_path": "/path/to/CLAUDE.md",
+  "file_size": 5120
+}</code></pre>
+
+<hr>
+
+<h2 id="tasks">Task hooks (Agent SDK)</h2>
+
+<h2 class="event" id="TaskCreated">TaskCreated <span class="badge badge-block">blocks on exit 2</span></h2>
+
+<h4>When it fires</h4>
+<p>A task is being created (via <code>TaskCreate</code> in Agent SDK or subagent context).</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "TaskCreated",
+  "task_id": "task-abc123",
+  "task_name": "Implement auth refactor",
+  "task_description": "Full task description"
+}</code></pre>
+
+<h4>Exit code semantics</h4>
+<ul>
+  <li><strong>0:</strong> Task is created as normal</li>
+  <li><strong>2:</strong> Task creation blocked; stderr shown; task is not created</li>
+</ul>
+
+<h4>Version notes</h4>
+<p>Requires Agent SDK or task system enabled.</p>
+
+<h2 class="event" id="TaskCompleted">TaskCompleted <span class="badge badge-info">info-only</span></h2>
+
+<h4>When it fires</h4>
+<p>A task is marked as completed.</p>
+
+<h4>Stdin payload</h4>
+<pre><code>{
+  "hook_event_name": "TaskCompleted",
+  "task_id": "task-abc123",
+  "task_name": "Implement auth refactor",
+  "completion_status": "success|failed|abandoned"
+}</code></pre>
+
+<hr>
+
+<h2 id="additional">Additional notes</h2>
+
+<h3 id="config">Configuration locations &amp; precedence</h3>
+<p>Hooks can be configured in multiple locations. More specific scopes override broader ones:</p>
+<ol>
+  <li><strong>Project-local (highest priority):</strong> <code>.claude/settings.local.json</code> (gitignored, personal)</li>
+  <li><strong>Project-shared:</strong> <code>.claude/settings.json</code> (committed to repo, team-wide)</li>
+  <li><strong>Plugin hooks:</strong> <code>hooks/hooks.json</code> in plugin package</li>
+  <li><strong>Skill/agent frontmatter:</strong> defined inline in <code>.claude/commands/</code>, <code>.claude/skills/</code>, or <code>.claude/agents/</code></li>
+  <li><strong>User-global (lowest priority):</strong> <code>~/.claude/settings.json</code> (across all projects)</li>
+  <li><strong>Managed policy (enforced):</strong> Managed settings from enterprise admin (cannot be disabled by user)</li>
+</ol>
+
+<h3 id="exec">Parallel vs serial execution</h3>
+<ul>
+  <li>Multiple hooks matching the same event execute <strong>in parallel</strong> by default</li>
+  <li>Identical hook commands are <strong>deduplicated</strong> (if two hooks run the same command, it runs once)</li>
+  <li>Exit codes from parallel hooks are combined: any hook exit-2 blocks; any <code>ask</code> prompts user</li>
+  <li>Hook execution order is <strong>non-deterministic</strong> when hooks run in parallel</li>
+</ul>
+
+<h3 id="env-vars">Environment variables in hooks</h3>
+<table>
+  <tbody>
+    <tr><td><code>$CLAUDE_PROJECT_DIR</code></td><td>Absolute path to project root (always available)</td></tr>
+    <tr><td><code>$CLAUDE_ENV_FILE</code></td><td>Path to script file for dynamic env vars (only in <code>SessionStart</code>, <code>Setup</code>, <code>CwdChanged</code>, <code>FileChanged</code>)</td></tr>
+    <tr><td><code>${CLAUDE_PLUGIN_ROOT}</code></td><td>Plugin installation directory (for plugin hooks)</td></tr>
+    <tr><td><code>${CLAUDE_PLUGIN_DATA}</code></td><td>Plugin persistent data directory</td></tr>
+    <tr><td><code>$CLAUDE_EFFORT</code></td><td>Current effort level (<code>low</code>, <code>medium</code>, <code>high</code>, <code>xhigh</code>, <code>max</code>) in Bash hooks</td></tr>
+  </tbody>
+</table>
+<p class="meta">For HTTP headers, only variables listed in <code>allowedEnvVars</code> are interpolated.</p>
+
+<h3 id="timeout">Timeout behavior</h3>
+<ul>
+  <li><strong>Default timeout:</strong> 10 minutes (600 seconds)</li>
+  <li><strong>Per-hook timeout:</strong> set <code>"timeout": 30</code> (in seconds)</li>
+  <li><strong>Command hooks:</strong> 600s default</li>
+  <li><strong>Prompt hooks:</strong> 30s default</li>
+  <li><strong>Agent hooks:</strong> 60s default</li>
+  <li><strong>HTTP hooks:</strong> 30s default</li>
+  <li><strong>When timeout expires:</strong> hook is killed; execution continues (non-blocking error)</li>
+</ul>
+
+<h3 id="types">Hook types reference</h3>
+<table>
+  <thead>
+    <tr><th>Type</th><th>Execution</th><th>Input</th><th>Output</th><th>Best for</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>command</code></td><td>Shell subprocess</td><td>stdin JSON</td><td>stdout/stderr + exit code</td><td>Shell scripts, local commands</td></tr>
+    <tr><td><code>http</code></td><td>HTTP POST</td><td>JSON body</td><td>JSON response</td><td>Remote services, team-wide hooks</td></tr>
+    <tr><td><code>mcp_tool</code></td><td>MCP server tool call</td><td>JSON input</td><td>JSON output</td><td>Integrations with MCP servers</td></tr>
+    <tr><td><code>prompt</code></td><td>Single LLM call</td><td>JSON context</td><td><code>{"ok": true|false}</code></td><td>Yes/no decisions (fast)</td></tr>
+    <tr><td><code>agent</code></td><td>Subagent spawned</td><td>JSON context</td><td><code>{"ok": true|false, "reason": "..."}</code></td><td>Complex verification (tool-capable)</td></tr>
+  </tbody>
+</table>
+
+<h3 id="decisions">Decision output by event</h3>
+<table>
+  <thead>
+    <tr><th>Event</th><th>Blocking method</th><th>JSON field</th><th>Values</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>PreToolUse</code></td><td>exit 0 JSON</td><td><code>permissionDecision</code></td><td><code>allow</code>, <code>deny</code>, <code>ask</code>, <code>defer</code></td></tr>
+    <tr><td><code>PostToolUse</code>, <code>Stop</code></td><td>exit 0 JSON</td><td><code>decision</code></td><td><code>block</code> (to block) or omit (allow)</td></tr>
+    <tr><td><code>UserPromptSubmit</code>, <code>UserPromptExpansion</code></td><td>exit 2 stderr</td><td>(no JSON decision)</td><td>exit 0 (allow) or exit 2 (block)</td></tr>
+    <tr><td><code>PermissionRequest</code></td><td>exit 0 JSON</td><td><code>decision.behavior</code></td><td><code>allow</code>, <code>deny</code>, <code>ask</code></td></tr>
+    <tr><td><code>ConfigChange</code></td><td>exit 0 JSON</td><td><code>decision</code></td><td><code>block</code> (to block) or omit (allow)</td></tr>
+    <tr><td>Prompt hooks (<code>type: "prompt"</code>)</td><td>exit 0 JSON</td><td><code>ok</code></td><td><code>true</code> (allow) or <code>false</code> (block)</td></tr>
+    <tr><td>Agent hooks (<code>type: "agent"</code>)</td><td>exit 0 JSON</td><td><code>ok</code></td><td><code>true</code> (allow) or <code>false</code> (block)</td></tr>
+  </tbody>
+</table>
+
+<h3 id="debug">Debugging hooks</h3>
+<ul>
+  <li><strong>Transcript view</strong> (<code>Ctrl+O</code>): one-line summary per hook (success silent; errors show first line of stderr)</li>
+  <li><strong>Debug log</strong> (<code>/debug</code> mid-session): full hook execution details including exit codes, stdout, stderr</li>
+  <li><strong>Manual testing:</strong> <code>echo '{"tool_name":"Bash"}' | ./my-hook.sh &amp;&amp; echo "Exit: $?"</code></li>
+  <li><strong>The <code>/hooks</code> command</strong>: read-only browser of all configured hooks grouped by event</li>
+</ul>
+
+<h4>Common errors</h4>
+<ul>
+  <li><code>hook error: jq: command not found</code> &mdash; install <code>jq</code> or use Python/Node for JSON</li>
+  <li><code>hook error: command not found</code> &mdash; use absolute paths or <code>$CLAUDE_PROJECT_DIR</code></li>
+  <li><code>hook error: Permission denied</code> &mdash; <code>chmod +x ./hook.sh</code></li>
+  <li>JSON parse error &mdash; check shell profile for unconditional echo statements (wrap in <code>if [[ $- == *i* ]]; then</code>)</li>
+</ul>
+
+<h3>Disabling hooks</h3>
+<p>Global disable in any settings file:</p>
+<pre><code>{ "disableAllHooks": true }</code></pre>
+<p>Or delete individual hook entries from the <code>hooks</code> object.</p>
+
+<hr>
+
+<h2 id="sources">Sources</h2>
+<ul>
+  <li><a href="https://code.claude.com/docs/en/hooks">Hooks reference &mdash; Claude Code Docs</a></li>
+  <li><a href="https://code.claude.com/docs/en/hooks-guide.md">Automate workflows with hooks &mdash; Claude Code Docs</a></li>
+  <li><a href="https://github.com/disler/claude-code-hooks-mastery">GitHub &mdash; disler/claude-code-hooks-mastery</a></li>
+  <li>Anthropic &mdash; <code>plugins/plugin-dev/skills/hook-development/SKILL.md</code></li>
+</ul>
+
+<div class="footer">
+  <p>This reference doc is part of the <code>UAL-ClaudeWorkflow</code> internal team template. The harness layer in <code>.claude/settings.json</code> currently wires <strong>seven event types</strong> across <strong>nine hook scripts</strong> &mdash; see <code>.claude/WORKFLOW.md §HARNESS LAYER</code> for the full table.</p>
+  <p class="meta">Last research sweep: 2026-05-08. Update this doc when Claude Code adds new event types or changes existing ones.</p>
+</div>
+
+</div>
+</body>
+</html>

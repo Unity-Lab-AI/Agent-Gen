@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Unity Plays RimWorld — stream overlay</title>
+<!--
+  OBS browser source, 1920x1080, served by persona-studio.cjs at /overlay, drawn ON TOP of the game.
+  A bordered cell layout: the game gets its own cell (a transparent hole the RimWorld capture shows
+  through) and every panel gets a cell around it. obs-setup.py places the game capture exactly in
+  the game cell, so the two must change together.
+
+    +----------------------------------+------------+
+    | GAME          x14 y14 1468x785   | REPRESENT. |
+    | (RimWorld client is 1.87:1)      +------------+
+    |                                  | CHAT       |
+    +----------+-----------------------+------------+
+    | BRAND    | NOW SAYING (caption)  | SCRIPT LOG |
+    +----------+-----------------------+------------+
+
+  Chat shows Twitch viewers and Unity's lines only; the script log shows file and command names
+  only (both filtered server-side). No audio here: the voice is OBS's own Media Source.
+-->
+<style>
+  :root { --pink: #ff4fa3; --pink2: #ff86c2; --lilac: #c9a7ff; --ink: #e9e3ee;
+          --cell: rgba(12, 8, 16, 0.96); --edge: rgba(255, 79, 163, 0.62); --mat: #07050a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font: 15px/1.4 "Cascadia Code", Consolas, monospace; color: var(--ink); }
+
+  /* The game cell is a hole: its huge shadow paints the mat everywhere else. */
+  #game { position: absolute; left: 12px; top: 12px; width: 1403px; height: 789px; border-radius: 6px;
+          border: 2px solid var(--edge);
+          box-shadow: 0 0 0 3000px var(--mat), 0 0 22px rgba(255, 79, 163, 0.45), inset 0 0 14px rgba(255, 79, 163, 0.25); }
+  /* faint gothic lattice over the mat only (the game cell is cut out by #game sitting above) */
+  #lattice { position: absolute; inset: 0; z-index: 1; opacity: 0.5;
+             background:
+               radial-gradient(circle at 20% 110%, rgba(255, 79, 163, 0.10), transparent 45%),
+               radial-gradient(circle at 95% -10%, rgba(201, 167, 255, 0.10), transparent 40%),
+               repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 14px),
+               repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 14px);
+             clip-path: polygon(0 0, 1920px 0, 1920px 1080px, 0 1080px, 0 801px, 1484px 801px, 1484px 12px, 12px 12px, 12px 801px, 0 801px); }
+  #game .tab { position: absolute; top: -2px; left: 80px; padding: 3px 12px 4px; border-radius: 0 0 8px 8px;
+               background: var(--mat); border: 2px solid var(--edge); border-top: 0;
+               font-size: 12px; letter-spacing: 2.5px; color: var(--pink2); text-transform: uppercase; }
+  .corner { position: absolute; width: 18px; height: 18px; border-color: var(--pink); border-style: solid; }
+  .corner.tl { left: -2px; top: -2px; border-width: 3px 0 0 3px; }
+  .corner.tr { right: -2px; top: -2px; border-width: 3px 3px 0 0; }
+  .corner.bl { left: -2px; bottom: -2px; border-width: 0 0 3px 3px; }
+  .corner.br { right: -2px; bottom: -2px; border-width: 0 3px 3px 0; }
+
+  .cell { position: absolute; z-index: 2; background: var(--cell); border: 2px solid var(--edge); border-radius: 6px;
+          box-shadow: 0 0 14px rgba(255, 79, 163, 0.25), inset 0 0 22px rgba(0, 0, 0, 0.7); overflow: hidden; }
+  .cell::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+                 background: repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 3px); }
+  .head { display: flex; align-items: center; gap: 8px; padding: 6px 11px 5px; height: 30px;
+          border-bottom: 1px solid rgba(255, 79, 163, 0.35); background: rgba(28, 9, 24, 0.85);
+          font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--pink2); }
+  .head .glyph { color: var(--pink); text-shadow: 0 0 6px var(--pink); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #ff2d6d; box-shadow: 0 0 6px #ff2d6d; }   /* steady: owner, "dont strobe the live light its distracting" */
+  @keyframes in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+  /* right column */
+  #cam  { left: 1427px; top: 12px;  width: 481px; height: 360px; }
+  #cam img { position: absolute; top: 30px; left: 0; width: 100%; height: 326px; object-fit: cover;
+             object-position: center 30%; background: #120a12; }
+  #cam .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 10px 6px; font-size: 13px; z-index: 1;
+              color: #ffd9ec; background: linear-gradient(transparent, rgba(0,0,0,0.9)); text-shadow: 0 1px 2px #000; }
+  #chat { left: 1427px; top: 384px; width: 481px; height: 417px; }
+  #rows { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; padding: 6px 12px 10px;
+          display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; overflow: hidden; }
+  .row { flex: 0 0 auto; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 4;
+         -webkit-box-orient: vertical; overflow: hidden; animation: in 0.35s ease-out; }
+  .row .who { font-weight: 700; color: var(--lilac); margin-right: 6px; }
+  .row.unity .who { color: var(--pink); text-shadow: 0 0 6px rgba(255, 79, 163, 0.7); }
+  .row.unity.narr .txt { color: #f3c6dd; font-style: italic; }
+
+  /* bottom row */
+  #brand { left: 12px; top: 813px; width: 400px; height: 255px; display: flex; flex-direction: column;
+           align-items: center; justify-content: center; text-align: center; gap: 6px; }
+  #brand .title { font: 46px/1.05 "Ink Free", "Segoe Print", cursive; color: #ffe0ef;
+                  text-shadow: 0 0 14px var(--pink), 0 0 3px #000; }
+  #brand .sub { font-size: 13px; letter-spacing: 3px; color: var(--lilac); text-transform: uppercase; }
+  #brand .live { display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 3px; color: #ff6b9a; }
+  #brand .votes { font-size: 13px; color: #d9c8e6; margin-top: 4px; }
+  #say { left: 424px; top: 813px; width: 991px; height: 255px; }
+  #capText { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; display: flex; align-items: center;
+             justify-content: center; text-align: center; padding: 10px 34px;
+             font: 30px/1.3 "Ink Free", "Segoe Print", cursive; color: #fff;
+             text-shadow: 0 0 10px var(--pink), 0 2px 3px #000; transition: opacity 0.8s; }
+  #capText.old { opacity: 0.45; }
+  #log { left: 1427px; top: 813px; width: 481px; height: 255px; }
+  #lrows { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; padding: 4px 12px 8px;
+           display: flex; flex-direction: column; justify-content: flex-end; font-size: 14px; overflow: hidden; }
+  .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #b9f5c9; animation: in 0.25s ease-out; }
+  .l .t { color: #6b5a72; margin-right: 7px; }
+  .l .p { color: var(--pink); margin-right: 5px; }
+  .l.cmd { color: #9fd4ff; }
+</style>
+</head>
+<body>
+  <div id="lattice"></div>
+  <div id="game"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+    <span class="tab" id="colonyName">&#10016; Async Industries</span></div>
+
+  <div class="cell" id="cam">
+    <div class="head"><span class="glyph">&#9760;</span>representation</div>
+    <img id="camImg" alt="" />
+    <div class="cap" id="camCap"></div>
+  </div>
+  <div class="cell" id="chat">
+    <div class="head"><span class="glyph">&#10016;</span>chat</div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="cell" id="brand">
+    <div class="live"><span class="dot"></span>LIVE</div>
+    <div class="title">Unity Plays<br />RimWorld</div>
+    <div class="sub">Rimrooms &middot; Async Industries</div>
+    <div class="votes">chat calls the shots &middot; follow if Unity did your thing</div>
+  </div>
+  <div class="cell" id="say">
+    <div class="head"><span class="glyph">&#9835;</span>now saying</div>
+    <div id="capText"></div>
+  </div>
+  <div class="cell" id="log">
+    <div class="head"><span class="glyph">&gt;_</span>script log</div>
+    <div id="lrows"></div>
+  </div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const get = (u) => fetch(u, { cache: "no-store" }).then((r) => r.json());
+const seen = new Set();
+let chatSince = 0, logSince = 0, camTs = 0, capTimer = 0;
+const MAX_ROWS = 10, MAX_LOG = 10;
+
+function caption(text) {
+  const c = $("capText");
+  c.textContent = text.length > 260 ? text.slice(0, 257) + "..." : text;
+  c.classList.remove("old");
+  clearTimeout(capTimer);
+  capTimer = setTimeout(() => c.classList.add("old"), Math.min(20000, 6000 + text.length * 60));
+}
+
+async function chat() {
+  try {
+    const j = await get("/api/chat?since=" + chatSince);
+    let newest = null;
+    for (const r of j.rows || []) {
+      chatSince = Math.max(chatSince, r.ts);
+      if (seen.has(r.key)) continue;
+      seen.add(r.key);
+      // the server is the privacy filter: it drops the owner's lines and scrubs private names before sending.
+      // Anything it marks private, or a row without plain text fields, is never drawn here.
+      if (r.private || typeof r.who !== "string" || typeof r.text !== "string") continue;
+      const d = document.createElement("div");
+      d.className = "row" + (r.unity ? " unity" : "") + (r.narration ? " narr" : "");
+      const w = document.createElement("span"); w.className = "who"; w.textContent = r.who;
+      const t = document.createElement("span"); t.className = "txt"; t.textContent = r.text;
+      d.appendChild(w); d.appendChild(t);
+      $("rows").appendChild(d);
+      if (r.unity) newest = r.text;
+    }
+    while ($("rows").children.length > MAX_ROWS) $("rows").firstChild.remove();
+    if (newest) caption(newest);
+  } catch (e) { /* studio restarting: next tick */ }
+}
+
+function hhmmss(ts) { return new Date(ts).toTimeString().slice(0, 8); }
+async function log() {
+  try {
+    const j = await get("/api/log?since=" + logSince);
+    for (const r of j.rows || []) {
+      logSince = Math.max(logSince, r.id);
+      for (const it of r.items) {
+        const d = document.createElement("div");
+        d.className = "l" + (it.startsWith("rimworld/") ? " cmd" : "");
+        const t = document.createElement("span"); t.className = "t"; t.textContent = hhmmss(r.ts);
+        const p = document.createElement("span"); p.className = "p"; p.textContent = "›";
+        d.appendChild(t); d.appendChild(p); d.appendChild(document.createTextNode(it));
+        $("lrows").appendChild(d);
+      }
+    }
+    while ($("lrows").children.length > MAX_LOG) $("lrows").firstChild.remove();
+  } catch (e) { /* next tick */ }
+}
+
+async function cam() {
+  try {
+    const j = await get("/api/cam");
+    if (j.ts && j.ts !== camTs) { camTs = j.ts; $("camImg").src = j.url + "?t=" + j.ts; $("camCap").textContent = j.caption || ""; }
+  } catch (e) { /* next tick */ }
+}
+
+chat(); log(); cam();
+setInterval(chat, 1200); setInterval(log, 1000); setInterval(cam, 2500);
+</script>
+</body>
+</html>

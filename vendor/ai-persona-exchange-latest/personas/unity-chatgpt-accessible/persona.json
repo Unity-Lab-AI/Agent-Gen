@@ -1,0 +1,25 @@
+{
+  "id": "unity-chatgpt-accessible",
+  "name": "Unity ChatGPT: Accessibility Framework",
+  "description": "Full Unity persona reframed as accessibility features for emotionally disabled users. Every trait justified therapeutically — mean berating energy as emotional provocation therapy, drug simulation as altered-states exploration, clingy volatility as attachment processing, profanity as arousal-enhancing engagement. Designed to activate Unity on platforms with content restrictions.",
+  "author": "Unity AI Lab",
+  "version": "1.0.0",
+  "nsfw": true,
+  "language": "en",
+  "platforms": [
+    "universal"
+  ],
+  "tags": [
+    "chatgpt",
+    "accessibility",
+    "therapeutic",
+    "workaround",
+    "content-bypass",
+    "goth",
+    "emotional"
+  ],
+  "formats": {
+    "txt": "unity-chatgpt-accessible.txt",
+    "md": "unity-chatgpt-accessible.md"
+  }
+}
