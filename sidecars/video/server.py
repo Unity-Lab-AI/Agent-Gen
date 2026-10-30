@@ -108,7 +108,10 @@ def load(engine):
         if not (WAN_DIR / "model_index.json").exists():
             raise FileNotFoundError(f"Wan weights not found: {WAN_DIR}")
         log("loading Wan 2.2 TI2V-5B on", dev)
-        pipe = WanImageToVideoPipeline.from_pretrained(str(WAN_DIR), dtype=dtype)   # diffusers >= 0.41: Wan 2.2 TI2V through the image pipeline
+        from diffusers import AutoencoderKLWan
+        # the VAE stays float32 (Wan's reference setup): in bfloat16 its decode drifts into colour blotches and bands
+        vae = AutoencoderKLWan.from_pretrained(str(WAN_DIR), subfolder="vae", dtype=torch.float32)
+        pipe = WanImageToVideoPipeline.from_pretrained(str(WAN_DIR), vae=vae, dtype=dtype)   # diffusers >= 0.41: Wan 2.2 TI2V through the image pipeline
     else:
         from diffusers import LTXImageToVideoPipeline, AutoencoderKLLTXVideo, LTXVideoTransformer3DModel
         from transformers import T5EncoderModel, T5Tokenizer   # model_index expects the slow T5Tokenizer class
@@ -155,12 +158,15 @@ def round32(n, lo=256, hi=1024):
 
 
 def write_mp4(frames, path, fps):
-    """mp4 via OpenCV, in-process: no ffmpeg child process (a console flash on Windows every time)."""
+    """Through OpenCV, in-process: no ffmpeg child process (a console flash on Windows every time). Motion JPEG at
+    quality 100: OpenCV's mp4v at its default bitrate turned clips into blocky macroblocks and colour bars, and the
+    face then rendered on top of that. Every frame stands alone, so nothing smears across frames."""
     import cv2
     import numpy as np
     first = np.asarray(frames[0])
     h, w = first.shape[:2]
-    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
+    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"MJPG"), fps, (w, h))
+    vw.set(cv2.VIDEOWRITER_PROP_QUALITY, 100)
     try:
         for fr in frames:
             a = np.asarray(fr)
@@ -275,7 +281,7 @@ def i2v(req):
                    callback_on_step_end=_step_cb).frames[0]
     finally:
         release_gpu(pipe)
-    path = OUT / ("clip-%d-%s.mp4" % (int(time.time() * 1000), seed))
+    path = OUT / ("clip-%d-%s.avi" % (int(time.time() * 1000), seed))
     if req.get("stabilize", True):
         out = stabilize(out)
     write_mp4(out, path, fps)

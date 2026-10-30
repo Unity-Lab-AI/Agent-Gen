@@ -18,7 +18,7 @@ export const cfg = {
   // appearance engine: her identity anchors around whatever she asks to show, face locked to her likeness
   lookFaceRef: process.env.LOOK_FACE_REF || join(REPO, 'assets', 'portrait', 'unity-face.jpg'),
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
-  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, an emo goth young adult chick, long black hair with pink streaks, pale grey-blue eyes, winged eyeliner, fair skin,',
+  lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, a young adult woman, pale grey-blue eyes,',
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
   lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
@@ -26,7 +26,7 @@ export const cfg = {
   lookMaxSide: Number(process.env.LOOK_MAX_SIDE || 768),
   lookSteps: Number(process.env.LOOK_STEPS || 30),
   lookGuidance: Number(process.env.LOOK_GUIDANCE || 7),
-  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.65),
+  lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.4),   // 0.65 pressed her makeup and a waxy face onto every look
   // img2img from her current look: 0.6 kept the old outfit through a "black cocktail dress"; 0.8 gave black strappy lingerie on the old bikini's lines; 0.9 lets the prompt redraw the outfit while the face lock keeps her
   lookStrength: Number(process.env.LOOK_STRENGTH || 0.9),
   // motion: image-to-video clips of her current look (LTX-Video locally)

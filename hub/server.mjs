@@ -164,8 +164,11 @@ class Session {
         // a look she was told to take is finished even if the conversation moves on; only a reset cancels.
         // The face holds its last frame while the image/video engines own the GPU (no 2 fps stutter).
         await face.pause();
-        const res = await image.render(prompt, { sourceFile: this.currentLook });
+        // told to look like someone else: render fresh, then that face is hers until the next restyle or a reset
+        const restyle = image.isRestyle(prompt);
+        const res = await image.render(prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace });
         if (this.closed) return;
+        if (restyle) this.lookFace = res.file;
         this.currentLook = res.file;
         this.currentLookPrompt = prompt;           // the idle reel keeps describing THIS look, not a later motion
         this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
@@ -285,7 +288,7 @@ class Session {
       case 'utterance': return this.onUtterance(m);
       case 'text': return this.onText(m);
       case 'interrupt': return this.interrupt(m.reason || 'barge-in');
-      case 'reset': this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = []; return this.send({ type: 'reset' });
+      case 'reset': this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = []; this.lookFace = null; this.currentLook = null; this.currentClip = null; return this.send({ type: 'reset' });
       case 'ping': return this.send({ type: 'pong', t: m.t });
       default: return this.send({ type: 'error', error: `unknown message type ${m.type}` });
     }

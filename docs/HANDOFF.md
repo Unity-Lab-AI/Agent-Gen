@@ -89,3 +89,11 @@ Motion (0.5.7): the hub never passed `engine` to the video sidecar, so every cli
 ## 2026-10-30 ~11:05 — the tumbling clip (0.5.11)
 
 Basketball clip: halfway through, the whole frame rotated and stretched until she fell out of it. Cause: `stabilize()` (0.5.7) corrected a full similarity transform from the frame's edge bands; when she lunged at the camera her body filled those bands and the chained correction spun the frame. Now slide only (no rotation, no zoom); a step counts only with ≥60% RANSAC inliers and under 3% of the width; past 8% in total the clip is kept as rendered.
+
+## 2026-10-30 ~11:20 — goth won't go away, plastic looks, scrambled clips (0.5.12)
+
+- Operator asked for a PG normal woman at home (brown hair, no streaks); she wrote the right `[[img]]` and still came out goth. Three overrides: `lookPrefix` forced "emo goth… black hair with pink streaks… winged eyeliner"; the face lock (0.65) pressed the goth reference's makeup on; img2img from the previous goth look carried hair and makeup (still streaked at face 0.3). Operator: "face locks shouldnt persist when told other wise"; img2img remakes looked "way too plastic doll".
+  - `lookPrefix` is identity only ("photo of Unity, a young adult woman, pale grey-blue eyes,").
+  - Every look is txt2img now (no chained img2img). Face lock 0.4.
+  - `isRestyle()` (`hub/image/client.mjs`): a look that changes hair colour, makeup, skin or ethnicity renders without the face lock; that render becomes her face lock (`lookFace`) until the next restyle or a reset.
+- Blocking and hue bars in clips: clips were written as OpenCV `mp4v` at its default bitrate. Now MJPEG quality 100 in `.avi` (round trip: 73/73 frames, mean error 1.5). Wan's VAE loads in float32.
