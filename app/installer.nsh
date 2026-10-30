@@ -6,27 +6,26 @@
 ; on first run. An update replaces the app files but spares data (customRemoveFiles). A plain uninstall asks whether
 ; data goes too. Running the setup over an existing install asks: update, uninstall everything, or cancel.
 
-; the hub runs as a second "Agent Gen.exe" (Electron in node mode) and the sidecars are its children: closing the
-; window is not enough for the "app is running" check, so take the whole tree down, hidden, before anything else
-!macro agentgenStopApp
-  nsExec::Exec 'taskkill /IM "Agent Gen.exe" /T /F'
+; the hub runs as a second "Agent Gen.exe" (Electron in node mode), the sidecars are its children and her face
+; engine runs from <folder>\data. electron-builder's own check only kills "Agent Gen.exe" and then says "cannot be
+; closed" from three places (the running-app check, the old uninstaller's retries, the file copy's retries) when
+; anything still holds a file. installer-stop.ps1 kills the whole lot, waits until the app's files can be written,
+; and logs what it killed to <folder>\data\logs\setup.log. 64-bit PowerShell (sysnative) so it sees every process.
+!macro agentgenStop DIR
+  InitPluginsDir
+  File "/oname=$PLUGINSDIR\agentgen-stop.ps1" "${PROJECT_DIR}\installer-stop.ps1"
+  StrCpy $R8 "$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+  IfFileExists "$R8" +2 0
+    StrCpy $R8 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+  nsExec::Exec '"$R8" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\agentgen-stop.ps1" -Dir "${DIR}"'
   Pop $R9
-  Sleep 1500
 !macroend
 
-; electron-builder's own check stops any process whose path starts with the install folder and then complains it
-; "cannot be closed" when a child (her face engine runs from <folder>\data\venvs\face) outlives the window. Ours:
-; the app tree by image name, then anything still running from the folder, no dialog, no retry loop.
 !macro customCheckAppRunning
-  nsExec::Exec 'taskkill /IM "Agent Gen.exe" /T /F'
-  Pop $R9
-  nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -C "Get-CimInstance Win32_Process | ? { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith('$INSTDIR', 'CurrentCultureIgnoreCase') } | % { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }"`
-  Pop $R9
-  Sleep 1500
+  !insertmacro agentgenStop "$INSTDIR"
 !macroend
 
 !macro customInit
-  !insertmacro agentgenStopApp
   ; an existing per-user install registers its uninstaller and its folder (silent /S = update)
   ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
   ${If} $R0 != ""
@@ -35,6 +34,7 @@
     Quit
   agentgenRemoveAll:
     ${If} $R1 != ""
+      !insertmacro agentgenStop "$R1"
       ExecWait '$R0 /S _?=$R1'
       RMDir /r "$R1"
     ${Else}
@@ -69,7 +69,7 @@
 
 ; a real uninstall (not the update's internal one) offers to take her data with it
 !macro customUnInit
-  !insertmacro agentgenStopApp
+  !insertmacro agentgenStop "$INSTDIR"
 !macroend
 
 !macro customUnInstall

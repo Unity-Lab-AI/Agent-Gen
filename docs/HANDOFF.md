@@ -49,3 +49,11 @@ Operator: no movement or action at all, voice not aligning to her lips, the whol
 - Operator: no negative prompts. Anatomy and quality negatives removed from `hub/image/client.mjs`; the image sidecar's default negative is empty (`sidecars/image/server.py`). Only the adult-age terms remain (`child, teen, underage, childlike, young girl`), kept on purpose: the checkpoint's safety checker is off and the app renders sexual looks.
 
 Still open: motion fix not chosen yet — A (still portrait, Ditto only), B (LTX for motion, locked-camera prompt, face live during renders), or C (A now, B behind a switch).
+
+## 2026-10-30 ~09:45 — installer "Agent Gen cannot be closed" (0.5.4)
+
+0.5.3 run by double-click over a running 0.5.2 still showed "Agent Gen cannot be closed". Operator: "the god damn EXE has the only fucking way to install and use the fucking app cant have fucking errors on install!"; "this time we need to properly kill everything and install the exe properly without errors poping up and no back dooring it the EXE has to install and do everything needed without errors!~"
+- electron-builder raises that box from three places: its running-app check (replaced since 0.5.0), the old uninstaller's retry loop, and the file copy's retry loop (5 x 1 s). The old tree kill + 1.5 s sleep left something holding a file; the silent runs passed only because a script had stopped the app first.
+- 0.5.4: `app/installer-stop.ps1`, packed into setup and uninstaller and run by 64-bit PowerShell from `agentgenStop` in `app/installer.nsh`. Kills Agent Gen.exe, anything whose exe is under the install folder, python/ollama with the folder on the command line, the brain server on :11435, and all their descendants (own tree walk; setups and uninstallers are never killed, so the in-app uninstall hand-off survives); repeats until none are left (up to 30 s), then waits until `Agent Gen.exe` and `resources\app.asar` open for writing. Logs to `<folder>\data\logs\setup.log`.
+- Runs in the install section's running-app check, in the uninstaller's init, and on "uninstall everything" only after the operator picks it (it used to kill the app before the update/uninstall/cancel question).
+- Test: with Agent Gen open, double-click `AgentGen-Setup-0.5.4.exe`, pick YES, finish the wizard. No box; app starts; `D:\Agent Gen\data\logs\setup.log` shows what was stopped.
