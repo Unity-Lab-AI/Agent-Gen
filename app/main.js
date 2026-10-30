@@ -23,7 +23,8 @@ function createWindow() {
     width: 1280, height: 860, minWidth: 720, minHeight: 540,
     backgroundColor: '#0b0b0f', title: 'Agent Gen',
     autoHideMenuBar: true, show: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+    // spellcheck off: Chromium would download its dictionaries from Google; nothing leaves the machine
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, spellcheck: false },
   });
   win.setMenuBarVisibility(false);
   // mic + camera + screen without a prompt: it is her app, on your machine

@@ -1,8 +1,10 @@
 {
   "name": "agent-gen",
   "productName": "Agent Gen",
-  "version": "0.5.21",
+  "version": "0.5.22",
   "private": true,
+  "license": "MIT",
+  "author": "Unity AI Lab <contact@unityailab.com>",
   "description": "Unity, live. One window: her face, her voice, her ears, her hands. Opens everything, closes everything.",
   "main": "main.js",
   "scripts": {
@@ -32,6 +34,15 @@
       "icon.png"
     ],
     "extraResources": [
+      {
+        "from": "..",
+        "to": "legal",
+        "filter": [
+          "LICENSE",
+          "PRIVACY.md",
+          "THIRD-PARTY-NOTICES.md"
+        ]
+      },
       {
         "from": "../hub",
         "to": "hub",

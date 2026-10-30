@@ -144,3 +144,9 @@ Fixes: a GPU gate (`gpu.rendering` in `hub/providers/ollama.mjs`, counted by `vi
 ## 2026-10-30 ~13:00 — stuck on "thinking" (0.5.21)
 
 "you are now a silverback Gorilla with an AK" worked (look live in 4.6 s, gorilla clip rendering); "wave with your free hand" then sat on "thinking" for minutes, face at 1 fps. The reply (allowed through in 0.5.20 so she would not go mute) loaded the 9 GB brain next to the running Wan clip and the card filled (15.3 GB, 100%); and respond's `face.resume()` unpaused the face mid-render. Now the operator always wins: respond cancels ANY render in flight (`gpu.rendering > 0`), the reply waits up to 30 s for the render to really stop (`waitRenderMs`), and respond no longer touches the face (the cancelled job releases it). A cancelled look clip is logged, not reported as a failed look (the look itself is live).
+
+## 2026-10-30 ~13:20 — license, privacy, release (0.5.22)
+
+- `LICENSE` (MIT, Unity AI Lab), `PRIVACY.md`, `THIRD-PARTY-NOTICES.md` at the repo root, bundled into the install under `resources\legal`; `app/package.json` license MIT + author; README has Privacy and License sections and an up-to-date "How she works".
+- Audit: at runtime everything is loopback. Two quiet internet touches closed: her engines run with `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` (verified offline loads: faster-whisper small, IP-Adapter, Realistic Vision via `from_single_file` + cached SD1.5 configs), and the window's spellcheck is off (Chromium fetches dictionaries from Google). First-run setup is the only internet use (GitHub releases, pytorch.org, PyPI, Hugging Face, Ollama registry).
+- Shipped: feature → develop → main on both remotes; GitHub release `v0.5.22` with the installer.

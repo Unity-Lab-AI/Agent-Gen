@@ -46,6 +46,8 @@ class Supervisor {
       UNITY_VIDEO_MODEL_DIR: path.join(P.models, 'ltx-video'),
       UNITY_VIDEO_WAN_DIR: path.join(P.models, 'wan2.2-ti2v-5b'),
       HF_HOME: P.hf,
+      // everything was downloaded by first-run setup: no update checks to huggingface.co while she runs
+      HF_HUB_OFFLINE: '1', TRANSFORMERS_OFFLINE: '1', HF_HUB_DISABLE_TELEMETRY: '1',
       ...(P.sdCkpt ? { CORA_IMAGE_CHECKPOINT: P.sdCkpt } : {}),
     };
     const brainEnv = { OLLAMA_HOST: `127.0.0.1:${BRAIN_PORT}`, OLLAMA_KEEP_ALIVE: '30m', ...(P.ollamaModels ? { OLLAMA_MODELS: P.ollamaModels } : {}) };
