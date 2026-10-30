@@ -143,7 +143,9 @@ class Session {
     const job = (async () => {
       try {
         // every look evolves from the current one (her likeness photo at first), so she stays herself
-        // a look she was told to take is finished even if the conversation moves on; only a reset cancels
+        // a look she was told to take is finished even if the conversation moves on; only a reset cancels.
+        // The face holds its last frame while the image/video engines own the GPU (no 2 fps stutter).
+        await face.pause();
         const res = await image.render(prompt, { sourceFile: this.currentLook });
         if (this.closed) return;
         this.currentLook = res.file;
