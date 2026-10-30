@@ -52,9 +52,18 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
   const face = faceFile && fs.existsSync(faceFile) ? fs.readFileSync(faceFile).toString('base64') : faceRef();
   const body = { prompt: full, width: width || cfg.lookWidth, height: height || cfg.lookHeight, steps: cfg.lookSteps,
     guidance: cfg.lookGuidance, seed: seed || undefined, face: restyle || plain ? undefined : (face || undefined), face_scale: cfg.lookFaceScale, negative: NEG };
-  // every look is a fresh render: redrawing look after look from the last picture, face lock on top, made her a
-  // plastic doll. The light face lock alone keeps her her; a restyle drops it.
-  const endpoint = '/txt2img';
+  // A look change that keeps who she is ("take your top off", a new outfit, a new place) edits her CURRENT picture:
+  // same girl, body, pose and room, only what was asked changes. Fresh renders gave the operator a different girl
+  // for "take ur top off". A restyle (someone else entirely) and a [[pic]] render fresh. Strength 0.75: 0.6 kept the
+  // old outfit; 0.9 chained look after look with a heavier face lock made her a plastic doll.
+  let endpoint = '/txt2img';
+  const src = plain || restyle ? null : [sourceFile, cfg.lookBase].find(f => f && fs.existsSync(f));
+  if (src) {
+    body.image = fs.readFileSync(src).toString('base64');
+    body.strength = strength ?? cfg.lookStrength;
+    body.max_side = cfg.lookMaxSide;
+    endpoint = '/img2img';
+  }
   const r = await fetch(`${cfg.imageUrl}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body), signal: AbortSignal.timeout(180000) });
   if (!r.ok) { let e = `image ${r.status}`; try { e = (await r.json()).error || e; } catch {} throw new Error(e); }
