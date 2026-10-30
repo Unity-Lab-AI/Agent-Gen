@@ -1,10 +1,13 @@
 ; Agent Gen NSIS hooks (electron-builder `nsis.include`).
 ; Operator: "the .exe has to install all things it needs to run with option to uninstall oall things also if wanted";
 ; "i dint see the uninstall option on the installer when it was already installed ... the uninstall wasnt an option
-; when it should be".
+; when it should be"; "the uninstaller needs to proplery remove that when uninistalled".
 ; The app installs its runtimes and models into a data folder on first run (%LOCALAPPDATA%\AgentGen unless the
 ; user picked another; the pick is remembered in %LOCALAPPDATA%\AgentGen.location). The setup offers to remove all
-; of it when run over an existing install; the uninstaller offers the same.
+; of it when run over an existing install; the uninstaller offers the same. The data folder must never be inside
+; the app folder: the update replaces that folder whole (70 GB of weights were lost that way on 2026-10-30).
+
+!include "FileFunc.nsh"
 
 ; $R2 <- the data folder (pointer file first, default second)
 !macro agentgenDataDir
@@ -18,24 +21,34 @@
 !macroend
 
 !macro customInit
-  ; an existing per-user install registers here (electron-builder writes UninstallString + InstallLocation)
+  ; an existing per-user install registers here (electron-builder writes UninstallString; InstallLocation may be blank)
   ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
   ${If} $R0 != ""
     ReadRegStr $R1 HKCU "${UNINSTALL_REGISTRY_KEY}" "InstallLocation"
     !insertmacro agentgenDataDir
-    ; the update replaces the whole install folder: refuse to proceed if her data folder is inside it
-    StrLen $R5 $R1
-    StrCpy $R6 $R2 $R5
-    ${If} $R6 == $R1
-      MessageBox MB_OK|MB_ICONSTOP "Her data folder ($R2) is inside the app folder ($R1). Updating would delete it. Move it out first (the app's first-run screen has a Change folder button), then run this setup again."
+    ; is the data folder inside an install folder? walk up from it looking for the app's uninstaller
+    StrCpy $R7 $R2
+    agentgenWalk:
+      IfFileExists "$R7\Uninstall ${PRODUCT_NAME}.exe" agentgenInside
+      ${GetParent} $R7 $R8
+      StrCmp $R8 "" agentgenOutside
+      StrCmp $R8 $R7 agentgenOutside
+      StrCpy $R7 $R8
+      Goto agentgenWalk
+    agentgenInside:
+      MessageBox MB_OK|MB_ICONSTOP "Her data folder ($R2) is inside the app folder ($R7). Updating would delete it. Move it out first (the app's first-run screen has a Change folder button), then run this setup again."
       Quit
-    ${EndIf}
+    agentgenOutside:
     MessageBox MB_YESNOCANCEL|MB_ICONQUESTION "Agent Gen is already installed.$\r$\n$\r$\nYES    update it (keeps her models, runtimes and settings)$\r$\nNO     uninstall everything, including the models in$\r$\n            $R2$\r$\nCANCEL leave it alone" IDYES agentgenUpdate IDNO agentgenRemoveAll
     Quit
   agentgenRemoveAll:
-    ; run the existing uninstaller in place (synchronously), then take the data folder with it
-    ExecWait '$R0 /S _?=$R1'
-    RMDir /r "$R1"
+    ; run the existing uninstaller in place (synchronously); it removes its own folder, then the data goes too
+    ${If} $R1 != ""
+      ExecWait '$R0 /S _?=$R1'
+      RMDir /r "$R1"
+    ${Else}
+      ExecWait '$R0 /S'
+    ${EndIf}
     RMDir /r "$R2"
     Delete "$LOCALAPPDATA\AgentGen.location"
     MessageBox MB_OK|MB_ICONINFORMATION "Agent Gen and everything it installed for itself have been removed."
