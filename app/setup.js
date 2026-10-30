@@ -16,7 +16,7 @@ const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
 const { spawn, execSync } = require('node:child_process');
-const { DATA, RUNTIME, resolve, exists, setDataRoot, freeBytes } = require('./paths');
+const { DATA, RUNTIME, resolve, exists, freeBytes } = require('./paths');
 
 const DL = path.join(DATA, 'downloads');
 const STATE = path.join(DATA, 'state.json');
@@ -217,4 +217,4 @@ function uninstallData() {
   return !exists(DATA);
 }
 
-module.exports = { plan, missing, install, uninstallData, DATA, setDataRoot, freeBytes, homedir: os.homedir };
+module.exports = { plan, missing, install, uninstallData, DATA, freeBytes, homedir: os.homedir };

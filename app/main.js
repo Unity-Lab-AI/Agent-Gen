@@ -94,32 +94,6 @@ ipcMain.handle('agentgen:setup:plan', async () => ({
   data: setup.DATA, free: setup.freeBytes(setup.DATA),
   steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, gb: s.gb, done: !!(await s.done()) }))),
 }));
-// where the 80 GB goes is the user's call; takes effect on the next launch (the pointer file is read at startup)
-ipcMain.handle('agentgen:setup:choose', async () => {
-  const r = await dialog.showOpenDialog(win, { title: 'Folder for the runtimes and models (about 80 GB)', properties: ['openDirectory', 'createDirectory'], defaultPath: setup.DATA });
-  if (r.canceled || !r.filePaths[0]) return { ok: false };
-  let dir = path.join(r.filePaths[0], path.basename(r.filePaths[0]).toLowerCase() === 'agentgen' ? '' : 'AgentGen');
-  // NEVER inside the app's own folder: the updater and the uninstaller wipe that folder whole (70 GB of weights
-  // were lost exactly this way on 2026-10-30). Same drive, sibling folder instead.
-  const appDir = path.resolve(path.dirname(process.execPath)) + path.sep;
-  if (path.resolve(dir).startsWith(appDir) || path.resolve(dir) + path.sep === appDir) {
-    dir = path.join(path.parse(dir).root, 'AgentGen');
-    await dialog.showMessageBox(win, { type: 'info', message: 'Not inside the app folder', detail: `The app folder is replaced on every update, so her models cannot live in it. Using ${dir} instead.` });
-  }
-  setup.setDataRoot(dir);
-  app.relaunch(); app.quit();
-  return { ok: true, dir };
-});
-ipcMain.handle('agentgen:setup:start', async () => {
-  try {
-    await setup.install(ROOT, ev => { if (win && !win.isDestroyed()) win.webContents.send('agentgen:setup:event', ev); });
-  } catch (e) {
-    log('setup failed:', e.message);
-    return { ok: false, error: String(e.message || e) };
-  }
-  await boot();
-  return { ok: true };
-});
 ipcMain.handle('agentgen:uninstall', async () => {
   const r = await dialog.showMessageBox(win, {
     type: 'warning', buttons: ['Remove everything', 'Cancel'], defaultId: 1, cancelId: 1, title: 'Uninstall Agent Gen',

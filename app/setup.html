@@ -19,8 +19,8 @@
 <body>
 <div class="box">
   <h1>Agent Gen · first run</h1>
-  <p>She needs a few things on this machine before she can wake up. Everything goes into one folder and can be removed in one go.</p>
-  <p class="where"><span id="where"></span> <button id="choose" style="padding:3px 8px;font-size:11px">Change folder…</button> <span id="free"></span></p>
+  <p>She needs a few things on this machine before she can wake up. Everything goes into the folder she was installed in and can be removed in one go.</p>
+  <p class="where"><span id="where"></span> <span id="free"></span></p>
   <div id="rows"></div>
   <div class="bar"><i id="bar"></i></div>
   <pre id="log"></pre>
@@ -39,7 +39,6 @@
     const free = p.free == null ? '?' : (p.free / 1e9).toFixed(0);
     const el = document.getElementById('free'); el.textContent = `needs about ${need.toFixed(0)} GB here · ${free} GB free`; if (p.free != null && p.free / 1e9 < need) el.style.color = '#ff5c5c';
   });
-  document.getElementById('choose').onclick = () => window.agentgen.setup.choose();
   window.agentgen.setup.onEvent(ev => {
     const e = document.getElementById('s-' + ev.step); if (!e) return;
     if (ev.status === 'running') { e.textContent = ev.got ? Math.round(100 * ev.got / (ev.total || 1)) + '%' : 'installing…'; e.className = 'run'; }

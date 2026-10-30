@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld('agentgen', {
   setup: {
     plan: () => ipcRenderer.invoke('agentgen:setup:plan'),
     start: () => ipcRenderer.invoke('agentgen:setup:start'),
-    choose: () => ipcRenderer.invoke('agentgen:setup:choose'),
     onEvent: cb => ipcRenderer.on('agentgen:setup:event', (_e, ev) => cb(ev)),
   },
   isApp: true,
