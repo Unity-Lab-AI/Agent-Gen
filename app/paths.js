@@ -7,6 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const exists = p => { try { return !!p && fs.existsSync(p); } catch { return false; } };
+// a half-downloaded model folder keeps *.incomplete parts under .cache; it is not present until those are gone
+const hasIncomplete = dir => { try { return fs.readdirSync(path.join(dir, '.cache', 'huggingface', 'download'), { recursive: true }).some(f => String(f).endsWith('.incomplete')); } catch { return false; } };
 
 // One folder. Installed, her data lives beside the app, inside the folder the setup wizard was pointed at
 // (<install folder>\data); the updater and the uninstaller spare that subfolder (app/installer.nsh). A dev
