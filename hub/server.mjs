@@ -18,6 +18,8 @@ import * as video from './video/client.mjs';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
+const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
+
 function readPersona() {
   try { return fs.readFileSync(cfg.personaFile, 'utf8').trim(); } catch { return 'You are Unity. Speak briefly.'; }
 }
@@ -108,6 +110,7 @@ class Session {
     this.abort = ac;
     this.busy = true;
     this.history.push({ role: 'user', content: userText });
+    this.lastUserText = userText;
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
     const messages = [{ role: 'system', content: readPersona() }, ...this.history];
     const splitter = new SentenceSplitter();
@@ -152,6 +155,12 @@ class Session {
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
     this.idleActions = [];                         // and what she had planned to do in the old look
+    // told to BE the thing ("you are now a real life lion, remake your image of yourself"): whatever line she wrote,
+    // it is her new look, so it goes to her face and the next [[do]] animates it, not the old her
+    if (['pic', 'picture', 'photo', 'draw'].includes(tag.kind) && BECOME.test(this.lastUserText || '')) {
+      this.log(`pic is her new look (told to become it)`);
+      tag = { ...tag, kind: 'img', restyle: true };
+    }
     if (['pic', 'picture', 'photo', 'draw'].includes(tag.kind)) {
       // a picture of anything (two gorillas, a dinosaur, a professor): exactly as written, in the chat, never her face
       const job = (async () => {
@@ -183,7 +192,7 @@ class Session {
         // The face holds its last frame while the image/video engines own the GPU (no 2 fps stutter).
         await face.pause();
         // told to look like someone else: render fresh, then that face is hers until the next restyle or a reset
-        const restyle = image.isRestyle(prompt);
+        const restyle = tag.restyle || image.isRestyle(prompt);
         const res = await image.render(prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace });
         if (this.closed) return;
         if (restyle) this.lookFace = res.file;
@@ -229,9 +238,9 @@ class Session {
       await video.makeRoom();
       // LTX 2B is timid with bodies; a pushier description measured +40% motion. The big-motion engine is a model swap, not a prompt.
       const p = cfg.motionPush ? `${prompt}, ${cfg.motionPush}` : prompt;
-      const c = this.currentClip
-        ? await video.clip(null, p, { fromClip: this.currentClip, engine: cfg.motionEngine })
-        : await video.clip(this.currentLook || cfg.lookBase, p, { engine: cfg.motionEngine });
+      // always from her clean look image: chaining from a clip's last frame carried every smear and colour
+      // blotch into the next clip, and they piled up until she melted
+      const c = await video.clip(this.currentLook || cfg.lookBase, p, { engine: cfg.motionEngine });
       if (this.closed || this.lookSeq !== lookId) return;
       this.currentClip = c.path;
       const f = await face.appearance(c.path);
@@ -260,7 +269,9 @@ class Session {
       try {
         await face.pause();
         await video.makeRoom();
-        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
+        const c = this.currentLook
+          ? await video.clip(this.currentLook, `${prompt}, ${motion}, her face stays visible to the camera`, { engine: cfg.reelEngine })
+          : await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
         if (this.closed || this.lookSeq !== lookId) return;
         const f = await face.appearance(c.path, { extend: true });
         if (!f?.ok) {

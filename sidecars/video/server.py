@@ -58,7 +58,7 @@ _state = {"pipe": None, "engine": None, "device": None, "busy": False, "last_err
 ENGINES = {
     "ltx": {"present": lambda: SINGLE.exists(), "frames": 73, "fps": 25, "steps": 8, "guidance": 1.0, "frame_step": 8, "max_frames": 257},
     # measured on the 4070 Ti SUPER: ~0.6 s a step warm at 352x640, so 49 frames x 20 steps is about a minute
-    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 49, "fps": 24, "steps": 20, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
+    "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 49, "fps": 24, "steps": 20, "guidance": 5.0, "frame_step": 4, "max_frames": 161, "min_pixels": 480 * 832},
 }
 NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text, static, still image")
@@ -261,6 +261,12 @@ def i2v(req):
         w = round32(h * ar)
     else:
         h = round32(w / ar)
+    # Never small: Wan 2.2 TI2V-5B at 352x640 splattered colour and melted her within 2 s (saturation 57-141 in
+    # one clip); 480x832 held her together. Below the floor the box is scaled up, aspect kept.
+    floor = E.get("min_pixels", 0)
+    if w * h < floor:
+        k = (floor / (w * h)) ** 0.5
+        w, h = round32(w * k + 31), round32(h * k + 31)
     img = img.resize((w, h), Image.LANCZOS)
     step = E["frame_step"]
     frames = int(req.get("frames") or E["frames"])
@@ -282,7 +288,7 @@ def i2v(req):
     finally:
         release_gpu(pipe)
     path = OUT / ("clip-%d-%s.avi" % (int(time.time() * 1000), seed))
-    if req.get("stabilize", True):
+    if req.get("stabilize", False):          # off by default: its edge padding stretched the borders
         out = stabilize(out)
     write_mp4(out, path, fps)
     return {"ok": True, "path": str(path), "seconds": round(time.time() - t0, 1), "frames": frames, "fps": fps,

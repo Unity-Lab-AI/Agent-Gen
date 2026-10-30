@@ -46,8 +46,9 @@ export const cfg = {
   // clip size is the GPU budget knob: while a clip renders the live face shares the card and slows.
   // 448x640 x 73 frames (~3 s) is about half the cost of 512x768 x 97 on the 4070 Ti SUPER.
   clipFrames: Number(process.env.CLIP_FRAMES || 73),
-  clipWidth: Number(process.env.CLIP_WIDTH || 448),
-  clipHeight: Number(process.env.CLIP_HEIGHT || 640),
+  // never small: Wan at 352x640 splattered and melted her; 480x832 held (the sidecar also enforces this floor)
+  clipWidth: Number(process.env.CLIP_WIDTH || 480),
+  clipHeight: Number(process.env.CLIP_HEIGHT || 832),
   // after a look's clip lands, whenever she is idle, more clips are chained from the last frame and appended to
   // her live reel, each a thing she decided to do, so the body is open-ended instead of one short loop.
   // reelClips 0 = keep going for as long as she is idle; reelMaxFrames bounds RAM (~8 MB per frame).
