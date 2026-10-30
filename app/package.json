@@ -37,7 +37,14 @@
         "to": "hub",
         "filter": [
           "**/*",
-          "!node_modules/.cache/**"
+          "!node_modules/**"
+        ]
+      },
+      {
+        "from": "../hub/node_modules",
+        "to": "hub/node_modules",
+        "filter": [
+          "**/*"
         ]
       },
       {
