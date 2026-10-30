@@ -1,7 +1,7 @@
 // Agent Gen app: our own window, not a browser. Opens -> (first run: installs what she needs) -> supervisor starts
 // everything -> her face fills the window. Closes -> everything she runs on is shut down with it.
 'use strict';
-const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, session, ipcMain, dialog, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
@@ -104,6 +104,74 @@ ipcMain.handle('agentgen:setup:start', async () => {
   await boot();
   return { ok: true };
 });
+// ---- storage: where her renders, logs and conversations live; clear any of them without reinstalling ----------------
+// Runtimes, model weights and her brain (dataenvs, data\models, ...) are never touched here.
+function storageDirs() {
+  return [
+    { id: 'looks', label: 'Her looks (images)', dir: path.join(setup.DATA, 'run', 'looks') },
+    { id: 'clips', label: 'Her clips (videos)', dir: path.join(setup.DATA, 'run', 'clips') },
+    { id: 'logs', label: 'Logs', dir: path.join(setup.DATA, 'logs') },
+    { id: 'chat', label: 'Conversations and window cache', dir: app.getPath('userData') },
+  ];
+}
+function du(dir) {
+  let bytes = 0, files = 0;
+  const walk = d => { let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) { const f = path.join(d, e.name);
+      if (e.isDirectory()) walk(f); else { try { bytes += fs.statSync(f).size; files++; } catch {} } } };
+  walk(dir);
+  return { bytes, files };
+}
+async function hubForget() {
+  try { await fetch(HUB + 'api/forget', { method: 'POST', signal: AbortSignal.timeout(70000) }); } catch {}
+}
+function emptyDir(dir) {
+  let left = 0;
+  let ents = []; try { ents = fs.readdirSync(dir); } catch { return 0; }
+  for (const n of ents) { try { fs.rmSync(path.join(dir, n), { recursive: true, force: true }); } catch { left++; } }
+  return left;
+}
+async function clearStorage(id) {
+  const d = storageDirs().find(x => x.id === id);
+  if (!d) return { ok: false, error: `unknown ${id}` };
+  if (id === 'logs') {
+    // the running app and her engines are writing into these: empty them in place instead of deleting
+    let left = 0;
+    for (const n of (() => { try { return fs.readdirSync(d.dir); } catch { return []; } })()) {
+      try { fs.truncateSync(path.join(d.dir, n), 0); } catch { left++; }
+    }
+    return { ok: true, left };
+  }
+  await hubForget();                                   // nothing may point at a file about to go
+  if (id === 'chat') {
+    await session.defaultSession.clearStorageData();
+    await session.defaultSession.clearCache();
+    return { ok: true, left: 0 };
+  }
+  return { ok: true, left: emptyDir(d.dir) };
+}
+ipcMain.handle('agentgen:storage:list', () => storageDirs().map(d => ({ id: d.id, label: d.label, dir: d.dir, ...du(d.dir) })));
+ipcMain.handle('agentgen:storage:open', (_e, id) => {
+  const d = storageDirs().find(x => x.id === id);
+  if (!d) return false;
+  fs.mkdirSync(d.dir, { recursive: true });
+  shell.openPath(d.dir);
+  return true;
+});
+ipcMain.handle('agentgen:storage:clear', async (_e, id) => {
+  if (id !== 'all') return clearStorage(id);
+  const r = await dialog.showMessageBox(win, {
+    type: 'warning', buttons: ['Reset to fresh', 'Cancel'], defaultId: 1, cancelId: 1, title: 'Reset Agent Gen',
+    message: 'Clear everything she made and said?',
+    detail: 'Deletes her looks, her clips, every conversation and the window cache, and empties the logs. ' +
+      'Her runtimes, model weights and brain stay installed: no reinstall, no downloads.',
+  });
+  if (r.response !== 0) return { ok: false, cancelled: true };
+  const out = {};
+  for (const id of ['looks', 'clips', 'chat', 'logs']) out[id] = await clearStorage(id);
+  return { ok: true, out };
+});
+
 ipcMain.handle('agentgen:uninstall', async () => {
   const r = await dialog.showMessageBox(win, {
     type: 'warning', buttons: ['Remove everything', 'Cancel'], defaultId: 1, cancelId: 1, title: 'Uninstall Agent Gen',

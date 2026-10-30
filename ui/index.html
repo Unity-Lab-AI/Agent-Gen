@@ -34,6 +34,15 @@
   button { background:#22222e; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 12px; cursor:pointer } button.on { border-color:var(--her); color:var(--her) } button:disabled { opacity:.4 }
   input[type=text] { flex:1; background:#0f0f15; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 10px }
   #btn-uninstall { display:none; color:var(--bad); border-color:#4a2228 } body.app #btn-uninstall { display:inline-block }
+  #btn-storage { display:none } body.app #btn-storage { display:inline-block }
+  #storage { position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; z-index:50 } #storage.open { display:flex }
+  #storage .box { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; width:min(760px,92vw) }
+  #storage h3 { margin:0 0 4px } #storage p { color:var(--dim); margin:0 0 12px; font-size:13px }
+  #storage .row { display:grid; grid-template-columns:1fr auto auto auto; gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--line) }
+  #storage .row small { display:block; color:var(--dim); font:11px ui-monospace, monospace; word-break:break-all }
+  #storage .size { color:var(--dim); font-size:13px; min-width:110px; text-align:right }
+  #storage .foot { display:flex; gap:8px; justify-content:space-between; margin-top:12px }
+  #storage-fresh { color:var(--bad); border-color:#4a2228 }
   #diag { font:11px ui-monospace, monospace; color:var(--dim); padding:6px 12px; border-top:1px solid var(--line); white-space:pre-wrap; max-height:110px; overflow:auto }
 </style>
 </head>
@@ -69,8 +78,15 @@
   <button id="btn-stop" title="Stop her mid-sentence">Shush</button>
   <input type="text" id="text" placeholder="or type to her and press Enter">
   <button id="btn-reset" title="Forget this conversation">Reset</button>
+  <button id="btn-storage" title="Where her images, clips, logs and conversations are kept; clear them without reinstalling">Storage</button>
   <button id="btn-uninstall" title="Remove Agent Gen and everything it installed for itself (runtimes, model weights, her brain)">Uninstall everything</button>
 </footer>
+<div id="storage"><div class="box">
+  <h3>Storage</h3>
+  <p>What she has made and said, and where it is kept. Clearing never touches her runtimes, model weights or brain.</p>
+  <div id="storage-rows"></div>
+  <div class="foot"><button id="storage-fresh" title="Clear looks, clips, conversations and logs: like a fresh install, without reinstalling">Reset to fresh</button><button id="storage-close">Close</button></div>
+</div></div>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

@@ -122,6 +122,30 @@ $('#btn-reset').onclick = () => { player.stop(); send({ type: 'reset' }); };
 if (window.agentgen?.isApp) {
   document.body.classList.add('app');
   $('#btn-uninstall').onclick = () => { player.stop(); window.agentgen.uninstall(); };
+  const st = window.agentgen.storage;
+  const size = b => b < 1024 ** 2 ? `${(b / 1024).toFixed(0)} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`;
+  const drawStorage = async () => {
+    const rows = await st.list();
+    $('#storage-rows').replaceChildren(...rows.map(r => {
+      const row = document.createElement('div'); row.className = 'row';
+      const name = document.createElement('div'); name.textContent = r.label;
+      const where = document.createElement('small'); where.textContent = r.dir; name.append(where);
+      const sz = document.createElement('div'); sz.className = 'size'; sz.textContent = `${size(r.bytes)} · ${r.files} files`;
+      const open = document.createElement('button'); open.textContent = 'Open folder'; open.onclick = () => st.open(r.id);
+      const clr = document.createElement('button'); clr.textContent = 'Clear';
+      clr.onclick = async () => { clr.disabled = true; clr.textContent = 'Clearing…'; if (r.id !== 'logs') player.stop(); await st.clear(r.id); drawStorage(); };
+      row.append(name, sz, open, clr);
+      return row;
+    }));
+  };
+  $('#btn-storage').onclick = () => { $('#storage').classList.add('open'); drawStorage(); };
+  $('#storage-close').onclick = () => $('#storage').classList.remove('open');
+  $('#storage-fresh').onclick = async () => {
+    player.stop();
+    const r = await st.clear('all');
+    if (r?.ok) { $('#log').replaceChildren(); addMsg('sys', 'reset to fresh: looks, clips, conversations and logs cleared'); }
+    drawStorage();
+  };
 }
 $('#text').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.value.trim()) { player.unlock(); send({ type: 'text', text: e.target.value.trim() }); e.target.value = ''; }

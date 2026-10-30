@@ -5,7 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
-import { cfg } from './config.mjs';
+import { cfg, REPO } from './config.mjs';
 import { chatStream, chatOnce, health as brainHealth } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
 import { TagFilter, unstaged } from './voice/tags.mjs';
@@ -281,6 +281,12 @@ class Session {
     return this.idleActions.shift();
   }
 
+  /** Forget the conversation and her current look, clip and restyled face (the files may be about to go). */
+  reset() {
+    this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = [];
+    this.lookFace = null; this.currentLook = null; this.currentLookPrompt = null; this.currentClip = null;
+  }
+
   async onMessage(raw) {
     let m;
     try { m = JSON.parse(raw); } catch { return; }
@@ -288,7 +294,7 @@ class Session {
       case 'utterance': return this.onUtterance(m);
       case 'text': return this.onText(m);
       case 'interrupt': return this.interrupt(m.reason || 'barge-in');
-      case 'reset': this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = []; this.lookFace = null; this.currentLook = null; this.currentClip = null; return this.send({ type: 'reset' });
+      case 'reset': this.reset(); return this.send({ type: 'reset' });
       case 'ping': return this.send({ type: 'pong', t: m.t });
       default: return this.send({ type: 'error', error: `unknown message type ${m.type}` });
     }
@@ -316,6 +322,16 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: false, error: s ? 'empty text' : 'no open window' }));
     });
     return;
+  }
+  if (url.pathname === '/api/forget' && req.method === 'POST') {
+    // Loopback only: the app's Storage panel clears her looks, clips or conversations. Every open window forgets
+    // its conversation and look, a clip in flight is cancelled, and her face goes back to her own portrait so
+    // nothing points at a deleted file.
+    for (const s of sessions) { s.reset(); s.send({ type: 'reset' }); }
+    await video.cancel();
+    const f = await face.appearance(path.join(REPO, 'assets', 'portrait', 'unity-bust.jpg'));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, sessions: sessions.size, face: f?.ok ?? null }));
   }
   let p = decodeURIComponent(url.pathname);
   if (p === '/') p = '/index.html';
