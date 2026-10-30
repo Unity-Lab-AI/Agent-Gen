@@ -113,11 +113,17 @@ ipcMain.handle('agentgen:uninstall', async () => {
   });
   if (r.response !== 0) return { ok: false };
   shutdown();
-  const ok = setup.uninstallData();
-  if (app.isPackaged) {
-    const un = path.join(path.dirname(process.execPath), 'Uninstall Agent Gen.exe');
-    if (fs.existsSync(un)) spawn(un, [], { detached: true, stdio: 'ignore' }).unref();
+  const un = path.join(path.dirname(process.execPath), 'Uninstall Agent Gen.exe');
+  if (app.isPackaged && fs.existsSync(un)) {
+    // Installed: the NSIS uninstaller takes the app tree down and removes the app files; the marker tells it the
+    // operator already said yes to the data folder, so it does not ask a second time (installer.nsh customUnInstall).
+    // Deleting data from here would race the sidecars still letting go of files inside it.
+    try { fs.mkdirSync(setup.DATA, { recursive: true }); fs.writeFileSync(path.join(setup.DATA, '.purge'), new Date().toISOString()); } catch {}
+    spawn(un, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+    app.quit();
+    return { ok: true };
   }
+  const ok = setup.uninstallData();
   app.quit();
   return { ok };
 });

@@ -213,7 +213,8 @@ async function install(root, emit = () => {}) {
 
 /** Remove everything the installer put on this machine. The app's own files go with the NSIS uninstaller. */
 function uninstallData() {
-  if (exists(DATA)) fs.rmSync(DATA, { recursive: true, force: true });
+  // sidecars were just killed; Windows can hold their files a moment longer, so retry instead of leaving half a folder
+  if (exists(DATA)) { try { fs.rmSync(DATA, { recursive: true, force: true, maxRetries: 20, retryDelay: 300 }); } catch {} }
   return !exists(DATA);
 }
 

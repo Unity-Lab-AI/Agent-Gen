@@ -27,11 +27,11 @@
 
 !macro customInit
   !insertmacro agentgenStopApp
-  ; an existing per-user install registers its uninstaller and its folder
+  ; an existing per-user install registers its uninstaller and its folder (silent /S = update)
   ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
   ${If} $R0 != ""
     ReadRegStr $R1 HKCU "${INSTALL_REGISTRY_KEY}" "InstallLocation"
-    MessageBox MB_YESNOCANCEL|MB_ICONQUESTION "Agent Gen is already installed in$\r$\n$R1$\r$\n$\r$\nYES    update it (the app is replaced; her models, runtimes and settings in $R1\data stay)$\r$\nNO     uninstall everything, the app and her models$\r$\nCANCEL leave it alone" IDYES agentgenUpdate IDNO agentgenRemoveAll
+    MessageBox MB_YESNOCANCEL|MB_ICONQUESTION /SD IDYES "Agent Gen is already installed in$\r$\n$R1$\r$\n$\r$\nYES    update it (the app is replaced; her models, runtimes and settings in $R1\data stay)$\r$\nNO     uninstall everything, the app and her models$\r$\nCANCEL leave it alone" IDYES agentgenUpdate IDNO agentgenRemoveAll
     Quit
   agentgenRemoveAll:
     ${If} $R1 != ""
@@ -74,6 +74,12 @@
 
 !macro customUnInstall
   ${ifNot} ${isUpdated}
+    ; the in-app "Uninstall everything" button already asked and left this marker: no second question
+    IfFileExists "$INSTDIR\data\.purge" 0 agentgenAskData
+      RMDir /r "$INSTDIR\data"
+      RMDir "$INSTDIR"
+      Goto agentgenKeepData
+    agentgenAskData:
     MessageBox MB_YESNO|MB_ICONQUESTION "Also remove everything Agent Gen downloaded for itself?$\r$\n$\r$\n$INSTDIR\data$\r$\n(Python runtime, model weights, her brain's models, logs; tens of gigabytes. Cannot be undone.)" /SD IDNO IDNO agentgenKeepData
       RMDir /r "$INSTDIR\data"
       RMDir "$INSTDIR"

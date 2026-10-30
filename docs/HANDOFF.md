@@ -14,8 +14,15 @@ Branch `feature/m8-ship`, pushed to Forgejo (origin) and GitHub (Unity-Lab-AI/Ag
 1. **Installer "Agent Gen cannot be closed"** on update. Fix in `installer.nsh` (`customCheckAppRunning`: tree kill + kill anything running from `$INSTDIR`), built into the 0.5.0 exe of 2026-10-30 ~08:40, **not yet run by the operator**.
 2. **Outfit changes ignore the prompt** (asked for a black cocktail dress, got a white swimsuit). Fixed in config (img2img strength 0.8, guidance 7) and persona (no invented `[[img]]` on a movement request). **Not yet tested.**
 3. Looks were written into the app's resources folder; now `AGENTGEN_RUN/looks` (`hub/image/client.mjs`). Not yet tested in the installed app.
-4. In-app "Uninstall everything" button only exists on the first-run screen; add it to the main window.
-5. Bump version for every installer build so the update path is unambiguous.
+4. ~~In-app "Uninstall everything" button only on the first-run screen.~~ Done 2026-10-30 (afternoon): button in the main window footer (`ui/index.html`, shown only inside the app via `window.agentgen.isApp`). Installed path now writes `data\.purge` and hands off to `Uninstall Agent Gen.exe`, which removes data without asking twice (`installer.nsh` customUnInstall); dev path deletes the data root with retries. **Not yet run.**
+5. ~~Bump version~~ `app/package.json` → **0.5.1**. Needs `npm run dist` on the operator's machine, then install over 0.5.0 to exercise items 1–4 in one pass.
+
+## Test plan for 0.5.1
+
+1. Run `AgentGen-Setup-0.5.1.exe` while 0.5.0 is open → pick YES (update). Expect no "cannot be closed" box; `D:\Agent Gen\data` intact; app boots.
+2. Ask for a black cocktail dress → the look should be a black cocktail dress. Then "dance" → a clip of that same look, no new image.
+3. New looks land in `AGENTGEN_RUN/looks`, nothing written under the install's `resources`.
+4. Only on a spare install: footer "Uninstall everything" → one confirmation, app closes, uninstaller runs, `data` gone, no second question.
 
 ## Testing rule
 

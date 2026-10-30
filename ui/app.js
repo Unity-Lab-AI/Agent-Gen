@@ -118,6 +118,11 @@ $('#btn-mic').onclick = async () => {
 $('#btn-mute').onclick = () => { const m = listener.setMuted(!listener.isMuted()); $('#btn-mute').classList.toggle('on', m); $('#btn-mute').textContent = m ? 'Unmute' : 'Mute'; };
 $('#btn-stop').onclick = () => { player.stop(); send({ type: 'interrupt', reason: 'shush' }); };
 $('#btn-reset').onclick = () => { player.stop(); send({ type: 'reset' }); };
+// inside the app window (not a plain browser on the hub) the main process can take everything down
+if (window.agentgen?.isApp) {
+  document.body.classList.add('app');
+  $('#btn-uninstall').onclick = () => { player.stop(); window.agentgen.uninstall(); };
+}
 $('#text').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.value.trim()) { player.unlock(); send({ type: 'text', text: e.target.value.trim() }); e.target.value = ''; }
 });
