@@ -95,7 +95,7 @@ class Session {
     if (!this.currentLook) { this.currentLook = look; this.currentLookPrompt = lookPrompt; }
     this.log('idle: she starts doing her own thing');
     try {
-      const vh = await video.health();
+      const vh = await video.ready();
       if (!vh.ok || !vh.model_present) return;
       const motion = await this.nextIdleAction(lookPrompt, lookId);
       if (this.closed || this.busy || this.lookSeq !== lookId) return;
@@ -156,7 +156,7 @@ class Session {
     // the operator always wins: any clip rendering now (idle or asked for) is cancelled and the reply waits until
     // the render has really stopped, so the brain never shares the card with Wan (that jam crawled for minutes).
     // The cancelled job releases the face itself; the look it made is already on her face.
-    if (gpu.rendering > 0) video.cancel();
+    const freeing = gpu.rendering > 0 ? video.stopRender(3000) : null;
     const epoch = ++this.epoch;
     this.queue.epoch = epoch;
     const ac = new AbortController();
@@ -179,6 +179,7 @@ class Session {
     let full = '';
     this.send({ type: 'status', stage: 'thinking', epoch });
     try {
+      if (freeing) await freeing;           // the card is free before her brain loads
       for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}`, waitRenderMs: 30000 })) {
         if (epoch !== this.epoch) return;
         full += delta;
@@ -271,7 +272,7 @@ class Session {
           if (f?.ok) await face.settle();          // the new look on screen before the video render holds the frame
         }
         // motion: when the video engine is up, every look also becomes a clip of her doing it
-        const vh = await video.health();
+        const vh = await video.ready();
         if (vh.ok && vh.model_present) {
           this.send({ type: 'look', stage: 'animating', kind: tag.kind, prompt, epoch });
           await face.pause();
@@ -307,7 +308,7 @@ class Session {
         this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: 'img', prompt: picPrompt, face: f, epoch });
         if (f?.ok) await face.settle();
       }
-      const vh = await video.health();
+      const vh = await video.ready();
       if (!vh.ok || !vh.model_present || this.lookSeq !== lookId) return;
       this.send({ type: 'look', stage: 'animating', kind: 'img', prompt: picPrompt, epoch });
       await face.pause();
@@ -330,7 +331,7 @@ class Session {
   async motion(prompt, lookId, epoch) {
     this.send({ type: 'look', stage: 'animating', kind: 'do', prompt, epoch });
     try {
-      const vh = await video.health();
+      const vh = await video.ready();
       if (!vh.ok || !vh.model_present) { this.send({ type: 'look', stage: 'failed', kind: 'do', prompt, error: 'video engine down', epoch }); return; }
       await face.pause();
       await video.makeRoom();

@@ -72,15 +72,10 @@ class Supervisor {
   async start(onStatus = () => {}) {
     const logDir = path.join(this.paths.DATA, 'logs'); fs.mkdirSync(logDir, { recursive: true });
     this.logDir = logDir;
+    this.onStatus = onStatus;
     for (const s of this.services) {
       if (await this.portBusy(s)) { this.log(`${s.name}: already running on :${s.port}, adopting`); onStatus(s.name, 'adopted'); continue; }
-      const out = fs.openSync(path.join(logDir, `${s.name}.log`), 'a');
-      const child = spawn(s.cmd, s.args, { cwd: s.cwd || this.root, env: { ...process.env, ...(s.env || {}) }, stdio: ['ignore', out, out], windowsHide: true });
-      child.on('error', e => { this.log(`${s.name}: spawn failed ${e.message}`); onStatus(s.name, 'failed'); this.children.delete(s.name); });
-      child.on('exit', code => { this.log(`${s.name} exited ${code}`); onStatus(s.name, `exited ${code}`); this.children.delete(s.name); });
-      this.children.set(s.name, child);
-      onStatus(s.name, 'starting');
-      this.log(`${s.name}: spawned pid ${child.pid}`);
+      this.spawnService(s);
     }
     // wait for health, hub last
     for (const s of this.services) {
@@ -94,7 +89,28 @@ class Supervisor {
     }
   }
 
+  /** Start one engine. One that exits while the app runs is started again (the hub aborts the video engine
+   *  on purpose to free the card the instant the operator speaks); a crash loop backs off and gives up. */
+  spawnService(s) {
+    const out = fs.openSync(path.join(this.logDir, `${s.name}.log`), 'a');
+    const child = spawn(s.cmd, s.args, { cwd: s.cwd || this.root, env: { ...process.env, ...(s.env || {}) }, stdio: ['ignore', out, out], windowsHide: true });
+    child.on('error', e => { this.log(`${s.name}: spawn failed ${e.message}`); this.onStatus(s.name, 'failed'); this.children.delete(s.name); });
+    child.on('exit', code => {
+      this.log(`${s.name} exited ${code}`); this.onStatus(s.name, `exited ${code}`);
+      if (this.children.get(s.name) === child) this.children.delete(s.name);
+      if (this.stopping) return;
+      const now = Date.now();
+      s.exits = (s.exits || []).filter(t => now - t < 120000).concat(now);
+      if (s.exits.length > 5) { this.log(`${s.name}: exited ${s.exits.length} times in 2 min, not restarting`); return; }
+      setTimeout(() => { if (!this.stopping && !this.children.has(s.name)) { this.log(`${s.name}: restarting`); this.spawnService(s); } }, 1000);
+    });
+    this.children.set(s.name, child);
+    this.onStatus(s.name, 'starting');
+    this.log(`${s.name}: spawned pid ${child.pid}`);
+  }
+
   stop() {
+    this.stopping = true;
     for (const [name, child] of this.children) {
       try {
         if (process.platform === 'win32') execSync(`taskkill /PID ${child.pid} /T /F`, { stdio: 'ignore', windowsHide: true });
