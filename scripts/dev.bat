@@ -8,6 +8,7 @@ if not exist "%PY310%" set "PY310=python"
 
 start "agent-gen voice"  "%PY310%" sidecars\voice\server.py
 start "agent-gen speech" "%PY310%" sidecars\speech\server.py --preload
+if exist "sidecars\face\.venv\Scripts\python.exe" if exist "models\ditto\ditto_cfg" start "agent-gen face" "sidecars\face\.venv\Scripts\python.exe" sidecars\face\server.py
 pushd hub
 if not exist node_modules call npm install --no-audit --no-fund
 start "agent-gen hub" node server.mjs

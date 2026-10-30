@@ -46,3 +46,5 @@ build/
 /.run/
 __pycache__/
 *.pyc
+/third_party/
+.venv/

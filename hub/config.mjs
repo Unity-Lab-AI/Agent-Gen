@@ -13,6 +13,9 @@ export const cfg = {
 
   voiceUrl: process.env.VOICE_URL || 'http://127.0.0.1:5123',
   speechUrl: process.env.SPEECH_URL || 'http://127.0.0.1:5125',
+  faceUrl: process.env.FACE_URL || 'http://127.0.0.1:5126',
+  // Extra audio delay the UI applies when the face is live, on top of what the face sidecar reports.
+  faceLeadMs: Number(process.env.FACE_LEAD_MS || 0),
 
   ollamaUrl: process.env.OLLAMA_URL || process.env.OLLAMA_HOST || 'http://127.0.0.1:11434',
   // Preference order; the first one Ollama actually has is used.

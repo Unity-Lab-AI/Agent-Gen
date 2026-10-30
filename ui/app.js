@@ -107,7 +107,14 @@ async function health() {
   try {
     const h = await (await fetch('/api/health')).json();
     setLight('#l-voice', h.voice?.ok); setLight('#l-speech', h.speech?.ok); setLight('#l-brain', h.brain?.ok, h.brain?.model || '');
-  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); }
+    setLight('#l-face', h.face?.ok, h.face?.ok ? `${h.face.fps} fps` : '');
+    setFaceLive(!!h.face?.ok, h.face?.stream);
+  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); setLight('#l-face', false); setFaceLive(false); }
+}
+const feed = $('#feed');
+function setFaceLive(on, stream) {
+  if (on && stream) { if (feed.getAttribute('src') !== stream) feed.src = stream; document.body.classList.add('live'); }
+  else { document.body.classList.remove('live'); if (feed.getAttribute('src')) feed.removeAttribute('src'); }
 }
 health(); setInterval(health, 10000);
 connect();

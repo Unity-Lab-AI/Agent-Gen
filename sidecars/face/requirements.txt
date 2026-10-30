@@ -1,0 +1,21 @@
+# Ditto runtime on top of a torch install (the venv is created with --system-site-packages on the lab's
+# Python 3.10 that already has torch 2.7.1+cu118). Mirrors third_party/ditto-talkinghead/environment.yaml
+# minus conda-only entries.
+librosa
+tqdm
+filetype
+imageio
+imageio-ffmpeg
+opencv-python-headless
+scikit-image
+scipy
+cython
+colored
+polygraphy
+einops
+mediapipe
+cuda-python
+numpy>=2.0,<2.1
+soundfile
+huggingface_hub
+# TensorRT path only: tensorrt==8.6.1 (CUDA 12 runtime) and the grid_sample_3d plugin from SeanWangJS/grid-sample3d-trt-plugin

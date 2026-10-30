@@ -29,7 +29,9 @@ export function createPlayer({ onViseme = () => {}, onSpeakingChange = () => {},
     catch (e) { console.warn('decode failed', e); return; }
     if (myEpoch !== epoch) return;            // interrupted while decoding
     const now = c.currentTime;
-    const startAt = Math.max(now + 0.03, nextAt);
+    // when the face is live its video runs lead_ms behind the moment we got the clip; start the sound then
+    const lead = Math.max(0, Number(clip.lead_ms || 0)) / 1000;
+    const startAt = Math.max(now + 0.03 + lead, nextAt);
     const source = c.createBufferSource();
     source.buffer = buffer;
     source.connect(c.destination);

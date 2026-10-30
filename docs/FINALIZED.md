@@ -99,3 +99,17 @@ Test plan for the reviewer (needs a microphone, which this session did not have)
 3. Talk over her mid-sentence: she stops within about 100 ms and the diagnostics line shows `interrupted (barge-in)`.
 4. Say nothing but let her finish a long answer: no transcript of her own voice appears as yours (if one does, the diagnostics show `[echo]` and it is dropped).
 5. Type a line and press Enter: same path without the mic.
+
+### M3 progress — 2026-10-30 (milestone open)
+
+Operator decisions captured verbatim this session: "#D photo realistic photograph like vido" (face is photoreal live video, no sprites); "fyi this is a 18plus application so chick can be full on 18+ type of lewdish"; "like she should be a slut sending dirt images of her self and like doing strip teases to full blown yahooo shit" corrected to "dirty* not dirt.. i dont want to see dirty girls i want to see girls doing the dirty"; "the model handels all the safties already we dont need to double up on tlust get messy".
+
+Done:
+- Renderer survey (Ditto, JoyVASA, LivePortrait-AudioDriven, FLOAT, MuseTalk, SoulX-FlashHead) and pick: Ditto. Reasons: built for streaming with low first-frame delay, single portrait + audio, emotion / pose / gaze controls, LivePortrait-class renderer, Apache-2.0, prebuilt Ampere+ TensorRT engines, online config uses 10 diffusion steps.
+- `third_party/ditto-talkinghead` cloned (gitignored), `models/ditto` downloaded (cfg + PyTorch 2.2 GB + ONNX 2.4 GB; TensorRT engines 2.1 GB not yet), `sidecars/face/.venv` built on the lab's torch 2.7.1+cu118 with mediapipe, librosa, einops, cuda-python.
+- `sidecars/face/server.py`: live wrapper around Ditto's StreamSDK with a silence-fed 200 ms feeder so she idles and blinks between sentences, a frame sink that paces JPEGs at 25 fps, MJPEG stream, `/speak` (returns `lead_ms`), `/interrupt`, `/emotion` (voice emotions mapped onto Ditto's 8 classes), `/pose` with idle sway, numpy shim for Ditto's Cython blend so no C compiler is needed on Windows.
+- Hub: `hub/face/client.mjs`; every spoken sentence is mirrored to the face and the `speak` message carries `lead_ms`; interrupt reaches the face; `/api/health` reports it. UI: `<img id="feed">` replaces the placeholder face when the sidecar is up; the player delays audio by `lead_ms`.
+- `assets/portrait/unity-likeness.png` + `unity-likeness-smile.png` staged from the locked Backrooms likeness.
+- Verified: hub runs with the face down (health `face: false`, voice loop unaffected, first audio 610 ms on this run).
+
+Blocked: executing the cloned Ditto code (the offline `inference.py` and the live sidecar) is refused by this session's auto-mode classifier. The operator runs `scripts\face-smoke.bat` once (writes `.run\ditto-test.mp4`), then `scripts\dev.bat` brings the face up with the rest.

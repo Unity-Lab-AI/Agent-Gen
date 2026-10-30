@@ -10,6 +10,7 @@ import { chatStream, health as brainHealth } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
 import { EchoFilter } from './speech/echo-filter.mjs';
+import * as face from './face/client.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -27,8 +28,8 @@ async function probe(url, ms = 2500) {
 }
 
 async function healthAll() {
-  const [voice, speech, brain] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth()]);
-  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain };
+  const [voice, speech, brain, faceH] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health()]);
+  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH };
 }
 
 async function transcribe(pcm_b64, sampleRate) {
@@ -170,6 +171,9 @@ wss.on('connection', ws => {
   ws.on('message', raw => s.onMessage(raw.toString()));
   ws.on('close', () => { s.interrupt('closed'); s.log('closed'); });
 });
+
+setInterval(() => face.health(), 5000);   // keeps face.isLive() current so sentences get mirrored when she is up
+face.health();
 
 server.listen(cfg.port, cfg.host, () => {
   console.log(`agent-gen hub on http://${cfg.host}:${cfg.port}  ui=${cfg.uiDir}`);
