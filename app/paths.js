@@ -7,7 +7,20 @@ const os = require('node:os');
 const path = require('node:path');
 
 const exists = p => { try { return !!p && fs.existsSync(p); } catch { return false; } };
-const DATA = process.env.AGENTGEN_DATA || path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'AgentGen');
+// a half-downloaded model folder keeps *.incomplete parts under .cache; it is not present until those are gone
+const hasIncomplete = dir => { try { return fs.readdirSync(path.join(dir, '.cache', 'huggingface', 'download'), { recursive: true }).some(f => String(f).endsWith('.incomplete')); } catch { return false; } };
+
+// One folder. Installed, her data lives beside the app, inside the folder the setup wizard was pointed at
+// (<install folder>\data); the updater and the uninstaller spare that subfolder (app/installer.nsh). A dev
+// checkout keeps it out of the repo under %LOCALAPPDATA%\AgentGen. Operator: "ther are NOT two folders!!! only one".
+const LOCAL = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+const INSTALLED = path.basename(process.execPath).toLowerCase() === 'agent gen.exe';
+function freeBytes(dir) {
+  let d = path.resolve(dir);
+  while (!exists(d) && path.dirname(d) !== d) d = path.dirname(d);
+  try { const s = fs.statfsSync(d); return s.bavail * s.bsize; } catch { return null; }
+}
+const DATA = process.env.AGENTGEN_DATA || (INSTALLED ? path.join(path.dirname(process.execPath), 'data') : path.join(LOCAL, 'AgentGen'));
 const RUNTIME = path.join(DATA, 'runtime');
 
 /** @param {string} root  repo root (dev) or the packaged app's resources dir */
@@ -18,14 +31,14 @@ function resolve(root) {
   const models = exists(path.join(DATA, 'models')) ? path.join(DATA, 'models') : path.join(root, 'models');
   const ollamaModels = exists(path.join(DATA, 'ollama-models')) ? path.join(DATA, 'ollama-models') : null;
   const ditto = path.join(root, 'third_party', 'ditto-talkinghead');
-  const sdCkpt = [path.join(models, 'sd', 'realistic-vision-v51.safetensors'),
-    path.join(os.homedir(), 'Desktop', 'Unity 3D Equational Model', 'Unity 18+', 'models', 'realistic-vision-v51.safetensors')].find(exists) || null;
+  const sdCkpt = [path.join(models, 'sd', 'realistic-vision-v51.safetensors')].find(exists) || null;
   return {
     DATA, RUNTIME, pythonExe, facePy, ollamaExe, models, ollamaModels, ditto, sdCkpt,
     hf: path.join(models, 'hf'),
     have: {
       ditto: exists(path.join(models, 'ditto', 'ditto_cfg')) && exists(ditto),
       ltx: exists(path.join(models, 'ltx-video', 'ltxv-2b-0.9.8-distilled.safetensors')),
+      wan: exists(path.join(models, 'wan2.2-ti2v-5b', 'model_index.json')) && exists(path.join(models, 'wan2.2-ti2v-5b', 'transformer')) && !hasIncomplete(path.join(models, 'wan2.2-ti2v-5b')),
       voice: exists(path.join(models, 'unity-voice-v2', 'acoustic.pt')),
       sd: !!sdCkpt,
       // Ollama's store moved layouts in 2026 (manifests-v2/ollama.com); accept either
@@ -35,4 +48,4 @@ function resolve(root) {
   };
 }
 
-module.exports = { DATA, RUNTIME, resolve, exists };
+module.exports = { DATA, RUNTIME, resolve, exists, freeBytes };

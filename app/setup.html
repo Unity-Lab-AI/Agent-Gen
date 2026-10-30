@@ -19,8 +19,8 @@
 <body>
 <div class="box">
   <h1>Agent Gen · first run</h1>
-  <p>She needs a few things on this machine before she can wake up. Everything goes into one folder and can be removed in one go.</p>
-  <p class="where" id="where"></p>
+  <p>She needs a few things on this machine before she can wake up. Everything goes into the folder she was installed in and can be removed in one go.</p>
+  <p class="where"><span id="where"></span> <span id="free"></span></p>
   <div id="rows"></div>
   <div class="bar"><i id="bar"></i></div>
   <pre id="log"></pre>
@@ -31,9 +31,14 @@
 <script>
   const rows = document.getElementById('rows'), log = document.getElementById('log'), bar = document.getElementById('bar');
   function row(s) {
-    rows.insertAdjacentHTML('beforeend', `<div class="row"><span>${s.title}</span><span id="s-${s.id}" class="${s.done ? 'ok' : 'wait'}">${s.done ? 'ready' : 'missing'}</span></div>`);
+    rows.insertAdjacentHTML('beforeend', `<div class="row"><span>${s.title} <span style="color:#8c8aa0">${s.gb ? '· ' + s.gb + ' GB' : ''}</span></span><span id="s-${s.id}" class="${s.done ? 'ok' : 'wait'}">${s.done ? 'ready' : 'missing'}</span></div>`);
   }
-  window.agentgen.setup.plan().then(p => { document.getElementById('where').textContent = p.data; p.steps.forEach(row); });
+  window.agentgen.setup.plan().then(p => {
+    document.getElementById('where').textContent = p.data; p.steps.forEach(row);
+    const need = p.steps.filter(s => !s.done).reduce((a, s) => a + (s.gb || 0), 0);
+    const free = p.free == null ? '?' : (p.free / 1e9).toFixed(0);
+    const el = document.getElementById('free'); el.textContent = `needs about ${need.toFixed(0)} GB here · ${free} GB free`; if (p.free != null && p.free / 1e9 < need) el.style.color = '#ff5c5c';
+  });
   window.agentgen.setup.onEvent(ev => {
     const e = document.getElementById('s-' + ev.step); if (!e) return;
     if (ev.status === 'running') { e.textContent = ev.got ? Math.round(100 * ev.got / (ev.total || 1)) + '%' : 'installing…'; e.className = 'run'; }

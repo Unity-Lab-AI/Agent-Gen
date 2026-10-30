@@ -40,15 +40,21 @@ class Supervisor {
     // every sidecar finds its weights through these, wherever the installer put them
     const modelEnv = {
       AGENTGEN_MODELS: P.models,
+      AGENTGEN_RUN: path.join(P.DATA, 'run'),          // looks and clips she renders (an uninstall removes them)
       DITTO_MODELS: path.join(P.models, 'ditto'), DITTO_DIR: P.ditto,
       UNITY_VOICE_DIR: path.join(P.models, 'unity-voice-v2'),
       UNITY_VIDEO_MODEL_DIR: path.join(P.models, 'ltx-video'),
+      UNITY_VIDEO_WAN_DIR: path.join(P.models, 'wan2.2-ti2v-5b'),
       HF_HOME: P.hf,
+      // everything was downloaded by first-run setup: no update checks to huggingface.co while she runs
+      HF_HUB_OFFLINE: '1', TRANSFORMERS_OFFLINE: '1', HF_HUB_DISABLE_TELEMETRY: '1',
       ...(P.sdCkpt ? { CORA_IMAGE_CHECKPOINT: P.sdCkpt } : {}),
     };
     const brainEnv = { OLLAMA_HOST: `127.0.0.1:${BRAIN_PORT}`, OLLAMA_KEEP_ALIVE: '30m', ...(P.ollamaModels ? { OLLAMA_MODELS: P.ollamaModels } : {}) };
     this.services = [
-      ...(P.ollamaExe ? [{ name: 'brain', port: BRAIN_PORT, health: `http://127.0.0.1:${BRAIN_PORT}/api/tags`, cmd: P.ollamaExe, args: ['serve'], env: brainEnv }] : []),
+      // the brain server starts in data, not resources: its model runners inherit the folder, and a runner that
+      // outlives a killed server would pin resources open and block the next update's copy
+      ...(P.ollamaExe ? [{ name: 'brain', port: BRAIN_PORT, health: `http://127.0.0.1:${BRAIN_PORT}/api/tags`, cmd: P.ollamaExe, args: ['serve'], env: brainEnv, cwd: P.DATA }] : []),
       { name: 'voice',  port: 5123, health: 'http://127.0.0.1:5123/health', cmd: py, args: ['-u', path.join(root, 'sidecars', 'voice', 'server.py')], env: modelEnv },
       { name: 'speech', port: 5125, health: 'http://127.0.0.1:5125/health', cmd: py, args: ['-u', path.join(root, 'sidecars', 'speech', 'server.py'), '--preload'], env: modelEnv },
       { name: 'image',  port: 5124, health: 'http://127.0.0.1:5124/health', cmd: py, args: ['-u', path.join(root, 'sidecars', 'image', 'server.py')], env: modelEnv },
@@ -57,7 +63,7 @@ class Supervisor {
       { name: 'hub', port: 4646, health: 'http://127.0.0.1:4646/api/health',
         // the packaged app has no node on PATH: Electron's own binary runs the hub as node
         cmd: nodeBin || process.env.NODE_BIN || 'node', args: [path.join(root, 'hub', 'server.mjs')],
-        env: { FACE_PLAY_LOCAL: '1', OLLAMA_URL: `http://127.0.0.1:${BRAIN_PORT}`, ...(nodeBin ? { ELECTRON_RUN_AS_NODE: '1' } : {}) } },
+        env: { FACE_PLAY_LOCAL: '1', AGENTGEN_RUN: modelEnv.AGENTGEN_RUN, OLLAMA_URL: `http://127.0.0.1:${BRAIN_PORT}`, ...(nodeBin ? { ELECTRON_RUN_AS_NODE: '1' } : {}) } },
     ];
   }
 
@@ -69,7 +75,7 @@ class Supervisor {
     for (const s of this.services) {
       if (await this.portBusy(s)) { this.log(`${s.name}: already running on :${s.port}, adopting`); onStatus(s.name, 'adopted'); continue; }
       const out = fs.openSync(path.join(logDir, `${s.name}.log`), 'a');
-      const child = spawn(s.cmd, s.args, { cwd: this.root, env: { ...process.env, ...(s.env || {}) }, stdio: ['ignore', out, out], windowsHide: true });
+      const child = spawn(s.cmd, s.args, { cwd: s.cwd || this.root, env: { ...process.env, ...(s.env || {}) }, stdio: ['ignore', out, out], windowsHide: true });
       child.on('error', e => { this.log(`${s.name}: spawn failed ${e.message}`); onStatus(s.name, 'failed'); this.children.delete(s.name); });
       child.on('exit', code => { this.log(`${s.name} exited ${code}`); onStatus(s.name, `exited ${code}`); this.children.delete(s.name); });
       this.children.set(s.name, child);

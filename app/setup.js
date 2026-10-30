@@ -16,7 +16,7 @@ const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
 const { spawn, execSync } = require('node:child_process');
-const { DATA, RUNTIME, resolve, exists } = require('./paths');
+const { DATA, RUNTIME, resolve, exists, freeBytes } = require('./paths');
 
 const DL = path.join(DATA, 'downloads');
 const STATE = path.join(DATA, 'state.json');
@@ -74,6 +74,22 @@ async function ghAsset(repo, test) {
 
 function fmt(n) { return n > 1e9 ? (n / 1e9).toFixed(2) + ' GB' : (n / 1e6).toFixed(0) + ' MB'; }
 
+// what the voice, speech, image and video sidecars import (face has its own venv and its own requirements)
+const PROBE_IMPORTS = ['torch', 'torchaudio', 'numpy', 'soundfile', 'misaki.en', 'numba', 'faster_whisper', 'diffusers', 'transformers', 'accelerate', 'safetensors', 'sentencepiece', 'ftfy', 'cv2', 'PIL', 'huggingface_hub', 'packaging'];
+
+// minimum versions the sidecars are written against (Wan 2.2 needs diffusers 0.41 / transformers 5): when these
+// move, the installer upgrades the interpreter it uses, whether that is its own runtime or the machine's Python
+const PROBE_VERSIONS = { diffusers: '0.41', transformers: '5.20', huggingface_hub: '1.0' };
+
+/** Can this interpreter import all of these, at or above the pinned versions? */
+function probe(pyExe, mods) {
+  const checks = Object.entries(PROBE_VERSIONS).filter(([m]) => mods.includes(m))
+    .map(([m, v]) => `assert V(${m}.__version__) >= V('${v}'), '${m} too old'`);
+  const code = `import importlib; ${mods.map(m => `importlib.import_module('${m}')`).join('; ')}; ` +
+    (checks.length ? `from packaging.version import Version as V; import ${Object.keys(PROBE_VERSIONS).filter(m => mods.includes(m)).join(', ')}; ${checks.join('; ')}` : 'pass');
+  return run(pyExe, ['-c', code], {}).then(() => true, () => false);
+}
+
 /** Does the Ollama on `port` (if any) have `name`? */
 function tagsHave(port, name) {
   return new Promise(res => {
@@ -94,7 +110,7 @@ function plan(root) {
   const dlDir = () => { fs.mkdirSync(DL, { recursive: true }); return DL; };
   return [
     {
-      id: 'python', title: 'Python 3.10 runtime',
+      gb: 0.1, id: 'python', title: 'Python 3.10 runtime',
       done: () => !!py(),
       async run(log, progress) {
         const a = await ghAsset('astral-sh/python-build-standalone', n => /^cpython-3\.10\.\d+\+\d+-x86_64-pc-windows-msvc-install_only\.tar\.gz$/.test(n));
@@ -107,18 +123,20 @@ function plan(root) {
       },
     },
     {
-      id: 'base', title: 'PyTorch (CUDA 11.8) and the voice, speech, image and video requirements',
-      done: () => !!py() && (readState().base === py() || !py().startsWith(RUNTIME)),
+      gb: 6, id: 'base', title: 'PyTorch (CUDA 11.8) and the voice, speech, image and video requirements',
+      // a real probe, not a marker: every library the four sidecars import must load in that interpreter,
+      // so a machine with its own Python (a dev box) gets missing pieces installed too (ftfy taught us that)
+      done: async () => !!py() && await probe(py(), PROBE_IMPORTS),
       async run(log) {
         const p = py();
         await run(p, ['-m', 'pip', 'install', '--upgrade', 'pip', 'wheel'], { log });
-        await run(p, ['-m', 'pip', 'install', ...TORCH], { log });
+        if (!(await probe(p, ['torch']))) await run(p, ['-m', 'pip', 'install', ...TORCH], { log });
         await run(p, ['-m', 'pip', 'install', '-r', path.join(root, 'sidecars', 'requirements-base.txt')], { log });
         writeState({ base: p });
       },
     },
     {
-      id: 'face', title: 'Face engine environment (Ditto)',
+      gb: 2, id: 'face', title: 'Face engine environment (Ditto)',
       done: () => !!P().facePy,
       async run(log) {
         const venv = path.join(DATA, 'venvs', 'face');
@@ -128,7 +146,7 @@ function plan(root) {
       },
     },
     {
-      id: 'ollama', title: 'Ollama server (her brain\'s runtime)',
+      gb: 1.5, id: 'ollama', title: 'Ollama server (her brain\'s runtime)',
       done: () => !!ollama(),
       async run(log, progress) {
         const a = await ghAsset('ollama/ollama', n => n === 'ollama-windows-amd64.zip');
@@ -141,8 +159,8 @@ function plan(root) {
       },
     },
     {
-      id: 'models', title: 'Model weights (face, motion, looks, hearing, her voice)',
-      done: () => { const h = P().have; return h.ditto && h.ltx && h.voice && h.sd; },
+      gb: 72, id: 'models', title: 'Model weights (face, motion, looks, hearing, her voice)',
+      done: () => { const h = P().have; return h.ditto && h.ltx && h.wan && h.voice && h.sd; },
       async run(log) {
         const models = path.join(DATA, 'models');
         fs.mkdirSync(models, { recursive: true });
@@ -150,7 +168,7 @@ function plan(root) {
       },
     },
     {
-      id: 'brain', title: `Her brain (${BRAIN_BASE} + unity-local)`,
+      gb: 5.5, id: 'brain', title: `Her brain (${BRAIN_BASE} + unity-local)`,
       // the manifest on disk, or any Ollama already serving on this box (tray app or ours) that lists it
       done: async () => P().have.brain || (await tagsHave(11434, 'unity-local')) || (await tagsHave(11435, 'unity-local')),
       async run(log) {
@@ -195,8 +213,9 @@ async function install(root, emit = () => {}) {
 
 /** Remove everything the installer put on this machine. The app's own files go with the NSIS uninstaller. */
 function uninstallData() {
-  if (exists(DATA)) fs.rmSync(DATA, { recursive: true, force: true });
+  // sidecars were just killed; Windows can hold their files a moment longer, so retry instead of leaving half a folder
+  if (exists(DATA)) { try { fs.rmSync(DATA, { recursive: true, force: true, maxRetries: 20, retryDelay: 300 }); } catch {} }
   return !exists(DATA);
 }
 
-module.exports = { plan, missing, install, uninstallData, DATA, homedir: os.homedir };
+module.exports = { plan, missing, install, uninstallData, DATA, freeBytes, homedir: os.homedir };

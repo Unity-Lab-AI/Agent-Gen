@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { cfg, REPO } from '../config.mjs';
 
-const OUT = path.join(REPO, '.run', 'looks');
+// the app keeps renders in its data root (AGENTGEN_RUN); a dev checkout under .run/
+const OUT = process.env.AGENTGEN_RUN ? path.join(process.env.AGENTGEN_RUN, 'looks') : path.join(REPO, '.run', 'looks');
 fs.mkdirSync(OUT, { recursive: true });
 
 let faceRefB64 = null;
@@ -24,28 +25,36 @@ export async function health() {
  * Render a look. prompt = what she wrote in the tag; her identity anchors are prepended so the picture is her.
  * Returns {file, url, seed, seconds, prompt} or throws.
  */
-const NEG = 'child, teen, underage, childlike, young girl, ' +
-  'extra arms, extra hands, extra limbs, extra fingers, missing fingers, fused fingers, three hands, deformed, ' +
-  'bad anatomy, bad proportions, mutated, disfigured, two heads, duplicate, clone, cropped head, lowres, blurry, ' +
-  'watermark, text, signature, cartoon, anime, 3d render, jpeg artifacts';
-// No content gate here. Operator: "the model handels all the safties already we dont need to double up",
-// "dont want gates hitting gates there is no reason to double up on code". What she renders is her persona's call.
+// adult-age terms only; anatomy and quality negatives removed
+const NEG = 'child, teen, underage, childlike, young girl';
 
-export async function render(prompt, { width, height, seed, strength, sourceFile } = {}) {
-  const full = `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`.replace(/\s+/g, ' ').trim();
+/** True when the look changes who she looks like (hair colour, makeup, skin, ethnicity, "no goth"), not just what
+ *  she wears or does. Then the old face lock and the old picture must not carry over: they kept the goth hair and
+ *  makeup through "naturally brown without any streaks". */
+const RESTYLE = new RegExp([
+  /\b(brown|blonde?|black|red|auburn|grey|gray|silver|pink|blue|green|purple|white|ginger|dark|light|platinum|copper|chestnut|honey)[- ](hair|haired)\b/,
+  /\bhair (is|that is)\b/, /\b(no|without( any)?) (streaks|goth|makeup|make-up|eyeliner)\b/,
+  /\b(blonde|brunette|redhead|ginger)\b/, /\b(makeup|make-up|eyeliner|mascara|lipstick|freckles)\b/,
+  /\b(skin|complexion)\b/, /\b(caucasian|african|asian|latina|hispanic|indian|arab|nubian|nile|ebony|ethnicity)\b/,
+  /\b(white|black|brown) (woman|girl|lady|beauty)\b/, /\bnatural look\b/,
+  // someone else entirely: another sex, age or kind of body ("a 40 year old man")
+  /\b(man|men|male|guy|dude|boy|gentleman|husband|father|dad|grandpa|grandfather|grandma|grandmother|elderly|beard|bearded)\b/,
+  /\b\d{2}[- ]year[- ]old\b/, /\b(old|older|middle[- ]aged) (woman|lady|man)\b/,
+].map(r => r.source).join('|'), 'i');
+export const isRestyle = prompt => RESTYLE.test(String(prompt || ''));
+
+/** Render a look, fresh from her words. Her face lock (her likeness, or `faceFile` after a restyle) keeps her her;
+ *  a restyle renders without it and `faceFile` then carries the new face into later looks. */
+export async function render(prompt, { width, height, seed, strength, sourceFile, restyle = false, faceFile, plain = false } = {}) {
+  // plain = a picture of anything ([[pic]]): exactly her words, no identity, no face lock. A restyle drops the
+  // identity prefix too: "a 40 year old man" must not be glued to "photo of Unity".
+  const full = (plain ? prompt : restyle ? `${prompt}, ${cfg.lookSuffix}` : `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`).replace(/\s+/g, ' ').trim();
+  const face = faceFile && fs.existsSync(faceFile) ? fs.readFileSync(faceFile).toString('base64') : faceRef();
   const body = { prompt: full, width: width || cfg.lookWidth, height: height || cfg.lookHeight, steps: cfg.lookSteps,
-    guidance: cfg.lookGuidance, seed: seed || undefined, face: faceRef() || undefined, face_scale: cfg.lookFaceScale, negative: NEG };
-  let endpoint = '/txt2img';
-  const src = sourceFile && fs.existsSync(sourceFile) ? sourceFile : (fs.existsSync(cfg.lookBase) ? cfg.lookBase : null);
-  if (src) {
-    // image-to-image from her current look (her likeness photo at first): the body and pose stay anchored,
-    // only what she asked for changes. Free-form txt2img at tall sizes is where SD1.5 grows extra arms.
-    body.image = fs.readFileSync(src).toString('base64');
-    body.strength = strength ?? cfg.lookStrength;
-    body.max_side = cfg.lookMaxSide;
-    body.face = faceRef() || true;                      // identity from the likeness, or the source face
-    endpoint = '/img2img';
-  }
+    guidance: cfg.lookGuidance, seed: seed || undefined, face: restyle || plain ? undefined : (face || undefined), face_scale: cfg.lookFaceScale, negative: NEG };
+  // every look is a fresh render: redrawing look after look from the last picture, face lock on top, made her a
+  // plastic doll. The light face lock alone keeps her her; a restyle drops it.
+  const endpoint = '/txt2img';
   const r = await fetch(`${cfg.imageUrl}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body), signal: AbortSignal.timeout(180000) });
   if (!r.ok) { let e = `image ${r.status}`; try { e = (await r.json()).error || e; } catch {} throw new Error(e); }
