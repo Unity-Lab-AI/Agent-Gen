@@ -94,6 +94,16 @@ ipcMain.handle('agentgen:setup:plan', async () => ({
   data: setup.DATA, free: setup.freeBytes(setup.DATA),
   steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, gb: s.gb, done: !!(await s.done()) }))),
 }));
+ipcMain.handle('agentgen:setup:start', async () => {
+  try {
+    await setup.install(ROOT, ev => { if (win && !win.isDestroyed()) win.webContents.send('agentgen:setup:event', ev); });
+  } catch (e) {
+    log('setup failed:', e.message);
+    return { ok: false, error: String(e.message || e) };
+  }
+  await boot();
+  return { ok: true };
+});
 ipcMain.handle('agentgen:uninstall', async () => {
   const r = await dialog.showMessageBox(win, {
     type: 'warning', buttons: ['Remove everything', 'Cancel'], defaultId: 1, cancelId: 1, title: 'Uninstall Agent Gen',
