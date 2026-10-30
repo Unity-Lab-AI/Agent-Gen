@@ -12,5 +12,10 @@ if not exist ".run\say.wav" (
 pushd third_party\ditto-talkinghead
 "%PY%" inference.py --data_root "%CD%\..\..\models\ditto\ditto_pytorch" --cfg_pkl "%CD%\..\..\models\ditto\ditto_cfg\v0.4_hubert_cfg_pytorch.pkl" --audio_path "%CD%\..\..\.run\say.wav" --source_path "%CD%\..\..\assets\portrait\unity-likeness.png" --output_path "%CD%\..\..\.run\ditto-test.mp4"
 popd
+rem Ditto shells out to a system ffmpeg for the audio mux; use the one bundled with imageio-ffmpeg instead
+if not exist ".run\ditto-test.mp4" if exist ".run\ditto-test.mp4.tmp.mp4" (
+  for /f "delims=" %%F in ('"%PY%" -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"') do set "FF=%%F"
+  "%FF%" -loglevel error -y -i ".run\ditto-test.mp4.tmp.mp4" -i ".run\say.wav" -map 0:v -map 1:a -c:v copy -c:a aac ".run\ditto-test.mp4"
+)
 if exist ".run\ditto-test.mp4" ( echo OK: .run\ditto-test.mp4 & start "" ".run\ditto-test.mp4" ) else ( echo FAILED: no output; read the error above )
 endlocal

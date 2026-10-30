@@ -33,7 +33,8 @@ Two things follow from that charter:
 |-------|------------|-----|
 | **Hub** | Node 18+, plain `http` + `ws`, no framework | matches `persona-studio.cjs`, `VibeRoller/bridge`, `launcher.mjs`; zero-dependency servers have been the lab's most durable code |
 | **Capability sidecars** | Python 3.10/3.11, stdlib `http.server` or FastAPI, torch | every voice / vision / image engine we own is already Python |
-| **Face UI** | Browser (vanilla JS, Canvas/WebGL, Web Audio, WebRTC), served by the hub | runs in a tab, an always-on-top app window, OBS, Tauri/Electron, or the Android WebView |
+| **App shell** | Electron window (our own, no browser chrome) hosting the face UI, with a supervisor in the main process | Operator, verbatim: "we dont want this to run in a browser we want owur own app not a browser", "an .exe will work", "that starts when opened and shuts all down when closed". The exe spawns sidecars + hub on open and kills them on close. |
+| **Face UI** | HTML/JS inside the shell (Canvas/WebGL, Web Audio, WebRTC), served by the hub | the same page also works in OBS and the Android WebView |
 | **Local brain** | Ollama (`unity-brain`, `unity-local`) | existing trained models with tool calling + vision |
 | **Cloud brains** | Pollinations, Anthropic, OpenAI-compatible | via `providers.js` + `openai.js` gateway and the Pollinations SDK |
 | **Package managers** | npm (hub + UI), pip per sidecar venv | one venv per sidecar because torch builds conflict (voice needs cu118 + misaki 0.9.4, image needs diffusers) |
@@ -150,6 +151,18 @@ ANY AI CONNECTS
 6. **Local-first, cloud-optional.** Every capability has a local path (Ollama, unity-voice-v2, faster-whisper, SD1.5) and a cloud path (Pollinations text / audio / transcribe / image / video, Anthropic, OpenAI-compatible). The detector/installer pattern from `D:\weird\js\setup` drives onboarding.
 
 ---
+
+## Appearance engine (M3 redefined, 2026-10-30)
+
+Operator, verbatim, same day: *"shes not even moving her body or arms or legs or standing or moving aqround"*; *"i should be able to tell her how to appear wether nude or as a black nile beauty is so told"*; *"she shouldnt only use one image she should generate an appearance and stick to it wether told to take off her undies or pick her nose all trillions of options are available and should work dynamicly"*; *"that image is just her likeness not the one to always use"*.
+
+So the face is not a still portrait with moving lips. It is a generative renderer with three layers:
+
+1. **Identity.** Her likeness references (`assets/portrait/unity-full.jpg`, `unity-carbon.jpg`, operator-picked) are the face identity only. They feed the IP-Adapter face lock and the prompt; they are never themselves the thing on screen.
+2. **Look.** A session look is generated from the identity (outfit, setting, hair, ethnicity, nude or not, whatever she is told), kept as the current base, and regenerated only on command. Consistency comes from the face lock plus a fixed seed and a stored look prompt.
+3. **Action.** What she is doing right now is a video clip generated from the current look (image-to-video: stand up, walk, dance, undress, pick her nose, anything), with Ditto driving the lips and head on top of the moving clip in real time. Ditto takes a video source and mirror-loops it, so each clip becomes a living idle until the next one. Clips are cached by (look, action); idle and common actions are pre-generated; a new action is announced by voice while it renders, and the previous clip keeps playing until it is ready.
+
+What this costs: image-to-video on one 16 GB card is seconds-to-minutes per clip, never instant. Local options are the small Wan / LTX-class models; the cloud option is the Pollinations video API already vendored (veo, wan, ltx). Real-time free-form body generation is not available at this scale today; the clip engine is how "trillions of options" become reachable without pretending otherwise.
 
 ## Ports (planned, all loopback)
 

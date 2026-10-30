@@ -44,11 +44,15 @@ MODELS = Path(os.environ.get("DITTO_MODELS") or (REPO / "models" / "ditto")).res
 
 ap = argparse.ArgumentParser(description="Unity face sidecar (Ditto live)")
 ap.add_argument("--port", type=int, default=int(os.environ.get("UNITY_FACE_PORT", "5126")))
-ap.add_argument("--portrait", default=os.environ.get("UNITY_PORTRAIT") or str(REPO / "assets" / "portrait" / "unity-likeness.png"))
+ap.add_argument("--portrait", default=os.environ.get("UNITY_PORTRAIT") or str(REPO / "assets" / "portrait" / "unity-bust.jpg"),
+                help="her portrait: assets/portrait/unity-bust.jpg (head and shoulders, default), unity-face.jpg (tight), unity-full.jpg (full body)")
 ap.add_argument("--backend", default=os.environ.get("DITTO_BACKEND", "pytorch"), choices=["pytorch", "trt"])
-ap.add_argument("--steps", type=int, default=int(os.environ.get("DITTO_STEPS", "10")), help="diffusion sampling steps per motion clip (Ditto's online config uses 10; offline uses 50)")
+ap.add_argument("--steps", type=int, default=int(os.environ.get("DITTO_STEPS", "5")), help="diffusion sampling steps per motion clip (Ditto's online config uses 10; 5 keeps the 4070 Ti SUPER's PyTorch path real-time)")
+ap.add_argument("--overlap", type=int, default=int(os.environ.get("DITTO_OVERLAP", "50")),
+                help="motion clip overlap (Ditto online default 70 = new motion every 10 frames / 400 ms; 50 = every 30 frames, a third of the diffusion cost, ~1.2 s more lead)")
 ap.add_argument("--emo", default=os.environ.get("DITTO_EMO", "4"), help="default emotion class or name")
 ap.add_argument("--jpeg", type=int, default=int(os.environ.get("UNITY_FACE_JPEG", "80")))
+ap.add_argument("--fp16", default=os.environ.get("DITTO_FP16", "0"), help="1 = wrap warp/decode in an extra fp16 autocast. Off by default: Ditto's PyTorch warp/decode already autocast fp16 internally")
 ap.add_argument("--fps", type=int, default=25)
 ap.add_argument("--crop-scale", type=float, default=float(os.environ.get("DITTO_CROP_SCALE", "2.3")))
 ARGS = ap.parse_args()
@@ -91,7 +95,8 @@ class FrameSink:
         self.lock = threading.Lock()
         self.cond = threading.Condition()
         self.latest = None          # jpeg bytes
-        self.latest_idx = 0
+        self.latest_idx = 0         # == number of frames published so far; frame k of the feed timeline is published when latest_idx becomes k+1
+        self.cues = []              # [(frame_index, callback)] fired the moment that frame is published
         self.frames_in = 0
         self.frames_out = 0
         self.t_last = time.time()
@@ -110,6 +115,7 @@ class FrameSink:
             self.frames_in += 1
 
     def _publish(self, jpg):
+        fire = []
         with self.cond:
             self.latest = jpg
             self.latest_idx += 1
@@ -117,7 +123,24 @@ class FrameSink:
             now = time.time()
             self.fps_out = 0.9 * self.fps_out + 0.1 * (1.0 / max(1e-3, now - self.t_last))
             self.t_last = now
+            keep = []
+            for frame_index, cb in self.cues:
+                (fire if self.latest_idx > frame_index else keep).append((frame_index, cb))
+            self.cues = keep
             self.cond.notify_all()
+        for _, cb in fire:
+            try:
+                cb()
+            except Exception:
+                pass
+
+    def cue(self, frame_index, callback):
+        with self.cond:
+            self.cues.append((frame_index, callback))
+
+    def clear_cues(self):
+        with self.cond:
+            self.cues = []
 
     def _playout(self):
         next_t = time.time()
@@ -214,16 +237,20 @@ class LiveFace:
         tmp_out = os.path.join(tempfile.gettempdir(), "unity-face-unused.mp4")
         # these mirror ditto_cfg/v0.4_hubert_cfg_trt_online.pkl (online_mode, overlap_v2=70, fix_kp_cond=1, 10 steps)
         setup_kwargs = dict(online_mode=True, emo=self.emo, sampling_timesteps=ARGS.steps, crop_scale=ARGS.crop_scale,
-                            overlap_v2=70, fix_kp_cond=1, smo_k_d=3, N_d=FPS * 3600 * 8)
+                            overlap_v2=ARGS.overlap, fix_kp_cond=1, smo_k_d=3, N_d=FPS * 3600 * 8)
+        self.valid_clip_frames = 80 - ARGS.overlap     # frames of audio features Ditto waits for before each motion clip
         self.sdk.setup(ARGS.portrait, tmp_out, **setup_kwargs)
         self.sdk.setup_Nd(N_d=FPS * 3600 * 8, ctrl_info=self.ctrl)
         self.sink: FrameSink = self.sdk.writer
+        self.stage_ms = {}
+        self._instrument()
         self.load_s = round(time.time() - t0, 1)
         self.device = "cuda"
         # audio queue (16 kHz float32)
         self.lock = threading.Lock()
         self.pending = np.zeros((0,), dtype=np.float32)
         self.hist = np.zeros((self.HIST,), dtype=np.float32)
+        self.fed_samples = 0          # feed-timeline position: samples handed to Ditto so far (speech or silence)
         self.spoken_s = 0.0
         self.chunks = 0
         self.t_chunk_ms = 0.0
@@ -231,15 +258,75 @@ class LiveFace:
         self.feeder = threading.Thread(target=self._feed, daemon=True)
         self.feeder.start()
 
+    def _instrument(self):
+        """Wrap each pipeline stage with a timer (EMA ms, reported by /health) and, for the two heavy
+        renderer stages, fp16 autocast. Ditto's own TensorRT build runs warp/decode in fp16; the PyTorch
+        path is fp32 by default, which is the difference between ~15 and ~25 fps here."""
+        import torch
+        torch.backends.cudnn.benchmark = True
+        use_fp16 = str(ARGS.fp16) not in ("0", "false", "no") and torch.cuda.is_available()
+        sdk = self.sdk
+        stage_ms = self.stage_ms
+
+        def to_f32(out):
+            # fp16 results must not reach numpy/OpenCV as half
+            if isinstance(out, torch.Tensor):
+                return out.float() if out.dtype == torch.float16 else out
+            if isinstance(out, np.ndarray) and out.dtype == np.float16:
+                return out.astype(np.float32)
+            if isinstance(out, (list, tuple)):
+                return type(out)(to_f32(o) for o in out)
+            return out
+
+        class Stage:
+            """Callable proxy: times the call, optionally autocasts, and delegates every other attribute
+            (seq_frames, valid_clip_len, d0, set_Nd, ...) to the real Ditto component."""
+            def __init__(self, name, inner, autocast):
+                object.__setattr__(self, "_name", name)
+                object.__setattr__(self, "_inner", inner)
+                object.__setattr__(self, "_autocast", autocast)
+            def __call__(self, *a, **k):
+                t = time.perf_counter()
+                if self._autocast:
+                    with torch.autocast("cuda", dtype=torch.float16):
+                        out = self._inner(*a, **k)
+                    out = to_f32(out)
+                else:
+                    out = self._inner(*a, **k)
+                ms = (time.perf_counter() - t) * 1000
+                stage_ms[self._name] = round(0.9 * stage_ms.get(self._name, ms) + 0.1 * ms, 1)
+                return out
+            def __getattr__(self, item):
+                return getattr(object.__getattribute__(self, "_inner"), item)
+            def __setattr__(self, key, value):
+                setattr(object.__getattribute__(self, "_inner"), key, value)
+
+        sdk.audio2motion = Stage("audio2motion", sdk.audio2motion, False)   # per motion clip, not per frame
+        sdk.motion_stitch = Stage("stitch", sdk.motion_stitch, False)
+        sdk.warp_f3d = Stage("warp", sdk.warp_f3d, use_fp16)
+        sdk.decode_f3d = Stage("decode", sdk.decode_f3d, use_fp16)
+        sdk.putback = Stage("putback", sdk.putback, False)
+        self.fp16 = use_fp16
+
     # audio in -------------------------------------------------------------------------------------------
-    def enqueue(self, pcm16k: np.ndarray):
+    def enqueue(self, pcm16k: np.ndarray, play_wav: bytes | None = None):
+        """Queue speech. Returns (queued_s, start_frame). Frame k of her video carries feed sample k*640, so the
+        first frame of this clip is start_sample // 640. With play_wav the sidecar itself plays the audio the
+        instant that frame is published: the tightest lip sync available, no latency estimate involved."""
         with self.lock:
+            start_sample = self.fed_samples + len(self.pending)
             self.pending = np.concatenate([self.pending, pcm16k.astype(np.float32)])
-            return len(self.pending) / self.SR
+            queued = len(self.pending) / self.SR
+        start_frame = start_sample // 640
+        if play_wav is not None:
+            self.sink.cue(start_frame, lambda: play_audio(play_wav))
+        return queued, start_frame
 
     def interrupt(self):
         with self.lock:
             self.pending = np.zeros((0,), dtype=np.float32)
+        self.sink.clear_cues()
+        stop_audio()
 
     def queue_s(self):
         with self.lock:
@@ -257,9 +344,16 @@ class LiveFace:
         return new, look
 
     def _feed(self):
-        """Paced at 200 ms: silence keeps her alive and blinking, speech moves her lips."""
+        """Paced at 200 ms: silence keeps her alive and blinking, speech moves her lips.
+        Backpressure: the feed may lead the published picture by at most MAX_LAG frames. If the renderer
+        falls behind, the feed waits (speech is delayed but stays frame-locked to the lips) instead of
+        letting Ditto's internal queues pile up tens of seconds of unseen frames."""
         next_t = time.time()
+        max_lag = self.valid_clip_frames * 2 + 30     # what Ditto needs in flight, plus a little
         while self.alive:
+            while self.alive and (self.fed_samples // 640 - self.sink.latest_idx) > max_lag:
+                time.sleep(0.02)
+                next_t = time.time()
             new, look = self._take()
             window = np.concatenate([self.hist, new, look]).astype(np.float32)
             t0 = time.time()
@@ -270,6 +364,8 @@ class LiveFace:
             self.t_chunk_ms = 0.8 * self.t_chunk_ms + 0.2 * (time.time() - t0) * 1000
             self.hist = new[-self.HIST:]
             self.chunks += 1
+            with self.lock:
+                self.fed_samples += self.STEP
             if np.abs(new).max() > 1e-4:
                 self.spoken_s += self.STEP / self.SR
             # do not run ahead of real time by more than ~1 s of frames; the sink paces playout
@@ -292,30 +388,76 @@ class LiveFace:
         return self.emo
 
     def lead_ms(self):
-        # queue ahead of this clip + Ditto's chunk window (context + step + lookahead) + render/playout buffer
-        return int(self.queue_s() * 1000 + (self.HIST + self.STEP + self.LOOK) / self.SR * 1000 + self.sink.queued() * FRAME_DT * 1000 + 120)
+        # how far the feed is ahead of the picture right now + queued speech ahead of this clip + hubert lookahead
+        lag_frames = max(0, self.fed_samples // 640 - self.sink.latest_idx)
+        return int(self.queue_s() * 1000 + lag_frames * FRAME_DT * 1000 + self.LOOK / self.SR * 1000 + 100)
 
     def health(self):
         return {"ok": True, "loaded": True, "backend": ARGS.backend, "device": self.device, "portrait": os.path.basename(ARGS.portrait),
                 "fps": round(self.sink.fps_out, 1), "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
-                "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps,
-                "load_s": self.load_s, "last_error": getattr(self, "last_error", None), "stream": f"http://127.0.0.1:{ARGS.port}/stream.mjpg"}
+                "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps, "overlap": ARGS.overlap,
+                "fp16": self.fp16, "stage_ms": self.stage_ms, "lag_frames": int(self.fed_samples // 640 - self.sink.latest_idx),
+                "load_s": self.load_s, "last_error": getattr(self, "last_error", None),
+                "worker_error": repr(self.sdk.worker_exception)[:300] if self.sdk.worker_exception else None,
+                "stopped": self.sdk.stop_event.is_set(), "stream": f"http://127.0.0.1:{ARGS.port}/stream.mjpg"}
 
 
-def decode_audio(req) -> np.ndarray:
-    """-> float32 mono at 16 kHz"""
+def decode_audio(req):
+    """-> (float32 mono at 16 kHz for Ditto, original WAV bytes for playback)"""
+    import soundfile as sf
     if req.get("wav_b64"):
-        import soundfile as sf
-        data, sr = sf.read(io.BytesIO(base64.b64decode(req["wav_b64"])), dtype="float32", always_2d=True)
+        wav_bytes = base64.b64decode(req["wav_b64"])
+        data, sr = sf.read(io.BytesIO(wav_bytes), dtype="float32", always_2d=True)
         audio = data.mean(1)
     else:
         raw = base64.b64decode(req["pcm_b64"])
-        audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
         sr = int(req.get("sample_rate", 16000))
+        audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        buf = io.BytesIO()
+        sf.write(buf, audio, sr, format="WAV", subtype="PCM_16")
+        wav_bytes = buf.getvalue()
     if sr != 16000 and len(audio) > 1:
         n = int(round(len(audio) * 16000 / sr))
         audio = np.interp(np.linspace(0, len(audio) - 1, n), np.arange(len(audio)), audio).astype(np.float32)
-    return audio
+    return audio, wav_bytes
+
+
+# --- local audio out (for the native app / viewer path; remote clients play their own audio) ------------------
+_audio_lock = threading.Lock()
+_audio_player = {"sd": None}
+try:
+    import sounddevice as _sd
+    _audio_player["sd"] = _sd
+except Exception:
+    _sd = None
+
+
+def play_audio(wav_bytes: bytes):
+    """Start playing a WAV now, without blocking the frame thread. sounddevice if present, else winsound."""
+    def run():
+        try:
+            if _audio_player["sd"] is not None:
+                import soundfile as sf
+                data, sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
+                with _audio_lock:
+                    _audio_player["sd"].play(data, sr)
+            else:
+                import winsound
+                winsound.PlaySound(wav_bytes, winsound.SND_MEMORY | winsound.SND_ASYNC)
+        except Exception as e:
+            print("audio out failed:", e, flush=True)
+    threading.Thread(target=run, daemon=True).start()
+
+
+def stop_audio():
+    try:
+        if _audio_player["sd"] is not None:
+            _audio_player["sd"].stop()
+        else:
+            import winsound
+            winsound.PlaySound(None, winsound.SND_PURGE)
+    except Exception:
+        pass
 
 
 FACE: LiveFace | None = None
@@ -378,7 +520,9 @@ class Handler(BaseHTTPRequestHandler):
                     if jpg is None or idx == last:
                         continue
                     last = idx
-                    self.wfile.write(BOUNDARY + b"\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(jpg)).encode() + b"\r\n\r\n" + jpg + b"\r\n")
+                    # X-Frame-Index lets a remote player start its audio exactly on /speak's start_frame
+                    self.wfile.write(BOUNDARY + b"\r\nContent-Type: image/jpeg\r\nX-Frame-Index: " + str(idx).encode()
+                                     + b"\r\nContent-Length: " + str(len(jpg)).encode() + b"\r\n\r\n" + jpg + b"\r\n")
                     self.wfile.flush()
             except (ConnectionError, BrokenPipeError, OSError):
                 pass
@@ -401,9 +545,11 @@ class Handler(BaseHTTPRequestHandler):
                 lead = FACE.lead_ms()
                 if req.get("emotion") is not None:
                     FACE.set_emotion(req["emotion"])
-                audio = decode_audio(req)
-                q = FACE.enqueue(audio)
-                return self._json({"queued_s": round(q, 2), "lead_ms": lead, "seconds": round(len(audio) / 16000, 2)})
+                audio, wav_bytes = decode_audio(req)
+                play_here = bool(req.get("play", False))
+                q, start_frame = FACE.enqueue(audio, wav_bytes if play_here else None)
+                return self._json({"queued_s": round(q, 2), "lead_ms": lead, "seconds": round(len(audio) / 16000, 2),
+                                   "start_frame": int(start_frame), "frames_published": FACE.sink.latest_idx, "played_here": play_here})
             if path == "/interrupt":
                 FACE.interrupt()
                 return self._json({"ok": True})
