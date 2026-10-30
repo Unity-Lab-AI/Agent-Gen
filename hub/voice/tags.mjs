@@ -6,11 +6,12 @@ const CLOSE = ']]';
 const KINDS = /^\s*(img|image|selfie|look|do|action)\s*:\s*/i;
 
 export class TagFilter {
-  constructor(onTag) { this.onTag = onTag; this.buf = ''; this.inTag = false; }
+  constructor(onTag) { this.onTag = onTag; this.buf = ''; this.inTag = false; this.fired = 0; this.text = ''; }
+  fire(tag) { this.fired++; this.onTag(tag); }
 
   /** Feed a delta; returns the speakable text (tags removed). */
   push(delta) {
-    this.buf += delta;
+    this.buf += delta; this.text += delta;
     let out = '';
     while (this.buf) {
       if (!this.inTag) {
@@ -31,7 +32,7 @@ export class TagFilter {
         this.buf = this.buf.slice(j + CLOSE.length);
         this.inTag = false;
         const m = KINDS.exec(inner);
-        if (m) this.onTag({ kind: m[1].toLowerCase(), text: inner.slice(m[0].length).trim(), raw: inner });
+        if (m) this.fire({ kind: m[1].toLowerCase(), text: inner.slice(m[0].length).trim(), raw: inner });
       }
     }
     return out;
@@ -42,8 +43,10 @@ export class TagFilter {
     if (!this.inTag) out = this.buf;
     else {
       const m = KINDS.exec(this.buf);                      // reply ended mid-tag: use what we have
-      if (m && this.buf.slice(m[0].length).trim()) this.onTag({ kind: m[1].toLowerCase(), text: this.buf.slice(m[0].length).trim(), raw: this.buf });
+      if (m && this.buf.slice(m[0].length).trim()) this.fire({ kind: m[1].toLowerCase(), text: this.buf.slice(m[0].length).trim(), raw: this.buf });
     }
+    // no image line but she acted it out in asterisks (*top removed*): the stage direction is the look
+    if (!this.fired) { const a = /\*([^*\n]{3,200})\*/.exec(this.text); if (a) this.fire({ kind: 'do', text: a[1].trim(), raw: a[0] }); }
     this.buf = ''; this.inTag = false;
     return out;
   }
