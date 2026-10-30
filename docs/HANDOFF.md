@@ -97,3 +97,8 @@ Basketball clip: halfway through, the whole frame rotated and stretched until sh
   - Every look is txt2img now (no chained img2img). Face lock 0.4.
   - `isRestyle()` (`hub/image/client.mjs`): a look that changes hair colour, makeup, skin or ethnicity renders without the face lock; that render becomes her face lock (`lookFace`) until the next restyle or a reset.
 - Blocking and hue bars in clips: clips were written as OpenCV `mp4v` at its default bitrate. Now MJPEG quality 100 in `.avi` (round trip: 73/73 frames, mean error 1.5). Wan's VAE loads in float32.
+
+## 2026-10-30 ~11:35 — no more freeze while a clip renders (0.5.13)
+
+Operator: "it freezes for long periods inbetween genrating a new clip the current clip sould loop like till the next clip completes and loads in". The face holds while the image/video engines own the GPU (0 fps, one still frame for minutes). Now `FrameSink` (`sidecars/face/server.py`) keeps the last `--loop-s` (8 s) of frames she played and replays them back and forth while held (`paused` or `swapping`): JPEGs already rendered, no GPU. Replayed frames advance `view_idx` (what MJPEG viewers wait on), never `latest_idx` (the lip-sync timeline). `/health` has `looping`.
+Still open: "lightning like hue spikes and her ghosting a bit". The raw clip (MJPEG, 0.5.12) is clean (max frame-to-frame jump 4.9, median 0.46), so they come from the face render on the moving clip. Not captured yet (the stream was held at the time).

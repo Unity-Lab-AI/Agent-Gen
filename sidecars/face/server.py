@@ -51,6 +51,7 @@ ap.add_argument("--steps", type=int, default=int(os.environ.get("DITTO_STEPS", "
 ap.add_argument("--overlap", type=int, default=int(os.environ.get("DITTO_OVERLAP", "50")),
                 help="motion clip overlap (Ditto online default 70 = new motion every 10 frames / 400 ms; 50 = every 30 frames, a third of the diffusion cost, ~1.2 s more lead)")
 ap.add_argument("--emo", default=os.environ.get("DITTO_EMO", "4"), help="default emotion class or name")
+ap.add_argument("--loop-s", type=float, default=float(os.environ.get("UNITY_FACE_LOOP_S", "8")))   # seconds replayed while held
 ap.add_argument("--jpeg", type=int, default=int(os.environ.get("UNITY_FACE_JPEG", "80")))
 ap.add_argument("--fp16", default=os.environ.get("DITTO_FP16", "0"), help="1 = wrap warp/decode in an extra fp16 autocast. Off by default: Ditto's PyTorch warp/decode already autocast fp16 internally")
 ap.add_argument("--fps", type=int, default=25)
@@ -88,7 +89,10 @@ FRAME_DT = 1.0 / FPS
 
 
 class FrameSink:
-    """Receives rendered RGB frames from Ditto's writer thread, paces them out at FPS, encodes JPEG."""
+    """Receives rendered RGB frames from Ditto's writer thread, paces them out at FPS, encodes JPEG.
+    While the face is held (a look or clip renders and owns the GPU) the last few seconds she played are replayed
+    back and forth instead of freezing on one frame: already-rendered JPEGs, no GPU. Replayed frames advance only
+    `view_idx` (what viewers wait on), never `latest_idx` (the lip-sync timeline)."""
 
     def __init__(self, video_path=None, fps=25, **kwargs):
         self.pending = deque()
@@ -101,6 +105,9 @@ class FrameSink:
         self.frames_out = 0
         self.t_last = time.time()
         self.fps_out = 0.0
+        self.history = deque(maxlen=max(2, int(ARGS.loop_s * FPS)))   # last frames she played, for the hold loop
+        self.view_idx = 0           # every frame shown, live or replayed; viewers wait on this
+        self.loop = None            # [frames, position, direction] while held
         self._stop = False
         self.thread = threading.Thread(target=self._playout, daemon=True)
         self.thread.start()
@@ -119,6 +126,9 @@ class FrameSink:
         with self.cond:
             self.latest = jpg
             self.latest_idx += 1
+            self.view_idx += 1
+            self.history.append(jpg)
+            self.loop = None
             self.frames_out += 1
             now = time.time()
             self.fps_out = 0.9 * self.fps_out + 0.1 * (1.0 / max(1e-3, now - self.t_last))
@@ -133,6 +143,27 @@ class FrameSink:
                 cb()
             except Exception:
                 pass
+
+    @staticmethod
+    def held():
+        return bool(FACE is not None and (getattr(FACE, "paused", False) or getattr(FACE, "swapping", False)))
+
+    def _replay(self):
+        """One step of the hold loop: back and forth through what she just played, so there is no jump at the seam."""
+        if self.loop is None:
+            if len(self.history) < 2:
+                return
+            frames = list(self.history)
+            self.loop = [frames, len(frames) - 1, -1]
+        frames, pos, step = self.loop
+        if not 0 <= pos + step < len(frames):
+            step = -step
+        pos += step
+        self.loop[1], self.loop[2] = pos, step
+        with self.cond:
+            self.latest = frames[pos]
+            self.view_idx += 1
+            self.cond.notify_all()
 
     def cue(self, frame_index, callback):
         with self.cond:
@@ -150,6 +181,8 @@ class FrameSink:
                 backlog = len(self.pending)
             if jpg is not None:
                 self._publish(jpg)
+            elif self.held():
+                self._replay()
             # catch up gently if the renderer is ahead; hold the last frame if it is behind
             step = FRAME_DT * (0.85 if backlog > FPS else 1.0)
             next_t += step
@@ -164,9 +197,9 @@ class FrameSink:
         # that connects at startup spins here holding the GIL and starves the motion thread (seen as a
         # minutes-long stall at 0 fps whenever the app connected before the first clip rendered).
         with self.cond:
-            if self.latest is None or self.latest_idx == last_idx:
+            if self.latest is None or self.view_idx == last_idx:
                 self.cond.wait(timeout)
-            return self.latest, self.latest_idx
+            return self.latest, self.view_idx
 
     def queued(self):
         with self.lock:
@@ -461,6 +494,8 @@ class LiveFace:
             new_sink = self.sdk.writer
             with old_sink.cond:
                 new_sink.latest, new_sink.latest_idx, new_sink.frames_out = old_sink.latest, old_sink.latest_idx, old_sink.frames_out
+                new_sink.view_idx, new_sink.loop = old_sink.view_idx, old_sink.loop   # the hold loop carries across the swap
+                new_sink.history.extend(old_sink.history)
                 new_sink.cues = []
             old_sink.close()
             self.sink = new_sink
@@ -529,7 +564,7 @@ class LiveFace:
 
     def health(self):
         return {"ok": True, "loaded": True, "backend": ARGS.backend, "device": self.device, "portrait": os.path.basename(ARGS.portrait),
-                "fps": 0.0 if getattr(self, "paused", False) else round(self.sink.fps_out, 1), "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
+                "fps": 0.0 if getattr(self, "paused", False) else round(self.sink.fps_out, 1), "looping": self.sink.loop is not None, "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
                 "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps, "overlap": ARGS.overlap,
                 "fp16": self.fp16, "stage_ms": self.stage_ms, "lag_frames": int(self.fed_samples // 640 - self.sink.latest_idx),
                 "paused": getattr(self, "paused", False),
