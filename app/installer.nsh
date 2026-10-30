@@ -31,7 +31,7 @@
   ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
   ${If} $R0 != ""
     ReadRegStr $R1 HKCU "${INSTALL_REGISTRY_KEY}" "InstallLocation"
-    MessageBox MB_YESNOCANCEL|MB_ICONQUESTION /SD IDYES "Agent Gen is already installed in$\r$\n$R1$\r$\n$\r$\nYES    update it (the app is replaced; her models, runtimes and settings in $R1\data stay)$\r$\nNO     uninstall everything, the app and her models$\r$\nCANCEL leave it alone" IDYES agentgenUpdate IDNO agentgenRemoveAll
+    MessageBox MB_YESNOCANCEL|MB_ICONQUESTION "Agent Gen is already installed in$\r$\n$R1$\r$\n$\r$\nYES    update it (the app is replaced; her models, runtimes and settings in $R1\data stay)$\r$\nNO     uninstall everything, the app and her models$\r$\nCANCEL leave it alone" /SD IDYES IDYES agentgenUpdate IDNO agentgenRemoveAll
     Quit
   agentgenRemoveAll:
     ${If} $R1 != ""
