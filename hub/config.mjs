@@ -31,10 +31,12 @@ export const cfg = {
   lookStrength: Number(process.env.LOOK_STRENGTH || 0.9),
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
-  clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman,',
-  // which video engine films what: commanded motions and new looks want real body physics (Wan 2.2 5B, slow);
-  // the idle reel wants cheap clips (LTX 2B, fast). The sidecar falls back to ltx when wan is not installed.
-  motionEngine: process.env.MOTION_ENGINE || 'wan',
+  // locked camera: Wan pans and zooms on its own (measured up to 100 px background swing), and the face plays the
+  // clip back and forth, so a moving camera reads as the whole room wobbling
+  clipPrefix: process.env.CLIP_PREFIX || 'realistic video of the same woman, static camera on a tripod, the background and room stay perfectly still,',
+  // which video engine films what. LTX 2B (~15 s a clip) holds the scene still; Wan 2.2 5B (~3 min a clip) moves
+  // bodies more but drifts the camera and freezes her face for the whole render, so it is opt-in (MOTION_ENGINE=wan).
+  motionEngine: process.env.MOTION_ENGINE || 'ltx',
   reelEngine: process.env.REEL_ENGINE || 'ltx',
   // appended to every [[do]] motion: LTX 2B needs to be pushed to move a body (measured +40% motion energy)
   motionPush: process.env.MOTION_PUSH || 'large fast clear movement, energetic, her whole upper body moves, hair swings',

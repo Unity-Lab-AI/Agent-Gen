@@ -13,7 +13,7 @@ card (model_cpu_offload), and the other engine is dropped when switching so the 
 API (127.0.0.1 only)
   GET  /health   -> {"ok", "loaded", "engine", "engines": {"ltx": present, "wan": present}, "busy", ...}
   POST /i2v      {"image_b64" | "from_clip" (path: continue from that clip's last frame), "prompt", "negative"?,
-                  "engine"? ("wan"|"ltx", default wan when present), "frames"?, "fps"?, "width"?, "height"?,
+                  "engine"? ("wan"|"ltx", default ltx), "frames"?, "fps"?, "width"?, "height"?,
                   "steps"?, "guidance"?, "seed"?} -> {"ok", "path", "seconds", "frames", "fps", "seed", "engine"}
   POST /cancel   -> the clip in flight stops at its next step and /i2v answers 409 {"cancelled": true}
   POST /unload   -> frees the GPU
@@ -60,7 +60,7 @@ ENGINES = {
     # measured on the 4070 Ti SUPER: ~0.6 s a step warm at 352x640, so 49 frames x 20 steps is about a minute
     "wan": {"present": lambda: (WAN_DIR / "model_index.json").exists() and (WAN_DIR / "transformer").exists() and not any((WAN_DIR / ".cache").rglob("*.incomplete")), "frames": 49, "fps": 24, "steps": 20, "guidance": 5.0, "frame_step": 4, "max_frames": 161},
 }
-NEG = ("worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
+NEG = ("camera movement, camera pan, zoom, shaky camera, moving background, worst quality, inconsistent motion, blurry, jittery, distorted, extra limbs, extra arms, deformed hands, "
        "morphing face, flicker, watermark, text, static, still image")
 
 
@@ -88,7 +88,7 @@ def device():
 
 
 def pick_engine(req):
-    want = str(req.get("engine") or os.environ.get("UNITY_VIDEO_ENGINE") or "wan").lower()
+    want = str(req.get("engine") or os.environ.get("UNITY_VIDEO_ENGINE") or "ltx").lower()
     if want not in ENGINES or not ENGINES[want]["present"]():
         want = "ltx" if ENGINES["ltx"]["present"]() else ("wan" if ENGINES["wan"]["present"]() else want)
     return want

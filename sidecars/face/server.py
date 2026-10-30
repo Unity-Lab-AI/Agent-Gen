@@ -529,7 +529,7 @@ class LiveFace:
 
     def health(self):
         return {"ok": True, "loaded": True, "backend": ARGS.backend, "device": self.device, "portrait": os.path.basename(ARGS.portrait),
-                "fps": round(self.sink.fps_out, 1), "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
+                "fps": 0.0 if getattr(self, "paused", False) else round(self.sink.fps_out, 1), "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
                 "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps, "overlap": ARGS.overlap,
                 "fp16": self.fp16, "stage_ms": self.stage_ms, "lag_frames": int(self.fed_samples // 640 - self.sink.latest_idx),
                 "paused": getattr(self, "paused", False),

@@ -180,7 +180,7 @@ class Session {
           this.send({ type: 'look', stage: 'animating', kind: tag.kind, prompt, epoch });
           await face.pause();
           await video.makeRoom();
-          const c = await video.clip(res.file, prompt);
+          const c = await video.clip(res.file, prompt, { engine: cfg.motionEngine });
           if (this.closed) return;
           this.currentClip = c.path;
           const f2 = await face.appearance(c.path);
@@ -209,8 +209,8 @@ class Session {
       // LTX 2B is timid with bodies; a pushier description measured +40% motion. The big-motion engine is a model swap, not a prompt.
       const p = `${prompt}, ${cfg.motionPush}`;
       const c = this.currentClip
-        ? await video.clip(null, p, { fromClip: this.currentClip })
-        : await video.clip(this.currentLook || cfg.lookBase, p);
+        ? await video.clip(null, p, { fromClip: this.currentClip, engine: cfg.motionEngine })
+        : await video.clip(this.currentLook || cfg.lookBase, p, { engine: cfg.motionEngine });
       if (this.closed || this.lookSeq !== lookId) return;
       this.currentClip = c.path;
       const f = await face.appearance(c.path);
@@ -239,7 +239,7 @@ class Session {
       try {
         await face.pause();
         await video.makeRoom();
-        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1] });
+        const c = await video.clip(null, `${prompt}, ${motion}, her face stays visible to the camera`, { fromClip: chain[chain.length - 1], engine: cfg.reelEngine });
         if (this.closed || this.lookSeq !== lookId) return;
         const f = await face.appearance(c.path, { extend: true });
         if (!f?.ok) {
