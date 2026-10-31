@@ -1,7 +1,7 @@
 {
   "name": "agent-gen",
   "productName": "Agent Gen",
-  "version": "0.5.25",
+  "version": "0.5.26",
   "private": true,
   "license": "MIT",
   "author": "Unity AI Lab <contact@unityailab.com>",
@@ -31,6 +31,7 @@
       "setup.js",
       "setup.html",
       "paths.js",
+      "installer-stop.ps1",
       "icon.png"
     ],
     "extraResources": [

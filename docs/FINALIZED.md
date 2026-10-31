@@ -137,3 +137,9 @@ Operator words, verbatim: "look at the image she just made,,, how is that anythh
 Done (0.5.25):
 - Cause: the restyle check read her own tag ("black hair with pink streaks, smudged eyeliner"), so a top-off request rendered fresh with no source picture and no face lock. `hub/server.mjs` now decides restyle on the operator's words only.
 - Her current look, its prompt and her face survive restarts: `looks/current.json`, cleared on reset.
+
+### Shut down button — 2026-10-31
+
+Operator words, verbatim: "and i want on the agent gen app a shut down button, that unloads the gpu and shuts down the aspplication freeing up the GPU and stopping all processes for the application"
+
+Done (0.5.26): "Shut down" in the main window footer → `agentgen:shutdown` (`app/main.js`): supervisor stop + the installer's process sweep (`installer-stop.ps1`, now packed in the app), then quit.

@@ -176,6 +176,8 @@ What this costs: image-to-video on one 16 GB card is seconds-to-minutes per clip
 
 ## Packaging, install, uninstall (M8, 2026-10-30)
 
+**Shut down button (2026-10-31).** Footer button in the app window: stops every sidecar, then runs `installer-stop.ps1` (shipped in the asar, copied to temp) against the install folder, which also kills adopted servers, her brain on :11435 and orphaned model runners, so the GPU is empty; then the app quits.
+
 Operator, verbatim: *"this all needs to work as one sole .exe"*; *"the .exe has to install all things it needs to run with option to uninstall oall things also if wanted"*; *"the .exe prperly runs everything without fucking cmd windows poping open and closed all the fucking time"*.
 
 - **One exe.** `app/` is the Electron shell; electron-builder makes one artifact, `AgentGen-Setup-<version>.exe` (NSIS, per-user, choice of folder). Operator: *"why two .exe? ther shopuld only be one"*. Resources shipped inside: hub (with node_modules), ui, sidecars (no venvs), assets, scripts, Ditto's source, her Modelfile, her voice model. The packaged hub runs on Electron's own binary (`ELECTRON_RUN_AS_NODE`), so no system Node is needed.

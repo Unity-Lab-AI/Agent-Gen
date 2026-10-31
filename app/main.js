@@ -91,6 +91,22 @@ function shutdown() { if (down) return; down = true; try { sup && sup.stop(); } 
 
 ipcMain.handle('agentgen:status', () => status);
 ipcMain.handle('agentgen:quit', () => app.quit());
+// Shut down: stop every sidecar it started, then the same sweep the installer uses (servers adopted on her ports, her
+// brain on :11435, orphaned model runners, anything running from the install folder), so the GPU is free; then quit.
+ipcMain.handle('agentgen:shutdown', async () => {
+  log('shutdown: stopping everything and freeing the GPU');
+  shutdown();
+  try {
+    const ps1 = path.join(require('os').tmpdir(), `agentgen-stop-${process.pid}.ps1`);
+    fs.writeFileSync(ps1, fs.readFileSync(path.join(__dirname, 'installer-stop.ps1')));
+    const dir = DEV ? path.join(__dirname, '..') : path.dirname(process.execPath);
+    await new Promise(res => require('child_process').execFile('powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', ps1, '-Dir', dir],
+      { windowsHide: true, timeout: 60000 }, () => res()));
+    fs.rmSync(ps1, { force: true });
+  } catch (e) { log(`shutdown sweep: ${e.message}`); }
+  app.quit();
+});
 ipcMain.handle('agentgen:setup:plan', async () => ({
   data: setup.DATA, free: setup.freeBytes(setup.DATA),
   steps: await Promise.all(setup.plan(ROOT).map(async s => ({ id: s.id, title: s.title, gb: s.gb, done: !!(await s.done()) }))),
