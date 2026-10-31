@@ -170,3 +170,9 @@ Done (0.5.29):
 - Paint as its own ink; clause-by-clause parsing with body parts and garments; SegFormer clothes parsing (CPU) finds the exact area, the mark is sized to fit it, a missing part is an error; close-range blend for shapes and big words. Visible test on her default picture, 8 asks (marker, paint, lipstick; chest, shoulder, stomach, belly, thigh, neck, cleavage + stomach): all on the part asked, none on her bikini or hair; the star needed a shoulder fix and was rerun.
 - Model fetched by setup (`scripts/fetch-models.py segformer`, `app/paths.js` `have.segformer`), listed in THIRD-PARTY-NOTICES as non-commercial.
 - Test images from this session deleted from `.run/` (never tracked).
+
+### README releases link + both remotes — 2026-10-31
+
+Operator words, verbatim: "update the readme with link  Releases first thing for the releases of the most curretn .exe and make sure releases in the repos is right and its like firsst thing in the read me with link to releases listing most current first and make sure bnoth remotes are good to go"
+
+Done: README opens with the Releases link (latest, the current tag, all releases newest first, the Forgejo mirror); a corrupted path in "Run from source" fixed; marker/paint/lipstick and Shut down described. feature/m8-ship merged to develop and main on github and origin; GitHub release v0.5.29 (latest) with the installer.
