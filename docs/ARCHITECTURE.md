@@ -172,6 +172,8 @@ What this costs: image-to-video on one 16 GB card is seconds-to-minutes per clip
 
 **Looks vs motion (2026-10-30).** Operator: *"she should only change or take off outfits when told to, just telling her to bounce or jiggle or dance should not instanty generate a new self image unless told that"*. Two lines in her stream: `[[img: ...]]` only when what she wears, her body, hair or place changes (new image, then clip, then face); `[[do: ...]]` for a movement in the look she already has (clip from the current clip's last frame or current look, no new image, swapped onto her face). A stage direction with no line counts as `[[do]]`. The idle reel keeps describing the look prompt, not a later motion.
 
+**Look persistence (2026-10-31).** A clothing change edits her current picture (img2img + face lock). Only the operator's words can make it a restyle (fresh render, new face): her own tag re-describes her hair and makeup every time. The current look, prompt and face are saved to `looks/current.json` and restored on start; a reset deletes it.
+
 ## Packaging, install, uninstall (M8, 2026-10-30)
 
 Operator, verbatim: *"this all needs to work as one sole .exe"*; *"the .exe has to install all things it needs to run with option to uninstall oall things also if wanted"*; *"the .exe prperly runs everything without fucking cmd windows poping open and closed all the fucking time"*.
