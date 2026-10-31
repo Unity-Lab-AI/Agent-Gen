@@ -40,7 +40,10 @@ export function parseMarks(text) {
       const m = c.match(/\b(?:write|scribble|scrawl)\s+(?:the word\s+)?(\S+(?:\s+\S+)?)\s+(?:on|across|over|onto|down)\b/i);
       if (m && !SHAPES.some(([re]) => re.test(m[1]))) words.push(m[1].replace(/[^\w!?' -]/g, ''));
     }
-    const shapes = words.length ? [] : SHAPES.filter(([re]) => re.test(c)).map(([, s]) => s);
+    // shapes named outside the quotes ("write "hole" with a down arrow"), never a shape word that is the writing itself
+    const bare = c.replace(/["“”][^"“”]*["“”]/g, ' ');
+    const shapes = SHAPES.filter(([re]) => re.test(bare)).map(([, s]) => s)
+      .filter(s => !words.some(w => new RegExp(`\\b${s}`, 'i').test(w)));
     const ink = color || (tool === 'lipstick' ? 'lipstick' : 'black');
     const tilt = () => Math.round((Math.random() * 8 - 4) * 10) / 10;
     for (const w of words) items.push({ text: w, part: part || 'stomach', tool, color: ink, angle: tilt() });

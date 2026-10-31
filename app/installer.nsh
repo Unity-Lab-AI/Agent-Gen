@@ -108,6 +108,14 @@
 ; the wizard copies the 430 MB app; the honest total is what the first-run screen downloads into <folder>\data
 !macro customWelcomePage
   !define MUI_WELCOMEPAGE_TITLE "Agent Gen"
-  !define MUI_WELCOMEPAGE_TEXT "This copies the app itself (about 430 MB) into the folder you pick next.$\r$\n$\r$\nOn first launch she installs what she runs on into that same folder: a Python runtime, PyTorch, her model weights and her brain. About 80 GB, so pick a drive with room.$\r$\n$\r$\nNVIDIA 16 GB card, Windows 11, 32 GB RAM."
+  !define MUI_WELCOMEPAGE_TEXT "Requirements:$\r$\n  - Windows 11, 64-bit$\r$\n  - NVIDIA GPU with 16 GB VRAM (RTX 30/40/50)$\r$\n  - 32 GB RAM$\r$\n  - 100 GB of free storage for the install folder$\r$\n$\r$\nThis copies the app itself (about 430 MB) into the folder you pick next. On first launch she installs what she runs on into that same folder: a Python runtime, PyTorch, her model weights and her brain, about 80 GB, plus room for her looks and clips. Pick a drive with 100 GB free."
+  ; the folder page's own "Space required" only counts the app; this says what the folder really needs
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "Pick a folder on a drive with at least 100 GB free. The app is about 430 MB, but on first launch it downloads about 80 GB of runtimes and model weights into this same folder, plus her looks and clips.$\r$\n$\r$\nNeeds Windows 11 64-bit, an NVIDIA GPU with 16 GB VRAM and 32 GB RAM."
   !insertmacro MUI_PAGE_WELCOME
+!macroend
+
+; "Space required" on the folder page counts what the folder will really hold (about 100 GB with the first-run
+; download), not just the app files, so Windows' own free-space check warns on a drive that is too small
+!macro customInstall
+  AddSize 104857600
 !macroend

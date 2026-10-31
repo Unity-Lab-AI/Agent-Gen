@@ -2,7 +2,7 @@
 
 ## ⬇️ [Releases — download the latest `AgentGen-Setup.exe`](https://github.com/Unity-Lab-AI/Agent-Gen/releases/latest)
 
-**Current: [v0.5.30](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.30)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
+**Current: [v0.5.31](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.31)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
 
 Unity, live, in one window. Her face moves when she talks, her voice is her own, she hears you, and when you tell her to put on boxing gloves she puts on boxing gloves. One `.exe` opens everything and closes everything. Nothing leaves the machine.
 
@@ -30,7 +30,7 @@ Everything talks over 127.0.0.1. Full design: [`docs/ARCHITECTURE.md`](docs/ARCH
 | OS | Windows 11, 64-bit | the installer, the hidden-console process model |
 | GPU | NVIDIA, 16 GB VRAM, Ampere or newer (RTX 30/40/50) | brain + live face at once; one video engine at a time |
 | RAM | 32 GB | the video engines stream their layers through system RAM |
-| Disk | 120 GB free on C: | about 80 GB of weights, PyTorch, runtimes, room for her clips |
+| Storage | 100 GB free for the install folder (any drive) | about 80 GB of weights, PyTorch, runtimes, plus room for her looks and clips |
 | Audio | speakers or headphones, a microphone to talk | her voice, your voice |
 | Network | once, for the first-run download | nothing after that |
 

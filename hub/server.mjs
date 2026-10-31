@@ -187,6 +187,11 @@ class Session {
       this.adoptEpoch = epoch;
       const job = this.adopt(this.lastPic, this.lastPicPrompt, userText, epoch);
       this.queueJob(job);
+    } else if (parseMarks(userText)) {
+      // marker / paint / lipstick on her is drawn from the operator's words, whatever line her brain writes: it
+      // answered "write hole with a down arrow in lipstick" with a movement clip and nothing got drawn
+      this.onTag({ kind: 'img', text: userText, mark: true }, epoch);
+      this.markEpoch = epoch;
     }
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
     const messages = [{ role: 'system', content: readPersona() }, ...this.history];
@@ -232,6 +237,10 @@ class Session {
     if (!prompt) return;
     if (this.adoptEpoch === epoch && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
       this.log(`tag ${tag.kind} ignored: this turn adopts the last picture as her look`);
+      return;
+    }
+    if (this.markEpoch === epoch && !tag.mark && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
+      this.log(`tag ${tag.kind} ignored: this turn is marker on her, already drawn`);
       return;
     }
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
@@ -298,7 +307,8 @@ class Session {
         if (this.closed) return;
         if (restyle) this.lookFace = res.file;
         this.currentLook = res.file;
-        this.currentLookPrompt = prompt;           // the idle reel keeps describing THIS look, not a later motion
+        // the idle reel keeps describing THIS look, not a later motion; a mark keeps the look she had (with the ink)
+        this.currentLookPrompt = marks ? (this.currentLookPrompt || cfg.idleLookPrompt) : prompt;
         this.saveLook();
         this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
         if (cfg.lookDrivesFace) {
@@ -306,6 +316,8 @@ class Session {
           this.send({ type: 'look', stage: f?.ok ? 'live' : 'image-only', kind: tag.kind, prompt, face: f, epoch });
           if (f?.ok) await face.settle();          // the new look on screen before the video render holds the frame
         }
+        // a mark is a still edit of the look she has: no clip of the operator's sentence (her idle reel takes it up)
+        if (marks) return;
         // motion: when the video engine is up, every look also becomes a clip of her doing it
         const vh = await video.ready();
         if (vh.ok && vh.model_present) {
