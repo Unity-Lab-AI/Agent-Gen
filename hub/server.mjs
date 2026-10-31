@@ -14,12 +14,15 @@ import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
 import * as image from './image/client.mjs';
 import * as video from './video/client.mjs';
+import { parseMarks } from './image/marks.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 const LOOK_STATE = path.join(image.looksDir, 'current.json');   // her look across restarts
-const CLOTHES = /(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)/i;
+const CLOTHES = /\b(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)\b/i;
+const ADDS = /\b(add|put on|wear|give (yourself|you)|draw|write|paint|lipstick|necklace|collar|choker|earrings?|glasses|sunglasses|hat|bow|ribbon|tattoo|piercing|bracelet|gloves|mask|makeup)\b/i;
+const UNDRESS = /\b(take off|take of|remove|strip|undress|naked|nude|topless|bottomless|change (into|your)|swap|instead of)\b/i;
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
 
 // "that's you now" after a picture: the picture she just made IS her new look. Her brain re-described her default
@@ -280,7 +283,16 @@ class Session {
         const keep = !restyle && !CLOTHES.test(prompt) ? (this.currentLookPrompt || cfg.idleLookPrompt) : '';
         const src = image.editSource(this.currentLook, restyle);
         const faceBox = src ? await face.facebox(src) : null;
-        const res = await image.render(keep ? `${prompt}, ${keep}` : prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace, faceBox });
+        // "write SLUT on your stomach", "draw an arrow on your belly": the ink is drawn where it was asked and blended
+        // in, on her current picture (the model cannot spell or aim a mark, and redrew her clothes trying)
+        const marks = src && !restyle ? parseMarks(this.lastUserText, faceBox) : null;
+        if (marks) this.log(`marker: ${JSON.stringify(marks.items)}`);
+        const res = marks
+          ? { ...(await image.mark(src, marks.items, marks.faceH)), prompt }
+          : await image.render(keep ? `${prompt}, ${keep}` : prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace, faceBox,
+              // adding something (a collar, glasses, a necklace) repaints lightly so her clothes come from the picture:
+              // a full-strength repaint re-rolled them and she undressed or changed outfits on her own
+              strength: ADDS.test(this.lastUserText || '') && !UNDRESS.test(this.lastUserText || '') ? cfg.lookAddStrength : undefined });
         if (this.closed) return;
         if (restyle) this.lookFace = res.file;
         this.currentLook = res.file;

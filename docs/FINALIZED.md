@@ -153,3 +153,11 @@ Done (0.5.27):
 - Edits now inpaint below her chin only (`hub/image/client.mjs`, face box from `sidecars/face` `/facebox`, fallback in `sidecars/image` `box: "body"`); prompts with no clothing words carry her current look. Tested on the 4070 Ti SUPER: skin edit on the black-hair look and top-off on the base photo both kept the same woman and room (`.run/inpaint-test/`).
 - Reset puts her default picture back on the face, not only in memory.
 - Model limit that stays: SD 1.5 cannot spell, so written words on skin come out as scribbles.
+
+### Marker and lipstick on her skin — 2026-10-31
+
+Operator words, verbatim: "do you see the issue? look at the image she made versus what was told to her to add to her current image and you tell me where she went wrong"; "can you show me none headless versions of what it would look like if coded scripted to add this ability"; "the third one looks the best the " draw + blend"; "lets do it!"; "what if i tell her to do it in lipstick test that"; "and use her default image not the creations"; "okay test it first, we need a good test like the firs draw+blend test before we go with it"; "okay thats good the letters are a little thick but that can be set to verty but lets make the letter thickness of the lines of the letters max out a little thinner than the max used in that test as the mine one test is almost un readable from the letters lines being too thick"
+
+Done (0.5.28):
+- `/mark` in the image sidecar + `hub/image/marks.mjs`: marker and lipstick words and shapes drawn where asked, multiply ink with grain, no model pass. Tested visibly on her default picture (`.run/marker-proto/sheet8.png`): "Shit", arrow, "SLUT", heart, "MINE" all legible, <0.1 s each. Rejected along the way: model blend 0.3 (respelled every word), ink laid back after a blend (ghosted letters / pasted look).
+- Additive asks repaint at 0.45 so clothes stay; the 0.5.27 `CLOTHES` regex had a control character instead of `\b` and never matched, fixed.

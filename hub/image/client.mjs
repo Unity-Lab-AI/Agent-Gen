@@ -76,6 +76,19 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
   return { file, url: `/looks/look-${id}.png`, seed: Number(r.headers.get('x-seed')), seconds: Number(r.headers.get('x-seconds')), prompt: full };
 }
 
+/** Marker on her skin: draw `items` on `sourceFile` and blend it in (image sidecar /mark). */
+export async function mark(sourceFile, items, faceH) {
+  const body = { image: fs.readFileSync(sourceFile).toString('base64'), items, face_h: faceH, max_side: cfg.lookMaxSide, steps: cfg.lookSteps,
+    negative: NEG };
+  const r = await fetch(`${cfg.imageUrl}/mark`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(180000) });
+  if (!r.ok) { let e = `mark ${r.status}`; try { e = (await r.json()).error || e; } catch {} throw new Error(e); }
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const file = path.join(OUT, `look-${id}.png`);
+  fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
+  return { file, url: `/looks/look-${id}.png`, seed: Number(r.headers.get('x-seed')), seconds: Number(r.headers.get('x-seconds')) };
+}
+
 /** The picture an edit starts from (her current look, else her default one); null for a fresh render. */
 export const editSource = (sourceFile, fresh) => fresh ? null : [sourceFile, cfg.lookBase].find(f => f && fs.existsSync(f)) || null;
 
