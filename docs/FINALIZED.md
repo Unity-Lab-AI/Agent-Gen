@@ -183,3 +183,16 @@ Operator words, verbatim: "okay major issue!!!!!! look at the image she made and
 
 Cause: "draw "slut" across your skin clevage" hit the restyle check's bare `skin` term, so she was rendered fresh (no picture, no face lock, a different woman) and the marker path, which skips restyles, never ran; the stranger was then saved as her face.
 Done (0.5.30): restyle only on a skin COLOUR ("dark skin", "pale complexion"), and a marker / paint / lipstick ask is never a restyle (`hub/server.mjs`, `hub/image/client.mjs`). The bad saved look was cleared so she starts from her default picture.
+
+### Marker drawn even when her brain writes a movement — 2026-10-31
+
+Operator words, verbatim: "okay do u see the issue???? she didnt make an image first!"
+
+Cause: "write "hole" with down arrow in lipstick on your stomach" got a `[[do:]]` movement line from her brain, and marks only ran on `[[img:]]`, so nothing was drawn and a clip of her miming it was rendered. Also the parser dropped shapes in a clause that had quoted words, and the blend respelled "hole" as "holo".
+Done (0.5.31): the hub draws marks from the operator's words the moment they are said (`hub/server.mjs`, like "that's you now"); her image/movement lines that turn are ignored; a mark keeps her look description and renders no clip of the sentence. Shapes named outside the quotes are kept (`hub/image/marks.mjs`). A second mark on the same part goes under the first with a gap; words are never blended (`sidecars/image/server.py`). Visible test: "hole" in lipstick on her stomach with a down arrow under it.
+
+### Installer states the real requirements — 2026-10-31
+
+Operator words, verbatim: "and add to the setup requirment pade 100 g of storage with the 32 g ram and 16g gpu and windows notice so people know how much storage is recommended for the folder as its misleading with only 400mb"; "no fucker u dont install silently we do it with the .exe only"; "to test it as well as use it"
+
+Done (0.5.31): the setup's welcome page lists the requirements (Windows 11 64-bit, NVIDIA 16 GB VRAM, 32 GB RAM, 100 GB free for the install folder); the folder page says the same above the picker; "Space required" reports ~100 GB (`AddSize` in `customInstall`, `app/installer.nsh`) so Windows' free-space check warns on a small drive. README storage line matches. Installs and tests go through the setup .exe's own wizard, never silent.

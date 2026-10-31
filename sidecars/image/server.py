@@ -507,7 +507,7 @@ def _word_img(text, th, item):
     return tmp.rotate(float(item.get("angle", 0)), expand=True, resample=Image.BICUBIC)
 
 
-def _place(src, seg, item, chin, fh, taken):
+def _place(src, seg, item, chin, fh, taken, prev=None):
     """The ink layer for one item, sized to fit the part it was asked on: (layer, on_cloth, size), or raises."""
     import numpy as np
     from PIL import Image, ImageFilter
@@ -515,9 +515,20 @@ def _place(src, seg, item, chin, fh, taken):
     m = _area(seg, part, chin, fh)
     if m is None:
         raise ValueError("her %s is not in the picture" % part)
-    m &= ~taken
+    gap = max(4, int(fh * 0.08))
+    m &= _erode(~taken, gap)   # keep clear of what is already drawn, with a gap
+    if not m.any():
+        raise ValueError("no room left on her %s" % part)
     ys, xs = np.nonzero(m)
     target = (float(np.median(xs)), float(np.median(ys)))
+    if prev is not None:
+        # a second mark on the same part goes under the first ("hole" with a down arrow): same centre line, below it,
+        # and only if nothing fits below does it go wherever there is room
+        below = m.copy()
+        below[:prev[3] + gap] = False
+        if below.sum() > (fh * 0.2) ** 2:
+            m = below
+            target = ((prev[0] + prev[2]) / 2.0, prev[3] + gap)
     if "shoulder" in part or "arm" in part:
         # her side only: the arm's own pixels when they show, else the outer edge of her torso on that side
         arm = m & (seg == SEG["larm" if part.startswith("left") else "rarm"])
@@ -534,7 +545,7 @@ def _place(src, seg, item, chin, fh, taken):
         th = int(big if len(text) <= 5 else big * 0.8)
         while th >= max(10, int(fh * 0.12)):
             w = _word_img(text, th, item)
-            at = _fit_box(m, w.width, w.height, target)
+            at = _fit_box(m, w.width, w.height, (target[0], target[1] + (w.height / 2 if prev is not None else 0)))
             if at:
                 lay = Image.new("L", src.size, 0)
                 lay.paste(w, at, w)
@@ -543,7 +554,7 @@ def _place(src, seg, item, chin, fh, taken):
         raise ValueError("no room for \"%s\" on her %s" % (text, part))
     side = int(fh * (1.1 if item.get("shape") == "arrow" else 0.8))
     while side >= int(fh * 0.25):
-        at = _fit_box(m, side, side, target)
+        at = _fit_box(m, side, side, (target[0], target[1] + (side / 2 if prev is not None else 0)))
         if at:
             it = {**item, "x": (at[0] + side / 2) / src.size[0], "y": (at[1] + side / 2) / src.size[1]}
             return _mark_layer(src.size, it, side), cloth, side
@@ -564,9 +575,11 @@ def render_mark(req):
     t0 = time.time()
     seg = _parse(src)
     taken = np.zeros(seg.shape, bool)
-    out, placed = src, []
+    out, placed, last = src, [], {}
     for it in req.get("items") or []:
-        lay, cloth, size = _place(src, seg, it, chin, fh, taken)
+        part = it.get("part") or "stomach"
+        lay, cloth, size = _place(src, seg, it, chin, fh, taken, last.get(part))
+        last[part] = lay.getbbox()
         taken |= np.asarray(lay) > 20
         color = INK.get(str(it.get("color") or "black").lower(), INK["black"])
         opacity = {"lipstick": 0.8, "paint": 0.95}.get(it.get("tool"), 0.88) * (0.85 if cloth else 1.0)
@@ -574,13 +587,13 @@ def render_mark(req):
         placed.append((lay, it, cloth, size))
     if req.get("blend") is False:
         return out, 0, time.time() - t0
-    # Blend at close range, and only what survives it: the model works on a grid 8x coarser than the picture, so
-    # small letters get respelled ("kiss me" -> "Blss Me"). Shapes and big words are cut out, blown up, blended on and
-    # around the strokes, shrunk back and feathered in; small words keep the ink as drawn.
+    # Blend shapes at close range: cut out, blown up, blended on and around the strokes, shrunk back and feathered in.
+    # Words keep the ink as drawn: the model works on a grid 8x coarser than the picture and respells them even
+    # blown up ("kiss me" -> "Blss Me", "hole" -> "holo").
     _load()
     final = out
     for lay, it, cloth, size in placed:
-        if it.get("text") and size < fh * 0.38:
+        if it.get("text"):
             continue
         b = lay.getbbox()
         pad = max(16, int(0.35 * max(b[2] - b[0], b[3] - b[1])))
