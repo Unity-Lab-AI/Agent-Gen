@@ -85,7 +85,9 @@ export const cfg = {
 
   // her eyes: camera / screen frames described by a small vision model on the same Ollama (any brain can use it)
   visionModel: process.env.VISION_MODEL || 'qwen3-vl:4b',
-  visionKeepAlive: process.env.VISION_KEEP_ALIVE || '5m',
+  // unloaded after every look: brain 8.8 GB + eyes 3.4 GB + the face filled the 16 GB card and her replies crawled
+  // at a word a minute; a cold look costs ~5 s, the brain keeps the card
+  visionKeepAlive: process.env.VISION_KEEP_ALIVE || '0',
   visionTimeoutMs: Number(process.env.VISION_TIMEOUT_MS || 60000),
 
   personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'unity.txt'),
