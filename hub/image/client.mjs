@@ -35,7 +35,8 @@ const RESTYLE = new RegExp([
   /\b(brown|blonde?|black|red|auburn|grey|gray|silver|pink|blue|green|purple|white|ginger|dark|light|platinum|copper|chestnut|honey)[- ](hair|haired)\b/,
   /\bhair (is|that is)\b/, /\b(no|without( any)?) (streaks|goth|makeup|make-up|eyeliner)\b/,
   /\b(blonde|brunette|redhead|ginger)\b/, /\b(makeup|make-up|eyeliner|mascara|lipstick|freckles)\b/,
-  /\b(skin|complexion)\b/, /\b(caucasian|african|asian|latina|hispanic|indian|arab|nubian|nile|ebony|ethnicity)\b/,
+  // a skin COLOUR, never "skin" alone: "write slut across your skin" made a stranger
+  /\b(dark|darker|pale|paler|tan|tanned|olive|brown|black|white|fair|light|lighter|ebony|porcelain)[- ](skin|skinned|complexion)\b/,/\b(caucasian|african|asian|latina|hispanic|indian|arab|nubian|nile|ebony|ethnicity)\b/,
   /\b(white|black|brown) (woman|girl|lady|beauty)\b/, /\bnatural look\b/,
   // someone else entirely: another sex, age or kind of body ("a 40 year old man")
   /\b(man|men|male|guy|dude|boy|gentleman|husband|father|dad|grandpa|grandfather|grandma|grandmother|elderly|beard|bearded)\b/,
