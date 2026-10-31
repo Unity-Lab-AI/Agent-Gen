@@ -15,6 +15,7 @@ Unity, live, in one window. Her face moves when she talks, her voice is her own,
 | Brain | Ollama, private server, `unity-local` (dolphin3 8B + her persona) | 11435 |
 | Voice | unity-voice-v2, the lab's own TTS, 63 emotion variants | 5123 |
 | Ears | faster-whisper | 5125 |
+| Eyes | `qwen3-vl:4b` on the same Ollama: describes your camera and screen | 11435 |
 | Live face | Ditto talking-head over her current look or clip | 5126 |
 | Looks | Stable Diffusion 1.5 + IP-Adapter face lock | 5124 |
 | Motion | Wan 2.2 TI2V-5B at 480x832 for everything she does, each clip from her clean look | 5127 |
@@ -56,6 +57,8 @@ Say something. Whisper hears it, the brain answers in short spoken lines, each l
 Left alone she does her own thing: she picks what to do, films it, and keeps going. While a clip renders she loops what she was just doing instead of freezing. Talk to her and any render in flight is dropped, so she answers right away and the card is never shared between her brain and the video engine.
 
 Tell her to write or draw on herself ("write BRAT on your thigh in purple paint", "a heart on your chest in lipstick") and it lands on that part of her, skin or clothes, sized to fit; a part that is not in the picture is not guessed at.
+
+**Show camera** / **Show screen** (footer) let her see you and your screen: one still of each goes with every message you say or type, so she can react to what you're wearing or what's on your screen. Nothing is streamed or saved.
 
 **Shut down** (footer) unloads her from the GPU, stops every Agent Gen process and closes the app. **Storage** (footer) shows where her looks, clips, logs and conversations live and clears any of them, or resets her to fresh without reinstalling.
 

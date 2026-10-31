@@ -2,6 +2,7 @@
 // by the viseme track. The photoreal renderer (M3) replaces the #face element and subscribes to the same events.
 import { createListener } from './listen.js';
 import { createPlayer } from './player.js';
+import { createEyes } from './eyes.js';
 
 const $ = s => document.querySelector(s);
 const log = $('#log'), diag = $('#diag'), mouth = $('#mouth'), face = $('#face'), visemeEl = $('#viseme'), stateEl = $('#state'), levelEl = $('#level i');
@@ -64,6 +65,7 @@ function onMsg(m) {
       diagLine(`speak #${m.seq} ${m.delivery.emotion}/${m.delivery.speech_act} i=${m.delivery.intensity} p=${m.delivery.pace} ${m.duration}s synth ${m.synth_ms}ms${m.delivery.notes?.length ? ' (' + m.delivery.notes.join('; ') + ')' : ''}`);
       break;
     }
+    case 'seen': for (const x of m.seen) diagLine(`sees ${x.source} (${x.ms} ms): ${x.text || x.error || 'nothing'}`); break;
     case 'speak_error': diagLine(`voice error: ${m.error}`); break;
     case 'look': {
       if (m.stage === 'rendering') { setState('changing…'); addMsg('sys', `rendering: ${m.prompt.slice(0, 90)}`); }
@@ -101,7 +103,7 @@ const listener = createListener({
   onSpeechStart: () => setState('listening…'),
   onSpeechEnd: ({ pcm, sampleRate, durationMs, speechMs }) => {
     setState('heard, sending');
-    send({ type: 'utterance', pcm_b64: b64(pcm), sampleRate, durationMs, speechMs });
+    send({ type: 'utterance', pcm_b64: b64(pcm), sampleRate, durationMs, speechMs, frames: eyes.grab() });
   },
   onBargeIn: () => { player.stop(); send({ type: 'interrupt', reason: 'barge-in' }); },
   onTooShort: ({ speechMs }) => { diagLine(`too short to be a word (${speechMs}ms)`); setState('idle'); },
@@ -149,8 +151,20 @@ if (window.agentgen?.isApp) {
   };
 }
 $('#text').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.value.trim()) { player.unlock(); send({ type: 'text', text: e.target.value.trim() }); e.target.value = ''; }
+  if (e.key === 'Enter' && e.target.value.trim()) { player.unlock(); send({ type: 'text', text: e.target.value.trim(), frames: eyes.grab() }); e.target.value = ''; }
 });
+
+// ---- her eyes: webcam and screen share, one still of each goes with every message -------------------------------------
+const eyes = createEyes({
+  preview: $('#eyes'),
+  onChange: (source, on, err) => {
+    const b = $(source === 'camera' ? '#btn-cam' : '#btn-screen');
+    b.classList.toggle('on', on); b.textContent = `${on ? 'Stop' : 'Show'} ${source === 'camera' ? 'camera' : 'screen'}`;
+    if (err) addMsg('sys', `${source}: ${err}`);
+  },
+});
+$('#btn-cam').onclick = () => eyes.toggle('camera');
+$('#btn-screen').onclick = () => eyes.toggle('screen');
 
 // ---- health -------------------------------------------------------------------------------------------------------
 async function health() {
@@ -159,8 +173,9 @@ async function health() {
     setLight('#l-voice', h.voice?.ok); setLight('#l-speech', h.speech?.ok); setLight('#l-brain', h.brain?.ok, h.brain?.model || '');
     setLight('#l-face', h.face?.ok, h.face?.ok ? `${h.face.fps} fps` : '');
     setLight('#l-image', h.image?.ok, h.image?.ok ? (h.image.loaded ? 'ready' : 'cold') : '');
+    setLight('#l-eyes', h.vision?.ok);
     setFaceLive(!!h.face?.ok, h.face?.stream);
-  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); setLight('#l-face', false); setLight('#l-image', false); setFaceLive(false); }
+  } catch { setLight('#l-voice', false); setLight('#l-speech', false); setLight('#l-brain', false); setLight('#l-face', false); setLight('#l-image', false); setLight('#l-eyes', false); setFaceLive(false); }
 }
 const feed = $('#feed');
 function setFaceLive(on, stream) {

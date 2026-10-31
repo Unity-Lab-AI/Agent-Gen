@@ -15,6 +15,7 @@ import * as face from './face/client.mjs';
 import * as image from './image/client.mjs';
 import * as video from './video/client.mjs';
 import { parseMarks } from './image/marks.mjs';
+import * as vision from './vision/client.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -42,8 +43,8 @@ async function probe(url, ms = 2500) {
 }
 
 async function healthAll() {
-  const [voice, speech, brain, faceH, img, vid] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health(), image.health(), video.health()]);
-  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH, image: img, video: vid };
+  const [voice, speech, brain, faceH, img, vid, eyes] = await Promise.all([probe(`${cfg.voiceUrl}/health`), probe(`${cfg.speechUrl}/health`), brainHealth(), face.health(), image.health(), video.health(), vision.health()]);
+  return { ok: true, hub: { port: cfg.port, persona: path.basename(cfg.personaFile), wakeWord: cfg.wakeWord }, voice, speech, brain, face: faceH, image: img, video: vid, vision: eyes };
 }
 
 async function transcribe(pcm_b64, sampleRate) {
@@ -143,7 +144,7 @@ class Session {
     this.send({ type: 'interrupted', epoch: this.epoch, reason });
   }
 
-  async onUtterance({ pcm_b64, sampleRate = 16000, durationMs }) {
+  async onUtterance({ pcm_b64, sampleRate = 16000, durationMs, frames }) {
     if (!pcm_b64) return;
     this.send({ type: 'status', stage: 'transcribing' });
     let heard;
@@ -157,17 +158,17 @@ class Session {
     if (!wake.matched) return this.send({ type: 'heard', text, dropped: 'no-wake-word', wake });
     const utter = (wake.remainder || text).trim() || text;
     this.send({ type: 'heard', text: utter, seconds: heard.seconds, durationMs });
-    await this.respond(utter);
+    await this.respond(utter, frames);
   }
 
-  async onText({ text }) {
+  async onText({ text, frames }) {
     text = String(text || '').trim();
     if (!text) return;
     this.send({ type: 'heard', text, typed: true });
-    await this.respond(text);
+    await this.respond(text, frames);
   }
 
-  async respond(userText) {
+  async respond(userText, frames) {
     if (this.busy) this.interrupt('new-input');
     // the operator always wins: any clip rendering now (idle or asked for) is cancelled and the reply waits until
     // the render has really stopped, so the brain never shares the card with Wan (that jam crawled for minutes).
@@ -198,9 +199,19 @@ class Session {
     const splitter = new SentenceSplitter();
     const tags = new TagFilter(tag => this.onTag(tag, epoch));
     let full = '';
-    this.send({ type: 'status', stage: 'thinking', epoch });
+    this.send({ type: 'status', stage: frames?.length ? 'looking' : 'thinking', epoch });
     try {
       if (freeing) await freeing;           // the card is free before her brain loads
+      if (frames?.length) {
+        // what she sees goes in front of the operator's words for this turn only; the history keeps their words
+        const seen = await vision.describe(frames, { signal: ac.signal });
+        if (epoch !== this.epoch) return;
+        for (const s of seen) this.log(`sees (${s.source}, ${s.ms} ms): ${s.text || s.error || 'nothing'}`);
+        this.send({ type: 'seen', seen, epoch });
+        const ctx = vision.asContext(seen);
+        if (ctx) messages[messages.length - 1] = { role: 'user', content: userText + ctx };
+        this.send({ type: 'status', stage: 'thinking', epoch });
+      }
       for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}`, waitRenderMs: 30000 })) {
         if (epoch !== this.epoch) return;
         full += delta;

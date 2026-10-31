@@ -190,6 +190,15 @@ Operator, verbatim: *"this all needs to work as one sole .exe"*; *"the .exe has 
 - **Building on Windows without admin.** electron-builder's `winCodeSign` helper pack holds macOS symlinks that 7-Zip cannot create without the symlink privilege, so the first `npm run dist` fails with "A required privilege is not held by the client". Fix once: unpack the cached `%LOCALAPPDATA%\electron-builder\Cache\winCodeSign\*.7z` into `winCodeSign-2.6.0/` with `7za x -xr!darwin`, then build again. `CSC_IDENTITY_AUTO_DISCOVERY=false` (no code signing certificate yet).
 - **No console windows.** Every child is spawned with a hidden console. The brain is the app's own private Ollama server on :11435 (`app/supervisor.js`): a runner started by the tray app's console-less server gets a new console that Windows Terminal flashes on screen; under the app's hidden console it inherits and stays invisible (measured: tray app = conhost + OpenConsole per runner; private server = none). The video sidecar writes mp4 with OpenCV and the face sidecar reads clips with OpenCV, so no ffmpeg child processes either. LTX frees its GPU blocks after every run (maybe_free_model_hooks + empty_cache).
 
+## Her eyes (M4, 2026-10-31)
+
+Operator charter words: *"camera"*, *"you can see and she repsondes"*.
+
+- **UI** (`ui/eyes.js`): **Show camera** (`getUserMedia`) and **Show screen** (`getDisplayMedia`; in the app `setDisplayMediaRequestHandler` in `app/main.js` hands over the primary screen, since Electron has no picker). Small previews bottom right. Nothing is streamed: when the operator speaks or types, one JPEG of each live source (longest side 1024) rides on the `utterance` / `text` WS message as `frames: [{source, b64}]`.
+- **Hub** (`hub/vision/client.mjs`): each frame is described by `qwen3-vl:4b` (`VISION_MODEL`) on the brain's Ollama, ~1 s warm, ~5 s cold, ~4.5 GB VRAM next to the brain. The description goes after the operator's words for that turn only (`[What you see through your camera right now: ...]`); history keeps their words. Any brain works, vision or not. UI shows the description in the diag panel (`seen` message) and an **eyes** light from `/api/health`.
+- **qwen3-vl gotcha.** It thinks even with `think:false`, and the thinking counts against `num_predict`: 160 tokens came back empty. 900 leaves room for the answer.
+- **Installer** step `eyes` pulls `qwen3-vl:4b`, skipped when any local Ollama already has it.
+
 ## Ports (planned, all loopback)
 
 | Port | Service | Origin |

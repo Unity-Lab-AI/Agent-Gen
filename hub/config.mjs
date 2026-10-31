@@ -83,6 +83,11 @@ export const cfg = {
   numPredict: Number(process.env.BRAIN_NUM_PREDICT || 220),
   stop: (process.env.BRAIN_STOP || '\nUser:|\nuser:|\nGee:|\nYou:|\n[User]|\n### User').split('|'),
 
+  // her eyes: camera / screen frames described by a small vision model on the same Ollama (any brain can use it)
+  visionModel: process.env.VISION_MODEL || 'qwen3-vl:4b',
+  visionKeepAlive: process.env.VISION_KEEP_ALIVE || '5m',
+  visionTimeoutMs: Number(process.env.VISION_TIMEOUT_MS || 60000),
+
   personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'unity.txt'),
   defaultEmotion: process.env.DEFAULT_EMOTION || 'warm',
   // Empty = no wake word; the VAD endpoint is the trigger. Set e.g. "unity,hey unity" to require it.

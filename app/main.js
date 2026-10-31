@@ -1,7 +1,7 @@
 // Agent Gen app: our own window, not a browser. Opens -> (first run: installs what she needs) -> supervisor starts
 // everything -> her face fills the window. Closes -> everything she runs on is shut down with it.
 'use strict';
-const { app, BrowserWindow, session, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, session, ipcMain, dialog, shell, desktopCapturer } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
@@ -30,6 +30,10 @@ function createWindow() {
   // mic + camera + screen without a prompt: it is her app, on your machine
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => cb(['media', 'display-capture', 'notifications', 'clipboard-read'].includes(permission)));
   session.defaultSession.setPermissionCheckHandler(() => true);
+  // "Show screen": Electron has no picker of its own; she gets the primary screen
+  session.defaultSession.setDisplayMediaRequestHandler((_req, cb) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s[0] ? { video: s[0] } : {})).catch(() => cb({}));
+  });
   win.once('ready-to-show', () => front());
   win.on('closed', () => { win = null; });
 }
