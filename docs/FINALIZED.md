@@ -176,3 +176,10 @@ Done (0.5.29):
 Operator words, verbatim: "update the readme with link  Releases first thing for the releases of the most curretn .exe and make sure releases in the repos is right and its like firsst thing in the read me with link to releases listing most current first and make sure bnoth remotes are good to go"
 
 Done: README opens with the Releases link (latest, the current tag, all releases newest first, the Forgejo mirror); a corrupted path in "Run from source" fixed; marker/paint/lipstick and Shut down described. feature/m8-ship merged to develop and main on github and origin; GitHub release v0.5.29 (latest) with the installer.
+
+### Writing "on your skin" made a stranger — 2026-10-31
+
+Operator words, verbatim: "okay major issue!!!!!! look at the image she made and you fucking tell me if that looks like her and what she was told to do"
+
+Cause: "draw "slut" across your skin clevage" hit the restyle check's bare `skin` term, so she was rendered fresh (no picture, no face lock, a different woman) and the marker path, which skips restyles, never ran; the stranger was then saved as her face.
+Done (0.5.30): restyle only on a skin COLOUR ("dark skin", "pale complexion"), and a marker / paint / lipstick ask is never a restyle (`hub/server.mjs`, `hub/image/client.mjs`). The bad saved look was cleared so she starts from her default picture.

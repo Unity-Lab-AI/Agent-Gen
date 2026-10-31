@@ -277,7 +277,9 @@ class Session {
         // told to look like someone else: render fresh, then that face is hers until the next restyle or a reset
         // decided on the operator's words, not hers: she re-describes her own hair and makeup in every tag, and
         // "black hair with pink streaks, smudged eyeliner" on a "take ur top off" made a stranger from scratch
-        const restyle = tag.restyle || image.isRestyle(this.lastUserText);
+        // a marker / paint / lipstick ask is never a restyle: "write slut across your skin" made a stranger
+        const markAsk = !tag.restyle && !!parseMarks(this.lastUserText);
+        const restyle = !markAsk && (tag.restyle || image.isRestyle(this.lastUserText));
         // an edit that says nothing about clothes ("write SLUT on your shoulder") keeps what she has on: her current
         // look rides along, or the model undressed her on its own
         const keep = !restyle && !CLOTHES.test(prompt) ? (this.currentLookPrompt || cfg.idleLookPrompt) : '';
