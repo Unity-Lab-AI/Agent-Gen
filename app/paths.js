@@ -41,6 +41,7 @@ function resolve(root) {
       wan: exists(path.join(models, 'wan2.2-ti2v-5b', 'model_index.json')) && exists(path.join(models, 'wan2.2-ti2v-5b', 'transformer')) && !hasIncomplete(path.join(models, 'wan2.2-ti2v-5b')),
       voice: exists(path.join(models, 'unity-voice-v2', 'acoustic.pt')),
       sd: !!sdCkpt,
+      segformer: exists(path.join(models, 'segformer-clothes', 'model.safetensors')),
       // Ollama's store moved layouts in 2026 (manifests-v2/ollama.com); accept either
       brain: ['manifests-v2/ollama.com/library/unity-local', 'manifests/registry.ollama.ai/library/unity-local']
         .some(rel => exists(path.join(ollamaModels || path.join(os.homedir(), '.ollama', 'models'), rel))),

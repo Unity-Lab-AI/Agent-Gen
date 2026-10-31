@@ -121,6 +121,7 @@ $('#btn-reset').onclick = () => { player.stop(); send({ type: 'reset' }); };
 // inside the app window (not a plain browser on the hub) the main process can take everything down
 if (window.agentgen?.isApp) {
   document.body.classList.add('app');
+  $('#btn-shutdown').onclick = e => { e.target.disabled = true; e.target.textContent = 'Shutting down…'; player.stop(); window.agentgen.shutdown(); };
   $('#btn-uninstall').onclick = () => { player.stop(); window.agentgen.uninstall(); };
   const st = window.agentgen.storage;
   const size = b => b < 1024 ** 2 ? `${(b / 1024).toFixed(0)} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`;

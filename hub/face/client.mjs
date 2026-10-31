@@ -66,6 +66,16 @@ export async function appearance(file, { extend = false } = {}) {
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
 
+/** Her biggest face in a picture as fractions [x0, y0, x1, y1] (Ditto's detector), or null. */
+export async function facebox(file) {
+  if (!(await live())) return null;
+  try {
+    const r = await fetch(`${cfg.faceUrl}/facebox`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: file }), signal: AbortSignal.timeout(15000) });
+    return r.ok ? (await r.json()).box || null : null;
+  } catch { return null; }
+}
+
 export async function emotion(e) {
   if (!(await live())) return;
   try { await fetch(`${cfg.faceUrl}/emotion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emotion: e }), signal: AbortSignal.timeout(2000) }); } catch {}

@@ -160,7 +160,7 @@ function plan(root) {
     },
     {
       gb: 72, id: 'models', title: 'Model weights (face, motion, looks, hearing, her voice)',
-      done: () => { const h = P().have; return h.ditto && h.ltx && h.wan && h.voice && h.sd; },
+      done: () => { const h = P().have; return h.ditto && h.ltx && h.wan && h.voice && h.sd && h.segformer; },
       async run(log) {
         const models = path.join(DATA, 'models');
         fs.mkdirSync(models, { recursive: true });

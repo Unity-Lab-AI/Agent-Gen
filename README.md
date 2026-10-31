@@ -1,5 +1,9 @@
 # Agent Gen
 
+## ⬇️ [Releases — download the latest `AgentGen-Setup.exe`](https://github.com/Unity-Lab-AI/Agent-Gen/releases/latest)
+
+**Current: [v0.5.29](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.29)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
+
 Unity, live, in one window. Her face moves when she talks, her voice is her own, she hears you, and when you tell her to put on boxing gloves she puts on boxing gloves. One `.exe` opens everything and closes everything. Nothing leaves the machine.
 
 18+. She's an adult and the app treats you like one. Her brain decides what she will and won't do; the app does not add filters on top.
@@ -43,7 +47,7 @@ git clone <this repo>; cd agent-gen
 cd app && npm install && npx electron .
 ```
 
-A dev box with the lab's Python 3.10 (torch cu118), `sidecars/face/.venv`, the Ollama tray app and `models/` already in place is detected as complete and boots straight in. Missing pieces are offered in the first-run screen. Weights by hand: `python scripts/fetch-models.py`. Build the exe: `npm run dist` in `app/` (output in `dist/`). To run the built exe against a checkout's weights instead of downloading them again, junction `%LOCALAPPDATA%\AgentGen\models` to `models` and `%LOCALAPPDATA%\AgentGenenvsace` to `sidecarsace\.venv`.
+A dev box with the lab's Python 3.10 (torch cu118), `sidecars/face/.venv`, the Ollama tray app and `models/` already in place is detected as complete and boots straight in. Missing pieces are offered in the first-run screen. Weights by hand: `python scripts/fetch-models.py`. Build the exe: `npm run dist` in `app/` (output in `dist/`). To run the built exe against a checkout's weights instead of downloading them again, junction `<install>\data\models` to `models` and `<install>\data\venvs\face` to `sidecars\face\.venv`.
 
 ## How she works
 
@@ -51,7 +55,9 @@ Say something. Whisper hears it, the brain answers in short spoken lines, each l
 
 Left alone she does her own thing: she picks what to do, films it, and keeps going. While a clip renders she loops what she was just doing instead of freezing. Talk to her and any render in flight is dropped, so she answers right away and the card is never shared between her brain and the video engine.
 
-**Storage** (footer) shows where her looks, clips, logs and conversations live and clears any of them, or resets her to fresh without reinstalling.
+Tell her to write or draw on herself ("write BRAT on your thigh in purple paint", "a heart on your chest in lipstick") and it lands on that part of her, skin or clothes, sized to fit; a part that is not in the picture is not guessed at.
+
+**Shut down** (footer) unloads her from the GPU, stops every Agent Gen process and closes the app. **Storage** (footer) shows where her looks, clips, logs and conversations live and clears any of them, or resets her to fresh without reinstalling.
 
 ## Privacy
 

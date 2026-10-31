@@ -129,3 +129,50 @@ Done:
 Operator words, verbatim: "this all needs to work as one sole .exe"; "the .exe has to install all things it needs to run with option to uninstall oall things also if wanted"; "and the fucking .exe prperly runs everything without fucking cmd windows poping open and closed all the fucking time!!!???"; "wtf just had 50 fucking cmd windows open and close i told you to stop that shit and fiox it"; "everyhting the project has shall be put in both remotes you fuck! minue chaches logs and gernations attempted already so full ship clean slate of the full stack and everything needed to make the .exe"; "dont worry about the .claude i set it to be shared"; "did you follow properl featue>develop>main cascade proceddures?"; "she should only change or take off outfits when told to, just telling her to bounce or jiggle or dance should not instanty generate a new self image unless told that"; "make sure the readme is concise and accurate and fun to read no fucking massive text walls and no shit fluff filler bullshit".
 
 Done: private brain server + hidden consoles (measured flash-free), OpenCV instead of ffmpeg children, LTX GPU release after each run, [[do]] motion path without a new image, app/paths.js data root, app/setup.js + setup.html first-run installer, app/installer.nsh uninstall prompt, in-app Uninstall everything, package.json NSIS + portable targets with Ditto / voice / Modelfile resources, scripts/fetch-models.py, sidecars/requirements-base.txt, Ditto source un-ignored, voice model on Git LFS, project README, ARCHITECTURE §Packaging. Honest record: the earlier feature -> develop -> main promotion was done by direct merge and fast-forward on operator instruction, not through reviewed PRs; PRs #2-#5 were closed with that note; this pass goes feature/m8-ship -> develop -> main through PRs.
+
+### Look persistence — 2026-10-31
+
+Operator words, verbatim: "look at the image she just made,,, how is that anythhing like her original image of her? she is suppose to have image persistance... as i told ur to drop the top it shouldnt be a totaly differnt person, as u can see whith the generation its nothing like what she is looking like... i mean what the fuck... its suppose to keep the look until she is told to change, telling her to remove or change clothing should NOT mean a  totally differernt person and style"
+
+Done (0.5.25):
+- Cause: the restyle check read her own tag ("black hair with pink streaks, smudged eyeliner"), so a top-off request rendered fresh with no source picture and no face lock. `hub/server.mjs` now decides restyle on the operator's words only.
+- Her current look, its prompt and her face survive restarts: `looks/current.json`, cleared on reset.
+
+### Shut down button — 2026-10-31
+
+Operator words, verbatim: "and i want on the agent gen app a shut down button, that unloads the gpu and shuts down the aspplication freeing up the GPU and stopping all processes for the application"
+
+Done (0.5.26): "Shut down" in the main window footer → `agentgen:shutdown` (`app/main.js`): supervisor stop + the installer's process sweep (`installer-stop.ps1`, now packed in the app), then quit.
+
+### Reset + persistence, second pass — 2026-10-31
+
+Operator words, verbatim: "something thats not working is reset button is not properly reseting her self image to the default... and check the persistance again, as i just has her write something on her skin, but its a totally different womnan and she took her clothes off without asking.. is this just a model limitation or what id think itd be easy for a model to mimic an existing image. but i dont know how it can mimic and change"
+
+Done (0.5.27):
+- Cause: img2img at 0.75 repainted the whole frame (face, hair, room), and the skin-writing prompt named no clothes so the model dropped them.
+- Edits now inpaint below her chin only (`hub/image/client.mjs`, face box from `sidecars/face` `/facebox`, fallback in `sidecars/image` `box: "body"`); prompts with no clothing words carry her current look. Tested on the 4070 Ti SUPER: skin edit on the black-hair look and top-off on the base photo both kept the same woman and room (`.run/inpaint-test/`).
+- Reset puts her default picture back on the face, not only in memory.
+- Model limit that stays: SD 1.5 cannot spell, so written words on skin come out as scribbles.
+
+### Marker and lipstick on her skin — 2026-10-31
+
+Operator words, verbatim: "do you see the issue? look at the image she made versus what was told to her to add to her current image and you tell me where she went wrong"; "can you show me none headless versions of what it would look like if coded scripted to add this ability"; "the third one looks the best the " draw + blend"; "lets do it!"; "what if i tell her to do it in lipstick test that"; "and use her default image not the creations"; "okay test it first, we need a good test like the firs draw+blend test before we go with it"; "okay thats good the letters are a little thick but that can be set to verty but lets make the letter thickness of the lines of the letters max out a little thinner than the max used in that test as the mine one test is almost un readable from the letters lines being too thick"
+
+Done (0.5.28):
+- `/mark` in the image sidecar + `hub/image/marks.mjs`: marker and lipstick words and shapes drawn where asked, multiply ink with grain, no model pass. Tested visibly on her default picture (`.run/marker-proto/sheet8.png`): "Shit", arrow, "SLUT", heart, "MINE" all legible, <0.1 s each. Rejected along the way: model blend 0.3 (respelled every word), ink laid back after a blend (ghosted letters / pasted look).
+- Additive asks repaint at 0.45 so clothes stay; the 0.5.27 `CLOTHES` regex had a control character instead of `\b` and never matched, fixed.
+
+### Marker, paint, lipstick placed on the part asked — 2026-10-31
+
+Operator words, verbatim: "one finall test of 8 varying ones and writtings from marker to paint to lipstick, then when i give the go ahead we will delete all these test images completely from the project to save space and not push to repo"; "is it being blended correctly? that very first test draw+ blend looked better and less like that test, that test just then looked like stickers pasted over top of her image"; "one issue , are you doing "on skin" or generically as writings are on her skin and cloths and needs to to whats told not just hogepodge it together based on whatever"; "brat is on her panties, daddys girls trails onto her top, and owened crossed onto her top... idk how we we properly size and finsd available area based on whats areas and typpes and styles are told to her"; "okay code it up and lets test a test and if it works on all 8 ill tell u we are good then we can use it, or we will edit some more"; "yeah non commerical is fine... we use MIT ourselfs because its all open source"; "perfect! build it!"
+
+Done (0.5.29):
+- Paint as its own ink; clause-by-clause parsing with body parts and garments; SegFormer clothes parsing (CPU) finds the exact area, the mark is sized to fit it, a missing part is an error; close-range blend for shapes and big words. Visible test on her default picture, 8 asks (marker, paint, lipstick; chest, shoulder, stomach, belly, thigh, neck, cleavage + stomach): all on the part asked, none on her bikini or hair; the star needed a shoulder fix and was rerun.
+- Model fetched by setup (`scripts/fetch-models.py segformer`, `app/paths.js` `have.segformer`), listed in THIRD-PARTY-NOTICES as non-commercial.
+- Test images from this session deleted from `.run/` (never tracked).
+
+### README releases link + both remotes — 2026-10-31
+
+Operator words, verbatim: "update the readme with link  Releases first thing for the releases of the most curretn .exe and make sure releases in the repos is right and its like firsst thing in the read me with link to releases listing most current first and make sure bnoth remotes are good to go"
+
+Done: README opens with the Releases link (latest, the current tag, all releases newest first, the Forgejo mirror); a corrupted path in "Run from source" fixed; marker/paint/lipstick and Shut down described. feature/m8-ship merged to develop and main on github and origin; GitHub release v0.5.29 (latest) with the installer.

@@ -14,10 +14,15 @@ import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
 import * as image from './image/client.mjs';
 import * as video from './video/client.mjs';
+import { parseMarks } from './image/marks.mjs';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
+const LOOK_STATE = path.join(image.looksDir, 'current.json');   // her look across restarts
+const CLOTHES = /\b(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)\b/i;
+const ADDS = /\b(add|put on|wear|give (yourself|you)|draw|write|paint|lipstick|necklace|collar|choker|earrings?|glasses|sunglasses|hat|bow|ribbon|tattoo|piercing|bracelet|gloves|mask|makeup)\b/i;
+const UNDRESS = /\b(take off|take of|remove|strip|undress|naked|nude|topless|bottomless|change (into|your)|swap|instead of)\b/i;
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
 
 // "that's you now" after a picture: the picture she just made IS her new look. Her brain re-described her default
@@ -74,6 +79,17 @@ class Session {
     // she lives on her own: with nothing to do for a while (fresh start, after a reset, a reel that ended), she
     // starts her idle routine from her current look instead of sitting there blinking
     this.idleTimer = setInterval(() => this.idleCheck(), 5000);
+    // she keeps the look she had last time until she is told to change it (not back to the base photo on a restart)
+    try {
+      const k = JSON.parse(fs.readFileSync(LOOK_STATE, 'utf8'));
+      if (k.look && fs.existsSync(k.look)) {
+        this.currentLook = k.look; this.currentLookPrompt = k.prompt || null;
+        this.lookFace = k.face && fs.existsSync(k.face) ? k.face : null;
+      }
+    } catch {}
+  }
+  saveLook() {
+    try { fs.writeFileSync(LOOK_STATE, JSON.stringify({ look: this.currentLook, prompt: this.currentLookPrompt, face: this.lookFace })); } catch {}
   }
   queueJob(job) {
     this.jobs++;
@@ -259,12 +275,29 @@ class Session {
         // The face holds its last frame while the image/video engines own the GPU (no 2 fps stutter).
         await face.pause();
         // told to look like someone else: render fresh, then that face is hers until the next restyle or a reset
-        const restyle = tag.restyle || image.isRestyle(prompt);
-        const res = await image.render(prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace });
+        // decided on the operator's words, not hers: she re-describes her own hair and makeup in every tag, and
+        // "black hair with pink streaks, smudged eyeliner" on a "take ur top off" made a stranger from scratch
+        const restyle = tag.restyle || image.isRestyle(this.lastUserText);
+        // an edit that says nothing about clothes ("write SLUT on your shoulder") keeps what she has on: her current
+        // look rides along, or the model undressed her on its own
+        const keep = !restyle && !CLOTHES.test(prompt) ? (this.currentLookPrompt || cfg.idleLookPrompt) : '';
+        const src = image.editSource(this.currentLook, restyle);
+        const faceBox = src ? await face.facebox(src) : null;
+        // "write SLUT on your stomach", "draw an arrow on your belly": the ink is drawn where it was asked and blended
+        // in, on her current picture (the model cannot spell or aim a mark, and redrew her clothes trying)
+        const marks = src && !restyle ? parseMarks(this.lastUserText) : null;
+        if (marks) this.log(`marker: ${JSON.stringify(marks.items)}`);
+        const res = marks
+          ? { ...(await image.mark(src, marks.items, faceBox)), prompt }
+          : await image.render(keep ? `${prompt}, ${keep}` : prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace, faceBox,
+              // adding something (a collar, glasses, a necklace) repaints lightly so her clothes come from the picture:
+              // a full-strength repaint re-rolled them and she undressed or changed outfits on her own
+              strength: ADDS.test(this.lastUserText || '') && !UNDRESS.test(this.lastUserText || '') ? cfg.lookAddStrength : undefined });
         if (this.closed) return;
         if (restyle) this.lookFace = res.file;
         this.currentLook = res.file;
         this.currentLookPrompt = prompt;           // the idle reel keeps describing THIS look, not a later motion
+        this.saveLook();
         this.send({ type: 'image', url: res.url, prompt, seed: res.seed, seconds: res.seconds, kind: tag.kind, epoch });
         if (cfg.lookDrivesFace) {
           const f = await face.appearance(res.file);
@@ -302,6 +335,7 @@ class Session {
     this.log(`adopting the last picture as her look`);
     try {
       this.currentLook = file; this.currentLookPrompt = picPrompt; this.lookFace = file; this.currentClip = null;
+      this.saveLook();
       this.send({ type: 'look', stage: 'rendering', kind: 'img', prompt: picPrompt, epoch });
       if (cfg.lookDrivesFace) {
         const f = await face.appearance(file);
@@ -414,6 +448,9 @@ class Session {
     this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = [];
     this.lookFace = null; this.currentLook = null; this.currentLookPrompt = null; this.currentClip = null;
     this.lastPic = null; this.lastPicPrompt = null; this.adoptEpoch = null;
+    try { fs.rmSync(LOOK_STATE, { force: true }); } catch {}
+    // back to her default picture on screen too, not just in memory (the face kept the last look after a reset)
+    face.appearance(cfg.lookBase).catch(() => {});
   }
 
   async onMessage(raw) {
