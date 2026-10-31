@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('agentgen', {
   onLog: cb => ipcRenderer.on('agentgen:log', (_e, line) => cb(line)),
   status: () => ipcRenderer.invoke('agentgen:status'),
   quit: () => ipcRenderer.invoke('agentgen:quit'),
+  shutdown: () => ipcRenderer.invoke('agentgen:shutdown'),
   uninstall: () => ipcRenderer.invoke('agentgen:uninstall'),
   storage: {
     list: () => ipcRenderer.invoke('agentgen:storage:list'),

@@ -345,6 +345,7 @@ class LiveFace:
         import core.atomic_components.loader as _loader
         _loader.load_video = cv2_load_video                     # no ffmpeg child processes
         self.sdk = spo.StreamSDK(cfg_pkl, data_root)
+        self.det = self.sdk.avatar_registrar.source2info.insightface_det   # Ditto's own face detector, for /facebox
         self.sdk.avatar_registrar.source2info = robust_source2info(self.sdk.avatar_registrar.source2info)
         self.ctrl = LiveCtrl()
         self.emo = parse_emo(ARGS.emo)
@@ -800,6 +801,19 @@ class Handler(BaseHTTPRequestHandler):
                     open(src, "wb").write(base64.b64decode(req["image_b64"]))
                 with SWAP_LOCK:
                     return self._json(FACE.extend_source(src, req.get("max_frames") or 0) if req.get("extend") else FACE.set_source(src))
+            if path == "/facebox":
+                # her biggest face in a picture, as fractions [x0, y0, x1, y1]: the hub keeps it out of an outfit edit
+                import cv2
+                bgr = cv2.imread(req["path"])
+                if bgr is None:
+                    return self._json({"ok": False, "error": "cannot read %s" % req["path"]}, 400)
+                h, w = bgr.shape[:2]
+                with SWAP_LOCK:
+                    det, _ = FACE.det(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+                if det is None or len(det) == 0:
+                    return self._json({"ok": True, "box": None})
+                x0, y0, x1, y1 = max(det, key=lambda d: (d[2] - d[0]) * (d[3] - d[1]))[:4]
+                return self._json({"ok": True, "box": [float(x0) / w, float(y0) / h, float(x1) / w, float(y1) / h]})
             if path == "/emotion":
                 return self._json({"emo": FACE.set_emotion(req.get("emotion", 4))})
             if path == "/pose":

@@ -2,7 +2,7 @@
 """Fetch every model Agent Gen runs on into one models folder. Idempotent: finished files are skipped, partial
 downloads resume. Run by the app's first-run installer, or by hand:
 
-    python scripts/fetch-models.py [--models models] [--only ditto,ltx,sd,ipadapter,whisper,voice] [--voice-src DIR]
+    python scripts/fetch-models.py [--models models] [--only ditto,ltx,sd,ipadapter,whisper,voice,segformer] [--voice-src DIR]
 
   ditto      digital-avatar/ditto-talkinghead  cfg + PyTorch + ONNX weights (live face)         ~4.6 GB
   ltx        Lightricks/LTX-Video              2B 0.9.8 distilled + T5-XXL text encoder (idle motion) ~26 GB
@@ -25,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 ap = argparse.ArgumentParser(description="fetch Agent Gen model weights")
 ap.add_argument("--models", default=str(REPO / "models"))
-ap.add_argument("--only", default="ditto,ltx,wan,sd,ipadapter,whisper,voice")
+ap.add_argument("--only", default="ditto,ltx,wan,sd,ipadapter,whisper,voice,segformer")
 ap.add_argument("--voice-src", default=str(REPO / "models" / "unity-voice-v2"))
 ARGS = ap.parse_args()
 M = Path(ARGS.models)
@@ -123,6 +123,18 @@ def ipadapter():
     snapshot_download("h94/IP-Adapter", allow_patterns=["models/ip-adapter-plus-face_sd15.safetensors", "models/image_encoder/*"])
 
 
+def segformer():
+    target = M / "segformer-clothes"
+    if (target / "model.safetensors").exists():
+        return log("segformer present")
+    # clothes parsing (where her skin, top, bottoms, arms and legs are) for marker / paint / lipstick on her;
+    # NVIDIA SegFormer license, non-commercial
+    log("segformer: clothes parsing (110 MB)")
+    for f in ("config.json", "preprocessor_config.json", "model.safetensors"):
+        hf_hub_download("mattmdjaga/segformer_b2_clothes", f, local_dir=str(target))
+    shutil.rmtree(target / ".cache", ignore_errors=True)
+
+
 def whisper():
     log("whisper: faster-whisper small (HF cache)")
     snapshot_download("Systran/faster-whisper-small")
@@ -139,7 +151,7 @@ def voice():
     shutil.copytree(src, target, ignore=shutil.ignore_patterns("__pycache__"))
 
 
-STEPS = {"ditto": ditto, "ltx": ltx, "wan": wan, "sd": sd, "ipadapter": ipadapter, "whisper": whisper, "voice": voice}
+STEPS = {"ditto": ditto, "ltx": ltx, "wan": wan, "sd": sd, "ipadapter": ipadapter, "whisper": whisper, "voice": voice, "segformer": segformer}
 for name in [s.strip() for s in ARGS.only.split(",") if s.strip()]:
     if name not in STEPS:
         raise SystemExit("unknown model group: %s" % name)

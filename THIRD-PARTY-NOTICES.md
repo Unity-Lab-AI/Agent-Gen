@@ -34,6 +34,7 @@ Agent Gen's own code is MIT licensed (see `LICENSE`). It ships or installs the s
 | Stable Diffusion 1.5 configs | `stable-diffusion-v1-5` | CreativeML OpenRAIL-M |
 | IP-Adapter Plus Face (SD 1.5) and image encoder | h94 (`h94/IP-Adapter`) | Apache-2.0 |
 | faster-whisper small (Whisper) | Systran / OpenAI | MIT |
+| SegFormer B2 clothes parsing (where her skin and clothes are, for marker / paint / lipstick) | mattmdjaga (`mattmdjaga/segformer_b2_clothes`), on NVIDIA SegFormer | NVIDIA SegFormer license, **non-commercial use only** |
 | Dolphin 3.0 Llama 3.1 8B (`dolphin3:8b`, base of `unity-local`) | Cognitive Computations, built on Meta Llama 3.1 | Llama 3.1 Community License. Built with Llama. |
 
-The CreativeML OpenRAIL-M and Llama 3.1 licenses include use restrictions that bind whoever runs the models. Read them before you do: they ship with the weights, and the publishers' model pages link them.
+The SegFormer weights are for non-commercial use only. The CreativeML OpenRAIL-M and Llama 3.1 licenses include use restrictions that bind whoever runs the models. Read them before you do: they ship with the weights, and the publishers' model pages link them.

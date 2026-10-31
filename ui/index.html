@@ -34,6 +34,7 @@
   button { background:#22222e; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 12px; cursor:pointer } button.on { border-color:var(--her); color:var(--her) } button:disabled { opacity:.4 }
   input[type=text] { flex:1; background:#0f0f15; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 10px }
   #btn-uninstall { display:none; color:var(--bad); border-color:#4a2228 } body.app #btn-uninstall { display:inline-block }
+  #btn-shutdown { display:none } body.app #btn-shutdown { display:inline-block }
   #btn-storage { display:none } body.app #btn-storage { display:inline-block }
   #storage { position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; z-index:50 } #storage.open { display:flex }
   #storage .box { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; width:min(760px,92vw) }
@@ -79,6 +80,7 @@
   <input type="text" id="text" placeholder="or type to her and press Enter">
   <button id="btn-reset" title="Forget this conversation">Reset</button>
   <button id="btn-storage" title="Where her images, clips, logs and conversations are kept; clear them without reinstalling">Storage</button>
+  <button id="btn-shutdown" title="Unload her from the GPU, stop every Agent Gen process and close the app">Shut down</button>
   <button id="btn-uninstall" title="Remove Agent Gen and everything it installed for itself (runtimes, model weights, her brain)">Uninstall everything</button>
 </footer>
 <div id="storage"><div class="box">
