@@ -161,3 +161,12 @@ Operator words, verbatim: "do you see the issue? look at the image she made vers
 Done (0.5.28):
 - `/mark` in the image sidecar + `hub/image/marks.mjs`: marker and lipstick words and shapes drawn where asked, multiply ink with grain, no model pass. Tested visibly on her default picture (`.run/marker-proto/sheet8.png`): "Shit", arrow, "SLUT", heart, "MINE" all legible, <0.1 s each. Rejected along the way: model blend 0.3 (respelled every word), ink laid back after a blend (ghosted letters / pasted look).
 - Additive asks repaint at 0.45 so clothes stay; the 0.5.27 `CLOTHES` regex had a control character instead of `\b` and never matched, fixed.
+
+### Marker, paint, lipstick placed on the part asked — 2026-10-31
+
+Operator words, verbatim: "one finall test of 8 varying ones and writtings from marker to paint to lipstick, then when i give the go ahead we will delete all these test images completely from the project to save space and not push to repo"; "is it being blended correctly? that very first test draw+ blend looked better and less like that test, that test just then looked like stickers pasted over top of her image"; "one issue , are you doing "on skin" or generically as writings are on her skin and cloths and needs to to whats told not just hogepodge it together based on whatever"; "brat is on her panties, daddys girls trails onto her top, and owened crossed onto her top... idk how we we properly size and finsd available area based on whats areas and typpes and styles are told to her"; "okay code it up and lets test a test and if it works on all 8 ill tell u we are good then we can use it, or we will edit some more"; "yeah non commerical is fine... we use MIT ourselfs because its all open source"; "perfect! build it!"
+
+Done (0.5.29):
+- Paint as its own ink; clause-by-clause parsing with body parts and garments; SegFormer clothes parsing (CPU) finds the exact area, the mark is sized to fit it, a missing part is an error; close-range blend for shapes and big words. Visible test on her default picture, 8 asks (marker, paint, lipstick; chest, shoulder, stomach, belly, thigh, neck, cleavage + stomach): all on the part asked, none on her bikini or hair; the star needed a shoulder fix and was rerun.
+- Model fetched by setup (`scripts/fetch-models.py segformer`, `app/paths.js` `have.segformer`), listed in THIRD-PARTY-NOTICES as non-commercial.
+- Test images from this session deleted from `.run/` (never tracked).

@@ -285,10 +285,10 @@ class Session {
         const faceBox = src ? await face.facebox(src) : null;
         // "write SLUT on your stomach", "draw an arrow on your belly": the ink is drawn where it was asked and blended
         // in, on her current picture (the model cannot spell or aim a mark, and redrew her clothes trying)
-        const marks = src && !restyle ? parseMarks(this.lastUserText, faceBox) : null;
+        const marks = src && !restyle ? parseMarks(this.lastUserText) : null;
         if (marks) this.log(`marker: ${JSON.stringify(marks.items)}`);
         const res = marks
-          ? { ...(await image.mark(src, marks.items, marks.faceH)), prompt }
+          ? { ...(await image.mark(src, marks.items, faceBox)), prompt }
           : await image.render(keep ? `${prompt}, ${keep}` : prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace, faceBox,
               // adding something (a collar, glasses, a necklace) repaints lightly so her clothes come from the picture:
               // a full-strength repaint re-rolled them and she undressed or changed outfits on her own

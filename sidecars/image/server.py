@@ -301,8 +301,8 @@ def render_inpaint(req):
 
 # --------------------------------------------------------------------------- marker on skin
 # The model cannot spell or put a mark where it is told, so the ink is drawn (a handwriting font or strokes),
-# as a multiply over her skin with grain, so her light and shading show through. No model pass by default: every
-# blend strength either respelled the words or, with the ink laid back on, ghosted them.
+# as a multiply over her skin with grain, then blended by the model at close range (see render_mark). Ink alone looked
+# like stickers; a blend at picture scale respelled the words.
 INK = {"black": (18, 16, 20), "red": (150, 18, 24), "pink": (205, 40, 120), "blue": (20, 40, 140),
        "purple": (90, 30, 120), "green": (20, 100, 40), "white": (235, 235, 235), "lipstick": (172, 22, 58)}
 FONT = os.path.join(os.environ.get("WINDIR", "C:\Windows"), "Fonts", "Inkfree.ttf")
@@ -313,7 +313,38 @@ def _stroke(th, item):
     hard to read."""
     if item.get("tool") == "lipstick":
         return max(1, int(th / random.uniform(12, 16)))
+    if item.get("tool") == "paint":
+        return max(1, int(th / random.uniform(11, 14)))
     return max(1, int(th / random.uniform(20, 30)))
+
+
+def _skin_span(img, cy, band, cx=None):
+    """(x0, x1) of the run of light pixels (skin or fabric, not her black hair or a dark background) in the rows
+    around cy that holds cx, else the widest one; None when there is nothing usable."""
+    if img is None:
+        return None
+    import numpy as np
+    a = np.asarray(img).astype(np.int16)
+    h = a.shape[0]
+    rows = a[max(0, cy - band // 2):min(h, cy + band // 2 + 1)]
+    if not len(rows):
+        return None
+    light = (rows.mean(axis=2) > 75).mean(axis=0) > 0.6
+    runs, start = [], None
+    for x, s in enumerate(list(light) + [False]):
+        if s and start is None:
+            start = x
+        elif not s and start is not None:
+            runs.append((start, x))
+            start = None
+    runs = [r for r in runs if r[1] - r[0] > band]
+    if not runs:
+        return None
+    if cx is not None:
+        hit = [r for r in runs if r[0] <= cx <= r[1]]
+        if hit:
+            return hit[0]
+    return max(runs, key=lambda r: r[1] - r[0])
 
 
 def _mark_layer(size, item, fh):
@@ -333,11 +364,20 @@ def _mark_layer(size, item, fh):
         tmp = Image.new("L", (int(th * (len(text) + 2) * 1.1), int(th * 2)), 0)
         ImageDraw.Draw(tmp).text((th // 2, 0), text, font=f, fill=255, stroke_width=_stroke(th, item), stroke_fill=255)
         tmp = tmp.crop(tmp.getbbox()).rotate(angle, expand=True, resample=Image.BICUBIC)
+        skin = _skin_span(item.get("_img"), int(cy), tmp.height, cx)
+        if skin:   # ink on her black hair vanishes: centre the words on the bare skin at that height, shrink to fit
+            s0, s1 = skin
+            if tmp.width > (s1 - s0) * 0.92:
+                k = (s1 - s0) * 0.92 / tmp.width
+                tmp = tmp.resize((max(1, int(tmp.width * k)), max(1, int(tmp.height * k))), Image.LANCZOS)
+            if not (s0 <= cx - tmp.width / 2 and cx + tmp.width / 2 <= s1):
+                cx = (s0 + s1) / 2
         lay.paste(tmp, (int(cx - tmp.width / 2), int(cy - tmp.height / 2)), tmp)
         return lay.filter(ImageFilter.GaussianBlur(0.8))
     d = ImageDraw.Draw(lay)
-    lip = item.get("tool") == "lipstick"
-    sw = max(3, int(fh * random.uniform(0.05, 0.075) if lip else fh * random.uniform(0.045, 0.065)))
+    tool = item.get("tool")
+    lo, hi = {"lipstick": (0.05, 0.075), "paint": (0.06, 0.085)}.get(tool, (0.045, 0.065))
+    sw = max(3, int(fh * random.uniform(lo, hi)))
     L = fh * 0.5
     if shape == "arrow":
         top, bot = (cx, cy - L), (cx - 2, cy + L)
@@ -388,45 +428,182 @@ def _ink(img, lay, color, opacity=0.88):
     return Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8))
 
 
+# Where things are on her: a clothes-parsing model labels every pixel (hair, face, upper clothes, pants, skirt,
+# dress, arms, legs). It files bare torso skin under "Face", so torso skin = "Face" below her chin. It runs on the
+# CPU (~1 s) so it never takes VRAM from the image and video engines.
+SEG_DIR = os.path.join(os.environ.get("AGENTGEN_MODELS") or os.path.join(_REPO, "models"), "segformer-clothes")
+_seg = {"model": None, "proc": None}
+SEG = {"bg": 0, "hat": 1, "hair": 2, "upper": 4, "skirt": 5, "pants": 6, "dress": 7, "face": 11,
+       "lleg": 12, "rleg": 13, "larm": 14, "rarm": 15, "scarf": 17}
+# body parts in face heights below the chin (band) and which labels they live on; "left" is HER left
+PARTS = {
+    "forehead": ((-1.0, -0.6), ["face"]), "cheek": ((-0.6, -0.1), ["face"]), "neck": ((0.0, 0.8), ["face"]),
+    "chest": ((0.5, 2.0), ["face"]), "stomach": ((1.5, 3.2), ["face"]), "lower belly": ((2.4, 3.6), ["face"]),
+    "left shoulder": ((0.2, 1.2), ["larm", "face"]), "right shoulder": ((0.2, 1.2), ["rarm", "face"]),
+    "left arm": ((0.5, 4.0), ["larm"]), "right arm": ((0.5, 4.0), ["rarm"]),
+    "left thigh": ((2.5, 8.0), ["lleg"]), "right thigh": ((2.5, 8.0), ["rleg"]),
+    "top": ((0.0, 4.0), ["upper", "dress"]), "bottoms": ((1.5, 8.0), ["pants", "skirt"]), "dress": ((0.0, 8.0), ["dress"]),
+}
+
+
+def _parse(img):
+    import numpy as np
+    import torch
+    if _seg["model"] is None:
+        from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
+        _seg["proc"] = SegformerImageProcessor.from_pretrained(SEG_DIR)
+        _seg["model"] = AutoModelForSemanticSegmentation.from_pretrained(SEG_DIR).eval()
+    with torch.no_grad():
+        lo = _seg["model"](**_seg["proc"](images=img, return_tensors="pt")).logits
+        return torch.nn.functional.interpolate(lo, size=img.size[::-1], mode="bilinear").argmax(1)[0].numpy().astype(np.uint8)
+
+
+def _erode(m, n):
+    from PIL import Image, ImageFilter
+    import numpy as np
+    im = Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(n * 2 + 1))
+    return np.asarray(im) > 127
+
+
+def _area(seg, part, chin, fh):
+    """Boolean mask of where `part` is in the picture, or None if it is not in it."""
+    import numpy as np
+    band, labels = PARTS.get(part, PARTS["stomach"])
+    m = np.isin(seg, [SEG[l] for l in labels])
+    rows = np.arange(seg.shape[0])[:, None]
+    if "face" in labels:   # torso skin: "Face" below the chin only, never the face itself
+        m &= ~((seg == SEG["face"]) & (rows < chin + 0.15 * fh))
+    m &= (rows >= chin + band[0] * fh) & (rows <= chin + band[1] * fh)
+    m = _erode(m, max(2, int(fh * 0.04)))
+    return m if m.sum() > (fh * 0.25) ** 2 else None
+
+
+def _fit_box(mask, bw, bh, target):
+    """Top-left (x, y) of a bw x bh box inside mask, nearest to target; None if none fits."""
+    import numpy as np
+    H, W = mask.shape
+    if bw >= W or bh >= H:
+        return None
+    ii = np.pad(mask.astype(np.int32).cumsum(0).cumsum(1), ((1, 0), (1, 0)))
+    full = ii[bh:, bw:] - ii[:-bh, bw:] - ii[bh:, :-bw] + ii[:-bh, :-bw]
+    ok = full >= bw * bh * 0.97
+    if not ok.any():
+        return None
+    ys, xs = np.nonzero(ok)
+    d = (xs + bw / 2 - target[0]) ** 2 + ((ys + bh / 2 - target[1]) * 1.5) ** 2
+    i = int(d.argmin())
+    return int(xs[i]), int(ys[i])
+
+
+def _word_img(text, th, item):
+    from PIL import Image, ImageDraw, ImageFont
+    try:
+        f = ImageFont.truetype(FONT, th)
+    except Exception:
+        f = ImageFont.load_default()
+    tmp = Image.new("L", (int(th * (len(text) + 2) * 1.1), int(th * 2)), 0)
+    ImageDraw.Draw(tmp).text((th // 2, 0), text, font=f, fill=255, stroke_width=_stroke(th, item), stroke_fill=255)
+    tmp = tmp.crop(tmp.getbbox())
+    return tmp.rotate(float(item.get("angle", 0)), expand=True, resample=Image.BICUBIC)
+
+
+def _place(src, seg, item, chin, fh, taken):
+    """The ink layer for one item, sized to fit the part it was asked on: (layer, on_cloth, size), or raises."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+    part = item.get("part") or "stomach"
+    m = _area(seg, part, chin, fh)
+    if m is None:
+        raise ValueError("her %s is not in the picture" % part)
+    m &= ~taken
+    ys, xs = np.nonzero(m)
+    target = (float(np.median(xs)), float(np.median(ys)))
+    if "shoulder" in part or "arm" in part:
+        # her side only: the arm's own pixels when they show, else the outer edge of her torso on that side
+        arm = m & (seg == SEG["larm" if part.startswith("left") else "rarm"])
+        if arm.sum() > (fh * 0.25) ** 2:
+            m = arm
+            ys, xs = np.nonzero(m)
+            target = (float(np.median(xs)), float(ys.min() + (np.median(ys) - ys.min()) * 0.4))
+        else:
+            target = (float(np.percentile(xs, 90 if part.startswith("left") else 10)), float(np.median(ys)))
+    cloth = part in ("top", "bottoms", "dress")
+    big = fh * 0.45
+    if item.get("text"):
+        text = str(item["text"])[:24]
+        th = int(big if len(text) <= 5 else big * 0.8)
+        while th >= max(10, int(fh * 0.12)):
+            w = _word_img(text, th, item)
+            at = _fit_box(m, w.width, w.height, target)
+            if at:
+                lay = Image.new("L", src.size, 0)
+                lay.paste(w, at, w)
+                return lay.filter(ImageFilter.GaussianBlur(0.8)), cloth, th
+            th = int(th * 0.88)
+        raise ValueError("no room for \"%s\" on her %s" % (text, part))
+    side = int(fh * (1.1 if item.get("shape") == "arrow" else 0.8))
+    while side >= int(fh * 0.25):
+        at = _fit_box(m, side, side, target)
+        if at:
+            it = {**item, "x": (at[0] + side / 2) / src.size[0], "y": (at[1] + side / 2) / src.size[1]}
+            return _mark_layer(src.size, it, side), cloth, side
+        side = int(side * 0.88)
+    raise ValueError("no room for a %s on her %s" % (item.get("shape"), part))
+
+
 def render_mark(req):
-    """POST /mark {"image", "items": [{"text"|"shape", "x", "y" (fractions), "angle"?, "color"?}], "face_h" (fraction)}"""
-    from PIL import Image, ImageDraw, ImageFilter
+    """POST /mark {"image", "items": [{"text"|"shape", "part", "color"?, "tool"?, "angle"?}], "chin", "face_h"
+    (fractions of the picture height)}. Each item lands on the part it was asked on (skin or the named piece of
+    clothing), sized to fit there; a part that is not in the picture is an error, not a guess."""
+    import numpy as np
+    from PIL import Image, ImageFilter
     src = _fit(_b64_image(req["image"]), int(req.get("max_side") or 768)).convert("RGB")
-    fh = float(req.get("face_h") or 0.18) * src.size[1]
+    H = src.size[1]
+    fh = float(req.get("face_h") or 0.18) * H
+    chin = float(req.get("chin") or 0.3) * H
     t0 = time.time()
-    out, words = src, False
-    layers = []
+    seg = _parse(src)
+    taken = np.zeros(seg.shape, bool)
+    out, placed = src, []
     for it in req.get("items") or []:
-        lay = _mark_layer(src.size, it, fh)
-        if not lay.getbbox():
-            continue
+        lay, cloth, size = _place(src, seg, it, chin, fh, taken)
+        taken |= np.asarray(lay) > 20
         color = INK.get(str(it.get("color") or "black").lower(), INK["black"])
-        out = _ink(out, lay, color, opacity=0.8 if it.get("tool") == "lipstick" else 0.88)
-        layers.append((lay, color))
-        words = words or bool(it.get("text"))
-    if not layers:
-        raise ValueError("nothing to draw")
-    if not req.get("blend"):   # ink only (the default): a model blend respelled every word ("Shit" -> "Surit")
+        opacity = {"lipstick": 0.8, "paint": 0.95}.get(it.get("tool"), 0.88) * (0.85 if cloth else 1.0)
+        out = _ink(out, lay, color, opacity=opacity)
+        placed.append((lay, it, cloth, size))
+    if req.get("blend") is False:
         return out, 0, time.time() - t0
-    mask = Image.new("L", src.size, 0)
-    for lay, _ in layers:
-        b = lay.getbbox()
-        ImageDraw.Draw(mask).rectangle((b[0] - 24, b[1] - 24, b[2] + 24, b[3] + 24), fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(10))
+    # Blend at close range, and only what survives it: the model works on a grid 8x coarser than the picture, so
+    # small letters get respelled ("kiss me" -> "Blss Me"). Shapes and big words are cut out, blown up, blended on and
+    # around the strokes, shrunk back and feathered in; small words keep the ink as drawn.
     _load()
-    steps, seed, gen, guidance, negative = _common({**req, "guidance": req.get("guidance") or 6})
-    tool = "lipstick" if any(it.get("tool") == "lipstick" for it in req.get("items") or []) else "marker"
-    prompt = "photo, %s drawn on her skin in %s, skin texture, natural light" % ("handwriting" if words else "a drawing", tool)
-    blended = _state["inpaint"](prompt=prompt, negative_prompt=_tokens_fit(negative), image=out, mask_image=mask,
-                                width=out.size[0], height=out.size[1], strength=0.3,
-                                num_inference_steps=steps, guidance_scale=guidance, generator=gen,
-                                **_face_kwargs({}, out)).images[0]
-    blended = blended.convert("RGB").resize(src.size)
-    # the blend gives it skin texture and light but respells words and melts thin lines; the exact strokes go back
-    # on as a multiply over the blended skin, so the letters read and still sit in the skin
-    for lay, color in layers:
-        blended = _ink(blended, lay, color, opacity=0.75)
-    return blended, seed, time.time() - t0
+    final = out
+    for lay, it, cloth, size in placed:
+        if it.get("text") and size < fh * 0.38:
+            continue
+        b = lay.getbbox()
+        pad = max(16, int(0.35 * max(b[2] - b[0], b[3] - b[1])))
+        box = (max(0, b[0] - pad), max(0, b[1] - pad), min(src.size[0], b[2] + pad), min(H, b[3] + pad))
+        cw, ch = box[2] - box[0], box[3] - box[1]
+        k = 640.0 / max(cw, ch)
+        W2, H2 = max(64, int(cw * k) // 8 * 8), max(64, int(ch * k) // 8 * 8)
+        crop = final.crop(box).resize((W2, H2), Image.LANCZOS)
+        m = lay.crop(box).resize((W2, H2), Image.LANCZOS).point(lambda v: 255 if v > 40 else 0)
+        m = m.filter(ImageFilter.MaxFilter(int(max(3, k * 3)) // 2 * 2 + 1)).filter(ImageFilter.GaussianBlur(max(2, k * 1.5)))
+        steps, seed, gen, guidance, negative = _common({**req, "guidance": req.get("guidance") or 6})
+        what = "handwriting" if it.get("text") else "a drawing"
+        where = "on fabric, cloth texture" if cloth else "on skin, skin texture"
+        prompt = "close-up photo of %s in %s %s, natural light" % (what, it.get("tool") or "marker", where)
+        done = _state["inpaint"](prompt=prompt, negative_prompt=_tokens_fit(negative), image=crop, mask_image=m,
+                                 width=W2, height=H2, strength=float(req.get("blend_strength") or 0.3),
+                                 num_inference_steps=steps, guidance_scale=guidance, generator=gen,
+                                 **_face_kwargs({}, crop)).images[0]
+        done = done.convert("RGB").resize((cw, ch), Image.LANCZOS)
+        feather = m.resize((cw, ch), Image.LANCZOS).filter(ImageFilter.GaussianBlur(2))
+        final = final.copy()
+        final.paste(Image.composite(done, final.crop(box), feather), box[:2])
+    return final, 0, time.time() - t0
 
 
 def unload():

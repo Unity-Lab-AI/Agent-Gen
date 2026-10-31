@@ -77,8 +77,10 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
 }
 
 /** Marker on her skin: draw `items` on `sourceFile` and blend it in (image sidecar /mark). */
-export async function mark(sourceFile, items, faceH) {
-  const body = { image: fs.readFileSync(sourceFile).toString('base64'), items, face_h: faceH, max_side: cfg.lookMaxSide, steps: cfg.lookSteps,
+/** faceBox = [x0, y0, x1, y1] fractions (her chin and face height scale the parts). */
+export async function mark(sourceFile, items, faceBox) {
+  const fb = faceBox || [0.4, 0.12, 0.6, 0.3];
+  const body = { image: fs.readFileSync(sourceFile).toString('base64'), items, face_h: fb[3] - fb[1], chin: fb[3], max_side: cfg.lookMaxSide, steps: cfg.lookSteps,
     negative: NEG };
   const r = await fetch(`${cfg.imageUrl}/mark`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body), signal: AbortSignal.timeout(180000) });
