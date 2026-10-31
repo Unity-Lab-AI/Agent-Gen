@@ -45,24 +45,26 @@ export const isRestyle = prompt => RESTYLE.test(String(prompt || ''));
 
 /** Render a look, fresh from her words. Her face lock (her likeness, or `faceFile` after a restyle) keeps her her;
  *  a restyle renders without it and `faceFile` then carries the new face into later looks. */
-export async function render(prompt, { width, height, seed, strength, sourceFile, restyle = false, faceFile, plain = false } = {}) {
+export async function render(prompt, { width, height, seed, strength, sourceFile, restyle = false, faceFile, plain = false, faceBox } = {}) {
   // plain = a picture of anything ([[pic]]): exactly her words, no identity, no face lock. A restyle drops the
   // identity prefix too: "a 40 year old man" must not be glued to "photo of Unity".
   const full = (plain ? prompt : restyle ? `${prompt}, ${cfg.lookSuffix}` : `${cfg.lookPrefix} ${prompt}, ${cfg.lookSuffix}`).replace(/\s+/g, ' ').trim();
   const face = faceFile && fs.existsSync(faceFile) ? fs.readFileSync(faceFile).toString('base64') : faceRef();
   const body = { prompt: full, width: width || cfg.lookWidth, height: height || cfg.lookHeight, steps: cfg.lookSteps,
     guidance: cfg.lookGuidance, seed: seed || undefined, face: restyle || plain ? undefined : (face || undefined), face_scale: cfg.lookFaceScale, negative: NEG };
-  // A look change that keeps who she is ("take your top off", a new outfit, a new place) edits her CURRENT picture:
-  // same girl, body, pose and room, only what was asked changes. Fresh renders gave the operator a different girl
-  // for "take ur top off". A restyle (someone else entirely) and a [[pic]] render fresh. Strength 0.75: 0.6 kept the
-  // old outfit; 0.9 chained look after look with a heavier face lock made her a plastic doll.
+  // A look change that keeps who she is ("take your top off", a new outfit, writing on her skin) repaints only her
+  // body below the chin (OpenCV finds her face in the sidecar): face, hair and the room stay pixel for pixel. Plain
+  // img2img at 0.75 repainted the whole frame and gave the operator a different woman every time.
+  // A restyle (someone else entirely) and a [[pic]] render fresh.
   let endpoint = '/txt2img';
-  const src = plain || restyle ? null : [sourceFile, cfg.lookBase].find(f => f && fs.existsSync(f));
+  const src = editSource(sourceFile, plain || restyle);
   if (src) {
     body.image = fs.readFileSync(src).toString('base64');
     body.strength = strength ?? cfg.lookStrength;
     body.max_side = cfg.lookMaxSide;
-    endpoint = '/img2img';
+    // below her chin (her face box from the face sidecar); without one the image sidecar guesses
+    body.box = faceBox ? [0, Math.min(0.9, faceBox[3] + (faceBox[3] - faceBox[1]) * 0.12), 1, 1] : 'body';
+    endpoint = '/inpaint';
   }
   const r = await fetch(`${cfg.imageUrl}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body), signal: AbortSignal.timeout(180000) });
@@ -73,5 +75,8 @@ export async function render(prompt, { width, height, seed, strength, sourceFile
   fs.writeFileSync(file, png);
   return { file, url: `/looks/look-${id}.png`, seed: Number(r.headers.get('x-seed')), seconds: Number(r.headers.get('x-seconds')), prompt: full };
 }
+
+/** The picture an edit starts from (her current look, else her default one); null for a fresh render. */
+export const editSource = (sourceFile, fresh) => fresh ? null : [sourceFile, cfg.lookBase].find(f => f && fs.existsSync(f)) || null;
 
 export const looksDir = OUT;

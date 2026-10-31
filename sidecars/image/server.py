@@ -250,12 +250,33 @@ def _mask_for(req, size):
         m = _b64_image(req["mask"]).convert("L").resize((w, h))
         return m
     box = req.get("box")
+    if box == "body":
+        box = _body_box(req, size)
     if not box or len(box) != 4:
         raise ValueError("inpaint needs a mask (base64, white = repaint) or a box [x0, y0, x1, y1] in fractions")
     x0, y0, x1, y1 = [max(0.0, min(1.0, float(v))) for v in box]
     m = Image.new("L", (w, h), 0)
     ImageDraw.Draw(m).rectangle((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h)), fill=255)
     return m.filter(ImageFilter.GaussianBlur(6))
+
+
+def _body_box(req, size):
+    """Everything below her chin, so an outfit or skin edit never touches her face, hair or the room above it.
+    Finds the biggest face with OpenCV; without one, the top 30 % is kept."""
+    try:
+        import cv2
+        import numpy as np
+        img = _fit(_b64_image(req["image"]), max(size)).convert("L")
+        g = np.array(img)
+        det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        faces = det.detectMultiScale(g, scaleFactor=1.1, minNeighbors=5, minSize=(g.shape[1] // 12, g.shape[1] // 12))
+        if len(faces):
+            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+            chin = (y + h * 1.12) / g.shape[0]
+            return [0.0, min(0.9, chin), 1.0, 1.0]
+    except Exception as e:
+        _log(f"body box: {e}")
+    return [0.0, 0.3, 1.0, 1.0]
 
 
 def render_inpaint(req):

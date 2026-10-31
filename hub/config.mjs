@@ -30,7 +30,7 @@ export const cfg = {
   lookGuidance: Number(process.env.LOOK_GUIDANCE || 7),
   lookFaceScale: Number(process.env.LOOK_FACE_SCALE || 0.4),   // 0.65 pressed her makeup and a waxy face onto every look
   // img2img from her current look: 0.6 kept the old outfit through a "black cocktail dress"; 0.8 gave black strappy lingerie on the old bikini's lines; 0.9 lets the prompt redraw the outfit while the face lock keeps her
-  lookStrength: Number(process.env.LOOK_STRENGTH || 0.75),   // edits of her current picture: keeps the girl, changes what was asked
+  lookStrength: Number(process.env.LOOK_STRENGTH || 0.9),   // inpaint strength below her chin: face, hair and room above stay untouched
   // motion: image-to-video clips of her current look (LTX-Video locally)
   videoUrl: process.env.VIDEO_URL || 'http://127.0.0.1:5127',
   // plain on purpose: piling motion and camera words on Wan measured the same motion and melted her face and colours

@@ -1,7 +1,7 @@
 {
   "name": "agent-gen",
   "productName": "Agent Gen",
-  "version": "0.5.26",
+  "version": "0.5.27",
   "private": true,
   "license": "MIT",
   "author": "Unity AI Lab <contact@unityailab.com>",

@@ -143,3 +143,13 @@ Done (0.5.25):
 Operator words, verbatim: "and i want on the agent gen app a shut down button, that unloads the gpu and shuts down the aspplication freeing up the GPU and stopping all processes for the application"
 
 Done (0.5.26): "Shut down" in the main window footer → `agentgen:shutdown` (`app/main.js`): supervisor stop + the installer's process sweep (`installer-stop.ps1`, now packed in the app), then quit.
+
+### Reset + persistence, second pass — 2026-10-31
+
+Operator words, verbatim: "something thats not working is reset button is not properly reseting her self image to the default... and check the persistance again, as i just has her write something on her skin, but its a totally different womnan and she took her clothes off without asking.. is this just a model limitation or what id think itd be easy for a model to mimic an existing image. but i dont know how it can mimic and change"
+
+Done (0.5.27):
+- Cause: img2img at 0.75 repainted the whole frame (face, hair, room), and the skin-writing prompt named no clothes so the model dropped them.
+- Edits now inpaint below her chin only (`hub/image/client.mjs`, face box from `sidecars/face` `/facebox`, fallback in `sidecars/image` `box: "body"`); prompts with no clothing words carry her current look. Tested on the 4070 Ti SUPER: skin edit on the black-hair look and top-off on the base photo both kept the same woman and room (`.run/inpaint-test/`).
+- Reset puts her default picture back on the face, not only in memory.
+- Model limit that stays: SD 1.5 cannot spell, so written words on skin come out as scribbles.

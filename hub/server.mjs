@@ -19,6 +19,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 const LOOK_STATE = path.join(image.looksDir, 'current.json');   // her look across restarts
+const CLOTHES = /(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)/i;
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
 
 // "that's you now" after a picture: the picture she just made IS her new look. Her brain re-described her default
@@ -274,7 +275,12 @@ class Session {
         // decided on the operator's words, not hers: she re-describes her own hair and makeup in every tag, and
         // "black hair with pink streaks, smudged eyeliner" on a "take ur top off" made a stranger from scratch
         const restyle = tag.restyle || image.isRestyle(this.lastUserText);
-        const res = await image.render(prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace });
+        // an edit that says nothing about clothes ("write SLUT on your shoulder") keeps what she has on: her current
+        // look rides along, or the model undressed her on its own
+        const keep = !restyle && !CLOTHES.test(prompt) ? (this.currentLookPrompt || cfg.idleLookPrompt) : '';
+        const src = image.editSource(this.currentLook, restyle);
+        const faceBox = src ? await face.facebox(src) : null;
+        const res = await image.render(keep ? `${prompt}, ${keep}` : prompt, { sourceFile: this.currentLook, restyle, faceFile: this.lookFace, faceBox });
         if (this.closed) return;
         if (restyle) this.lookFace = res.file;
         this.currentLook = res.file;
@@ -431,6 +437,8 @@ class Session {
     this.lookFace = null; this.currentLook = null; this.currentLookPrompt = null; this.currentClip = null;
     this.lastPic = null; this.lastPicPrompt = null; this.adoptEpoch = null;
     try { fs.rmSync(LOOK_STATE, { force: true }); } catch {}
+    // back to her default picture on screen too, not just in memory (the face kept the last look after a reset)
+    face.appearance(cfg.lookBase).catch(() => {});
   }
 
   async onMessage(raw) {
