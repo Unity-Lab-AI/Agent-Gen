@@ -2,7 +2,7 @@
 // unless HUB_HOST says so.
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { statSync } from 'node:fs';
+import { statSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO = join(HERE, '..');
@@ -21,7 +21,13 @@ export const cfg = {
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
   lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, pale grey-blue eyes,',   // identity only; a restyle drops it
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
-  lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts
+  lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts (re-picked by pickStart)
+  // Operator: "grab stills of this avi ... use them like randomly and hell maybe use the full avi ... just dont make it
+  // look like the same thing ever start". Each fresh start and reset picks one of these stills (never the last one
+  // again) as her base look; startVideoChance of the time her face plays the whole video instead of a still.
+  startsDir: process.env.STARTS_DIR || join(REPO, 'assets', 'portrait', 'starts'),
+  startVideo: process.env.START_VIDEO || join(REPO, 'assets', 'portrait', 'unity.avi'),
+  startVideoChance: Number(process.env.START_VIDEO_CHANCE ?? 0.33),
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
   picWidth: Number(process.env.PIC_WIDTH || 640),     // [[pic]]: anything that is not her look
   picHeight: Number(process.env.PIC_HEIGHT || 576),
@@ -57,7 +63,7 @@ export const cfg = {
   reelClips: Number(process.env.REEL_CLIPS ?? 0),
   // with nothing to do this long (fresh start, after a reset), she starts her idle routine on her own
   idleStartMs: Number(process.env.IDLE_START_MS || 20000),
-  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a young woman with long black hair with pink streaks, pale grey-blue eyes, in her room',
+  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a young woman with long black hair with pink streaks, white string bikini, standing by a window in a bright white room',
   reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
   reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
   reelMotions: (process.env.REEL_MOTIONS || 'she bounces on her toes and laughs, hair and chest bouncing|she dances, swinging her hips and raising her arms over her head|she jumps up and down excitedly, then grins at the camera|she spins around once and strikes a pose|she stretches both arms high overhead and arches her back').split('|'),
@@ -122,6 +128,22 @@ export const cfg = {
   // so it never sits beside the live face and her brain; the next picture reloads it (a few seconds)
   imageUnloadIdle: !['0', 'false', 'no'].includes(String(process.env.IMAGE_UNLOAD_IDLE ?? '1').toLowerCase()),
 };
+
+/** A fresh start: a random still of her (not the one used last time) becomes cfg.lookBase. -> { still, video }
+ *  video is the whole start clip when this start plays it (her face moves from the first second). */
+export function pickStart(lastFile) {
+  let stills = [];
+  try { stills = readdirSync(cfg.startsDir).filter(f => /^start-.*\.(jpe?g|png)$/i.test(f)).map(f => join(cfg.startsDir, f)); } catch {}
+  if (!stills.length) return { still: cfg.lookBase, video: null };
+  let last = '';
+  try { last = readFileSync(lastFile, 'utf8').trim(); } catch {}
+  const pool = stills.length > 1 ? stills.filter(f => f !== last) : stills;
+  const still = pool[Math.floor(Math.random() * pool.length)];
+  try { writeFileSync(lastFile, still); } catch {}
+  cfg.lookBase = still;
+  const video = existsSync(cfg.startVideo) && Math.random() < cfg.startVideoChance ? cfg.startVideo : null;
+  return { still, video };
+}
 
 /** Rough tokens for text (about 4 characters a token for English prose). */
 export const estTokens = s => Math.ceil(String(s || '').length / 4);

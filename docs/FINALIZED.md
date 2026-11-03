@@ -236,3 +236,10 @@ Operator, verbatim: "okay im trying to get her to put on a hoodie, bet she aint 
 - `hub/server.mjs` `wearAsk` + `lookup`; `hub/tools/web.mjs` `needsLookup` / `searchWords` / `weather` (Open-Meteo + ip-api; wttr.in did not answer). Checked offline: both failing lines trigger (hoodie; hoodie sweatshirt; weather), "take ur top off" does not dress her, weather came back for this computer's location and for Tokyo.
 - 0.5.34 shipped: cascade feature/m8-ship -> develop -> main on GitHub, release v0.5.34 with the exe. Forgejo push refused ("Credentials are incorrect or have expired").
 - Docs: ARCHITECTURE (operator words drive it), PRIVACY (weather services), TODO.
+
+## Session 2026-11-03, start looks (0.5.36; stays [~] in TODO until the operator's visible test)
+
+Operator, verbatim: "heres what we are doing ther is a Unity.avi in downlaods folder i want to get rid of the original image we have for unity and grab stills of this avi we have and use them like randomly and hell maybe use the full avi or something just dont make it look like the same thing ever start so she is differetn there should be alot of frames us can grab with her in different postions with the most change"; "make sure to do the routine"; "forgio is good to go it has been use https".
+
+- 0.5.35 routine done: cascade on GitHub + Forgejo (main fe9a15d), releases v0.5.35 on GitHub (Latest) and v0.5.34 + v0.5.35 on Forgejo with the exes (`.run/forgejo-release.sh`, local helper).
+- Start looks: `scripts/pick-stills.py` (picked frames 4, 23, 35, 43, 55, 72, 111, 141), `assets/portrait/starts/`, `assets/portrait/unity.avi`, regenerated `unity-face/bust/full.jpg`, removed `unity-carbon.jpg`; `hub/config.mjs` `pickStart`, `idleLookPrompt` (white bikini, bright window room); `hub/server.mjs` `freshStart` on connect / reset / storage clear. pickStart checked: six picks, no repeats back to back, one video start.
