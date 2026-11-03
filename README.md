@@ -2,7 +2,7 @@
 
 ## ⬇️ [Releases — download the latest `AgentGen-Setup.exe`](https://github.com/Unity-Lab-AI/Agent-Gen/releases/latest)
 
-**Current: [v0.5.35](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.35)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
+**Current: [v0.5.36](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.36)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
 
 Unity, live, in one window. Her face moves when she talks, her voice is her own, she hears you, and when you tell her to put on boxing gloves she puts on boxing gloves. One `.exe` opens everything and closes everything. Nothing leaves the machine.
 
@@ -54,7 +54,7 @@ A dev box with the lab's Python 3.10 (torch cu118), `sidecars/face/.venv`, the O
 
 Say something. Whisper hears it, the brain answers in short spoken lines, each line goes to her voice and her face at once, lips locked to the audio. When she decides to show you something she writes a line the app catches: `[[img: ...]]` for a new look of herself (outfit, body, place, or someone else entirely: tell her she is a 40 year old man or a lion and she is), `[[do: ...]]` for a movement in the look she has, `[[pic: ...]]` for a picture of anything else, shown in the chat. A look is rendered, becomes her face (a look with no human face plays as it is), then a clip of her doing it. Say "that's you now" after a picture and that picture becomes her.
 
-Left alone she does her own thing: she picks what to do, films it, and keeps going. While a clip renders she loops what she was just doing instead of freezing. Talk to her and any render in flight is dropped, so she answers right away and the card is never shared between her brain and the video engine.
+Every fresh start (and Reset) she shows up in a different pose from her own video, sometimes already moving. Left alone she does her own thing: she picks what to do, films it, and keeps going. While a clip renders she loops what she was just doing instead of freezing. Talk to her and any render in flight is dropped, so she answers right away and the card is never shared between her brain and the video engine.
 
 Tell her to write or draw on herself ("write BRAT on your thigh in purple paint", "a heart on your chest in lipstick") and it lands on that part of her, skin or clothes, sized to fit; a part that is not in the picture is not guessed at.
 
