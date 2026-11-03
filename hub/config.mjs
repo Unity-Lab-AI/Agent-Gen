@@ -2,6 +2,7 @@
 // unless HUB_HOST says so.
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { statSync } from 'node:fs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO = join(HERE, '..');
@@ -72,7 +73,12 @@ export const cfg = {
   // uncensored by design) leads for conversation; unity-brain is the RimWorld stream model on a Qwen base
   // and refuses on its own ("I don't do that kind of request"), so it is last.
   brainModels: (process.env.BRAIN_MODEL || 'unity-local,huihui_ai/qwen3-abliterated:8b,dolphin3:8b,unity-brain').split(',').map(s => s.trim()).filter(Boolean),
-  numCtx: Number(process.env.BRAIN_NUM_CTX || 32768),
+  // context window: sized once at start from her persona + the history kept, so the KV cache holds what she uses
+  // (32k fixed reserved ~1 GB more VRAM than her ~20k of persona and history needs). Fixed per run: a num_ctx that
+  // changes between calls makes Ollama reload the model. BRAIN_NUM_CTX pins it; BRAIN_NUM_CTX_MAX caps the auto size.
+  numCtx: 0,
+  numCtxMax: Number(process.env.BRAIN_NUM_CTX_MAX || 32768),
+  turnTokens: Number(process.env.BRAIN_TURN_TOKENS || 200),   // budget per history message
   keepAlive: process.env.BRAIN_KEEP_ALIVE || '30m',
   // her Modelfile's sampling: temperature 1.05, top_p 0.95, repeat_penalty 1.08
   temperature: Number(process.env.BRAIN_TEMPERATURE || 0.9),
@@ -83,9 +89,45 @@ export const cfg = {
   numPredict: Number(process.env.BRAIN_NUM_PREDICT || 220),
   stop: (process.env.BRAIN_STOP || '\nUser:|\nuser:|\nGee:|\nYou:|\n[User]|\n### User').split('|'),
 
+  // her eyes: camera / screen frames described by a small vision model on the same Ollama (any brain can use it)
+  visionModel: process.env.VISION_MODEL || 'qwen3-vl:4b',
+  // unloaded after every look: brain 8.8 GB + eyes 3.4 GB + the face filled the 16 GB card and her replies crawled
+  // at a word a minute; a cold look costs ~5 s, the brain keeps the card
+  visionKeepAlive: process.env.VISION_KEEP_ALIVE || '0',
+  visionTimeoutMs: Number(process.env.VISION_TIMEOUT_MS || 60000),
+
   personaFile: process.env.PERSONA_FILE || join(HERE, 'persona', 'unity.txt'),
   defaultEmotion: process.env.DEFAULT_EMOTION || 'warm',
   // Empty = no wake word; the VAD endpoint is the trigger. Set e.g. "unity,hey unity" to require it.
   wakeWord: (process.env.WAKE_WORD || '').split(',').map(s => s.trim()).filter(Boolean),
   historyTurns: Number(process.env.HISTORY_TURNS || 24),
+
+  // her hands on the web: rounds of [[search]] / [[fetch]] per reply, results per search, page text handed to her
+  web: !['0', 'false', 'no'].includes(String(process.env.WEB ?? '1').toLowerCase()),   // WEB=0: no search, no fetch
+  webRounds: Number(process.env.WEB_ROUNDS || 2),
+  webResults: Number(process.env.WEB_RESULTS || 5),
+  webFetchChars: Number(process.env.WEB_FETCH_CHARS || 6000),
+
+  // her eyes on her own: while the camera or screen is shared the UI sends a still every ambientEveryMs; she
+  // speaks up only past the friend threshold (someone came back, they look upset, something new held up), never
+  // while talking or rendering, never within ambientQuietMs of the last words either way, and at most once per
+  // ambientCooldownMs
+  ambient: !['0', 'false', 'no'].includes(String(process.env.AMBIENT ?? '1').toLowerCase()),
+  ambientEveryMs: Number(process.env.AMBIENT_EVERY_MS || 20000),
+  ambientThreshold: Number(process.env.AMBIENT_THRESHOLD || 6),
+  ambientCooldownMs: Number(process.env.AMBIENT_COOLDOWN_MS || 120000),
+  ambientQuietMs: Number(process.env.AMBIENT_QUIET_MS || 45000),
+
+  // the image engine (SD, ~3 GB) lets go of the card after a picture or a marker edit when nothing else is queued,
+  // so it never sits beside the live face and her brain; the next picture reloads it (a few seconds)
+  imageUnloadIdle: !['0', 'false', 'no'].includes(String(process.env.IMAGE_UNLOAD_IDLE ?? '1').toLowerCase()),
 };
+
+/** Rough tokens for text (about 4 characters a token for English prose). */
+export const estTokens = s => Math.ceil(String(s || '').length / 4);
+{
+  let persona = 0;
+  try { persona = Math.ceil(statSync(cfg.personaFile).size / 4); } catch {}
+  const need = persona + cfg.historyTurns * 2 * cfg.turnTokens + cfg.numPredict + 1024;
+  cfg.numCtx = Number(process.env.BRAIN_NUM_CTX) || Math.min(cfg.numCtxMax, Math.max(8192, Math.ceil(need / 2048) * 2048));
+}

@@ -96,3 +96,9 @@ export async function mark(sourceFile, items, faceBox) {
 export const editSource = (sourceFile, fresh) => fresh ? null : [sourceFile, cfg.lookBase].find(f => f && fs.existsSync(f)) || null;
 
 export const looksDir = OUT;
+
+/** Let go of the GPU (the sidecar drops its pipelines and stays up; the next render reloads them). */
+export async function unload() {
+  try { const r = await fetch(`${cfg.imageUrl}/unload`, { method: 'POST', signal: AbortSignal.timeout(10000) }); return (await r.json()).unloaded; }
+  catch { return false; }
+}

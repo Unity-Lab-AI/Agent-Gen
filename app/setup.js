@@ -22,6 +22,7 @@ const DL = path.join(DATA, 'downloads');
 const STATE = path.join(DATA, 'state.json');
 const TORCH = ['torch==2.7.1', 'torchvision==0.22.1', 'torchaudio==2.7.1', '--index-url', 'https://download.pytorch.org/whl/cu118'];
 const BRAIN_BASE = 'dolphin3:8b';
+const VISION = 'qwen3-vl:4b';   // her eyes: describes camera and screen frames (hub/vision)
 const SETUP_PORT = 11436;    // the temporary brain server used only while installing models
 const tar = 'C:\\Windows\\System32\\tar.exe';   // bsdtar, in every Windows 10+/11: reads .tar.gz and .zip
 
@@ -184,6 +185,24 @@ function plan(root) {
           await run(exe, ['pull', BRAIN_BASE], { log, env });
           log('building unity-local from her Modelfile');
           await run(exe, ['create', 'unity-local', '-f', path.join(root, 'vendor', 'local-unity-ollama', 'Modelfile')], { log, env });
+        } finally {
+          try { execSync(`taskkill /PID ${srv.pid} /T /F`, { stdio: 'ignore', windowsHide: true }); } catch {}
+        }
+      },
+    },
+    {
+      gb: 3.3, id: 'eyes', title: `Her eyes (${VISION}, sees your camera and screen)`,
+      done: async () => P().have.eyes || (await tagsHave(11434, VISION)) || (await tagsHave(11435, VISION)),
+      async run(log) {
+        const exe = ollama();
+        const store = P().ollamaModels || (exe.startsWith(RUNTIME) ? path.join(DATA, 'ollama-models') : null);
+        if (store) fs.mkdirSync(store, { recursive: true });
+        const env = { OLLAMA_HOST: `127.0.0.1:${SETUP_PORT}`, ...(store ? { OLLAMA_MODELS: store } : {}) };
+        const srv = spawn(exe, ['serve'], { env: { ...process.env, ...env }, stdio: 'ignore', windowsHide: true });
+        try {
+          await new Promise(r => setTimeout(r, 2500));
+          log(`pulling ${VISION} (about 3.3 GB)`);
+          await run(exe, ['pull', VISION], { log, env });
         } finally {
           try { execSync(`taskkill /PID ${srv.pid} /T /F`, { stdio: 'ignore', windowsHide: true }); } catch {}
         }

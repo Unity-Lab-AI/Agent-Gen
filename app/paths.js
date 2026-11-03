@@ -45,6 +45,8 @@ function resolve(root) {
       // Ollama's store moved layouts in 2026 (manifests-v2/ollama.com); accept either
       brain: ['manifests-v2/ollama.com/library/unity-local', 'manifests/registry.ollama.ai/library/unity-local']
         .some(rel => exists(path.join(ollamaModels || path.join(os.homedir(), '.ollama', 'models'), rel))),
+      eyes: ['manifests-v2/ollama.com/library/qwen3-vl/4b', 'manifests/registry.ollama.ai/library/qwen3-vl/4b']
+        .some(rel => exists(path.join(ollamaModels || path.join(os.homedir(), '.ollama', 'models'), rel))),
     },
   };
 }
