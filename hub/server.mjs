@@ -5,7 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
-import { cfg, REPO, estTokens } from './config.mjs';
+import { cfg, REPO, estTokens, pickStart } from './config.mjs';
 import { chatStream, chatOnce, health as brainHealth, gpu } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
 import { TagFilter, unstaged, WEB_KINDS } from './voice/tags.mjs';
@@ -22,6 +22,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 const LOOK_STATE = path.join(image.looksDir, 'current.json');   // her look across restarts
+const LAST_START = path.join(image.looksDir, 'last-start.txt');  // the start still used last, never picked twice running
 const CLOTHES = /\b(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)\b/i;
 const ADDS = /\b(add|put on|wear|give (yourself|you)|draw|write|paint|lipstick|necklace|collar|choker|earrings?|glasses|sunglasses|hat|bow|ribbon|tattoo|piercing|bracelet|gloves|mask|makeup)\b/i;
 const UNDRESS = /\b(take off|take of|remove|strip|undress|naked|nude|topless|bottomless|change (into|your)|swap|instead of)\b/i;
@@ -95,7 +96,7 @@ class Session {
     // she lives on her own: with nothing to do for a while (fresh start, after a reset, a reel that ended), she
     // starts her idle routine from her current look instead of sitting there blinking
     this.idleTimer = setInterval(() => this.idleCheck(), 5000);
-    // she keeps the look she had last time until she is told to change it (not back to the base photo on a restart)
+    // she keeps a look she was told to take until she is told to change it; with none, a fresh start from her video
     try {
       const k = JSON.parse(fs.readFileSync(LOOK_STATE, 'utf8'));
       if (k.look && fs.existsSync(k.look)) {
@@ -103,6 +104,8 @@ class Session {
         this.lookFace = k.face && fs.existsSync(k.face) ? k.face : null;
       }
     } catch {}
+    if (this.currentLook) face.appearance(this.currentLook).catch(() => {});
+    else this.freshStart();
   }
   saveLook() {
     try { fs.writeFileSync(LOOK_STATE, JSON.stringify({ look: this.currentLook, prompt: this.currentLookPrompt, face: this.lookFace })); } catch {}
@@ -596,14 +599,22 @@ class Session {
     return this.idleActions.shift();
   }
 
+  /** No look of her own yet: a random still from her video is her base (never the same as last time), and now
+   *  and then the whole video plays on her face so she is moving from the first second. */
+  freshStart() {
+    const { still, video } = pickStart(LAST_START);
+    this.log(`fresh start: ${path.basename(still)}${video ? ' + her video' : ''}`);
+    face.appearance(video || still).catch(() => {});
+  }
+
   /** Forget the conversation and her current look, clip and restyled face (the files may be about to go). */
   reset() {
     this.interrupt('reset'); this.history = []; this.lookSeq++; this.idleActions = [];
     this.lookFace = null; this.currentLook = null; this.currentLookPrompt = null; this.currentClip = null;
     this.lastPic = null; this.lastPicPrompt = null; this.adoptEpoch = null;
     try { fs.rmSync(LOOK_STATE, { force: true }); } catch {}
-    // back to her default picture on screen too, not just in memory (the face kept the last look after a reset)
-    face.appearance(cfg.lookBase).catch(() => {});
+    // a new start on screen too, not just in memory (the face kept the last look after a reset)
+    this.freshStart();
   }
 
   async onMessage(raw) {
@@ -649,7 +660,7 @@ const server = http.createServer(async (req, res) => {
     // nothing points at a deleted file.
     for (const s of sessions) { s.reset(); s.send({ type: 'reset' }); }
     await video.cancel();
-    const f = await face.appearance(path.join(REPO, 'assets', 'portrait', 'unity-bust.jpg'));
+    const f = await face.appearance(cfg.lookBase);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ ok: true, sessions: sessions.size, face: f?.ok ?? null }));
   }
