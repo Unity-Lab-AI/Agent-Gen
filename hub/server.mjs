@@ -25,6 +25,20 @@ const LOOK_STATE = path.join(image.looksDir, 'current.json');   // her look acro
 const CLOTHES = /\b(top|tops|shirt|t-shirt|tee|blouse|bra|dress|gown|skirt|pants|jeans|shorts|bikini|swimsuit|lingerie|panties|underwear|undies|thong|stockings|fishnets|corset|jacket|hoodie|sweater|coat|outfit|clothes|clothing|wearing|wears|dressed|undressed|naked|nude|topless|bottomless|bare|strip|stripped|costume|uniform|robe|towel|boots|heels)\b/i;
 const ADDS = /\b(add|put on|wear|give (yourself|you)|draw|write|paint|lipstick|necklace|collar|choker|earrings?|glasses|sunglasses|hat|bow|ribbon|tattoo|piercing|bracelet|gloves|mask|makeup)\b/i;
 const UNDRESS = /\b(take off|take of|remove|strip|undress|naked|nude|topless|bottomless|change (into|your)|swap|instead of)\b/i;
+// told to put clothes on ("might want to put on a hoodie", "*hands Unity a hoodie* cover yourself with that"): her
+// brain writes emotion cues and nothing else, so she said "now I'm all warm and cozy" and stayed topless. The
+// operator's words dress her.
+const WEAR = /\b(put (on|it on)|puts on|wear|try on|change into|cover (your ?self|yourself|up)|throw on|slip (on|into)|get dressed|dress (in|up)|hands? (you|unity|her)|gives? (you|unity|her)|here'?s (a|an|your|some))\b/i;
+const GARMENT = /\b((?:[a-z]+[- ]){0,2}?(?:hoodie|sweatshirt|sweater|jumper|t-shirt|tee|shirt|blouse|tank top|crop top|top|jacket|coat|robe|dress|gown|skirt|jeans|pants|trousers|shorts|leggings|bikini|swimsuit|lingerie|bra|panties|underwear|thong|stockings|fishnets|corset|towel|uniform|costume|pajamas|onesie|scarf|beanie|hat|cap|gloves|boots|heels|socks)(?:[- ](?:hoodie|sweatshirt|dress|top|jacket|shirt))?)\b/i;
+const NOT_WEAR = /\b(take (it |that |them )?off|take of|remove|strip|undress|without)\b/i;
+/** "a Hoodie Sweatshirt" -> "hoodie sweatshirt"; null when the words do not put a garment on her. */
+export function wearAsk(text) {
+  const t = String(text || '');
+  if (!WEAR.test(t) || NOT_WEAR.test(t)) return null;
+  const g = GARMENT.exec(t);
+  return g ? g[1].toLowerCase().replace(/^((unity|her|you|a|an|the|this|that|my|your|some|on|with)\s+)+/, '').trim() : null;
+}
+
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
 
 // "that's you now" after a picture: the picture she just made IS her new look. Her brain re-described her default
@@ -227,6 +241,11 @@ class Session {
       this.adoptEpoch = epoch;
       const job = this.adopt(this.lastPic, this.lastPicPrompt, userText, epoch);
       this.queueJob(job);
+    } else if (wearAsk(userText)) {
+      const g = wearAsk(userText);
+      this.log('dressing her: ' + g + ' (from the operator\'s words)');
+      this.onTag({ kind: 'img', text: 'Unity wearing a ' + g, wear: true }, epoch);
+      this.wearEpoch = epoch;
     } else if (parseMarks(userText)) {
       // marker / paint / lipstick on her is drawn from the operator's words, whatever line her brain writes: it
       // answered "write hole with a down arrow in lipstick" with a movement clip and nothing got drawn
@@ -252,6 +271,17 @@ class Session {
         this.send({ type: 'seen', seen, epoch });
         const ctx = vision.asContext(seen);
         if (ctx) messages[messages.length - 1] = { role: 'user', content: userText + ctx };
+        this.send({ type: 'status', stage: 'thinking', epoch });
+      }
+      // asked about the weather, the news, a score: looked up before she answers (her brain only writes emotion cues
+      // and made up "it's fucking freezing"), and handed to her with the operator's words for this turn
+      if (cfg.web && !ambient && web.needsLookup(userText)) {
+        const found = await this.lookup(userText, ac.signal, epoch);
+        if (epoch !== this.epoch) return;
+        if (found) {
+          const last = messages[messages.length - 1];
+          messages[messages.length - 1] = { role: 'user', content: last.content + '\n' + found + '\n[Answer from that, in your own words, out loud and short. Never read a web address aloud.]' };
+        }
         this.send({ type: 'status', stage: 'thinking', epoch });
       }
       // her hands on the web: a [[search]] / [[fetch]] line is run by the hub and the answer handed back, and she
@@ -288,6 +318,20 @@ class Session {
       this.busy = false;
       this.send({ type: 'done', epoch, text: full.trim() });
     }
+  }
+
+  /** The operator asked something only the web knows: the weather from wttr.in (this computer's location unless a
+   *  place is named), anything else a search on their words. -> text for her brain, or '' */
+  async lookup(userText, signal, epoch) {
+    const t0 = Date.now();
+    if (web.isWeather(userText)) {
+      this.send({ type: 'status', stage: 'checking the weather', epoch });
+      const w = await web.weather(userText, { signal });
+      this.log('weather: ' + (w.ok ? w.text : w.error) + ' (' + (Date.now() - t0) + ' ms)');
+      this.send({ type: 'web', kind: 'weather', query: w.place || 'here', ok: w.ok, title: w.text, url: w.url, error: w.error, epoch });
+      if (w.ok) return '[The weather right now, looked up just now: ' + w.text + ']';
+    }
+    return this.runWeb([{ kind: 'search', text: web.searchWords(userText) }], signal, epoch);
   }
 
   /** Run her web lines; -> the text handed back to her brain. The UI shows what she looked up. */
@@ -328,6 +372,10 @@ class Session {
     if (!prompt) return;
     if (this.adoptEpoch === epoch && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
       this.log(`tag ${tag.kind} ignored: this turn adopts the last picture as her look`);
+      return;
+    }
+    if (this.wearEpoch === epoch && !tag.wear && ['img', 'image', 'selfie', 'look'].includes(tag.kind)) {
+      this.log('tag ' + tag.kind + ' ignored: this turn already dresses her from the operator\'s words');
       return;
     }
     if (this.markEpoch === epoch && !tag.mark && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
