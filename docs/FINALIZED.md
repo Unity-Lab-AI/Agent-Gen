@@ -227,3 +227,12 @@ Operator, verbatim: "lets do all of thee above" (answering which of M5 web searc
 - Web: `hub/tools/web.mjs` (new), `hub/voice/tags.mjs` (`WEB_KINDS`), `hub/server.mjs` (`runWeb`, rounds), `hub/persona/unity.txt` (search/fetch lines), `ui/app.js` (`web` message), `app/main.js` (external links). Verified live from the hub: DDG search returned results, example.com fetched.
 - Ambient: `hub/vision/client.mjs` (`glance`, `friendScore`), `hub/server.mjs` (`onGlance`, ambient `respond`), `ui/app.js` (glance timer, diag line). friendScore checked offline; the vision call itself not yet run (no Ollama up during the session).
 - Docs: `docs/ARCHITECTURE.md` (ambient, web, VRAM and lip sync), `docs/TODO.md`, `README.md`, `PRIVACY.md` (web search is the one thing that leaves the machine; `WEB=0`).
+
+## Session 2026-11-03, later (0.5.35; items stay [~] in TODO until the operator's visible test)
+
+Operator, verbatim: "okay im trying to get her to put on a hoodie, bet she aint getting it : what the weather like? is it cold out? might want to put on a hoodie.. you look cold!" ... "*hands Unity a Hoodie Sweatshirt* Cover your self with that!"; "the brain only has emoption cue you retard"; "if u need to look it up the buiolder that built the brain model is in the projects folders on desktop"; "once exe is build make sure deploy and cascade and build is all good and releases page".
+
+- hub.log showed no tag at all on either turn. The brain builder (`Desktop\Backrooms\training\build_brain.py`) trains unity-brain, the RimWorld stream model; the app's brain is unity-local = dolphin3:8b + Modelfile, never trained on `[[search]]`.
+- `hub/server.mjs` `wearAsk` + `lookup`; `hub/tools/web.mjs` `needsLookup` / `searchWords` / `weather` (Open-Meteo + ip-api; wttr.in did not answer). Checked offline: both failing lines trigger (hoodie; hoodie sweatshirt; weather), "take ur top off" does not dress her, weather came back for this computer's location and for Tokyo.
+- 0.5.34 shipped: cascade feature/m8-ship -> develop -> main on GitHub, release v0.5.34 with the exe. Forgejo push refused ("Credentials are incorrect or have expired").
+- Docs: ARCHITECTURE (operator words drive it), PRIVACY (weather services), TODO.
