@@ -216,3 +216,14 @@ TODO had not been updated since 0.5.x. Closed below, verbatim from TODO, verifie
 - [x] No console windows ("the .exe prperly runs everything without fucking cmd windows poping open and closed all the fucking time", "wtf just had 50 fucking cmd windows open and close i told you to stop that shit and fiox it"): private Ollama server under the app's hidden console (:11435), OpenCV instead of ffmpeg children in the video and face sidecars. Measured: no OpenConsole per runner.
 - [x] Looks vs motion ("she should only change or take off outfits when told to, just telling her to bounce or jiggle or dance should not instanty generate a new self image unless told that"): [[img]] only for appearance changes, [[do]] renders a clip of the current look.
 - [x] Everything in both remotes ("everyhting the project has shall be put in both remotes you fuck! minue chaches logs and gernations attempted already so full ship clean slate of the full stack and everything needed to make the .exe"): Ditto source un-ignored, her voice model via Git LFS, fetch-models.py for every other weight, project README.
+
+## Session 2026-11-03 (0.5.34, built; items stay [~] in TODO until the operator's visible test)
+
+Operator, verbatim: "lets do all of thee above" (answering which of M5 web search + fetch, M3 VRAM scheduling, M8 age gate, M4 ambient awareness to do next), and mid-session: "and i noticed her lips werent sncying to when i heard her talk".
+
+- Age gate: `app/age.html`, `app/main.js` (`ageGate`, `agentgen:age:*`), `app/preload.js`, `app/package.json` files list. Are you 18+ -> birth date -> checked in the main process -> `data/age.json`; no / under 18 quits.
+- VRAM: `hub/config.mjs` (`numCtx` auto 24576, `IMAGE_UNLOAD_IDLE`), `hub/image/client.mjs` (`unload`), `hub/server.mjs` (`queueJob` unload, token-trimmed history).
+- Lip sync: `sidecars/face/server.py` frame sink pre-roll + no catch-up while speaking + `render_fps` in `/health`. Cause read from `D:\Agent Gen\data\logs\face.log` (writer 13-19 it/s).
+- Web: `hub/tools/web.mjs` (new), `hub/voice/tags.mjs` (`WEB_KINDS`), `hub/server.mjs` (`runWeb`, rounds), `hub/persona/unity.txt` (search/fetch lines), `ui/app.js` (`web` message), `app/main.js` (external links). Verified live from the hub: DDG search returned results, example.com fetched.
+- Ambient: `hub/vision/client.mjs` (`glance`, `friendScore`), `hub/server.mjs` (`onGlance`, ambient `respond`), `ui/app.js` (glance timer, diag line). friendScore checked offline; the vision call itself not yet run (no Ollama up during the session).
+- Docs: `docs/ARCHITECTURE.md` (ambient, web, VRAM and lip sync), `docs/TODO.md`, `README.md`, `PRIVACY.md` (web search is the one thing that leaves the machine; `WEB=0`).

@@ -34,6 +34,11 @@ function createWindow() {
   session.defaultSession.setDisplayMediaRequestHandler((_req, cb) => {
     desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s[0] ? { video: s[0] } : {})).catch(() => cb({}));
   });
+  // links she found on the web open in the operator's own browser; her pictures (on the hub) still open in-app
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url) && !url.startsWith(HUB)) { shell.openExternal(url); return { action: 'deny' }; }
+    return { action: 'allow' };
+  });
   win.once('ready-to-show', () => front());
   win.on('closed', () => { win = null; });
 }
@@ -74,8 +79,40 @@ async function boot() {
   }
 }
 
+// ---- age gate: adults only, asked once, before the UI or the installer loads -----------------------------------------
+// Operator: "fyi this is a 18plus application". Kept in the data folder (not the window's localStorage, which the
+// Storage panel clears); the main process checks the date itself, so the page cannot wave anyone through.
+const AGE = path.join(setup.DATA, 'age.json');
+function yearsSince(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return -1;
+  const [y, mo, d] = [+m[1], +m[2] - 1, +m[3]], t = new Date();
+  let a = t.getFullYear() - y;
+  if (t.getMonth() < mo || (t.getMonth() === mo && t.getDate() < d)) a--;
+  return a;
+}
+function ageOk() { try { return yearsSince(JSON.parse(fs.readFileSync(AGE, 'utf8')).birthdate) >= 18; } catch { return false; } }
+let ageDone = null;
+ipcMain.handle('agentgen:age:accept', (_e, birthdate) => {
+  if (yearsSince(birthdate) < 18) { app.quit(); return { ok: false }; }
+  fs.mkdirSync(setup.DATA, { recursive: true });
+  fs.writeFileSync(AGE, JSON.stringify({ adult: true, birthdate, confirmed_at: new Date().toISOString() }, null, 2));
+  log('age gate: adult confirmed');
+  ageDone && ageDone();
+  return { ok: true };
+});
+ipcMain.handle('agentgen:age:deny', () => { log('age gate: declined, closing'); app.quit(); return { ok: true }; });
+async function ageGate() {
+  if (ageOk()) return;
+  const passed = new Promise(r => { ageDone = r; });
+  await win.loadFile(path.join(__dirname, 'age.html'));
+  front();
+  await passed;
+}
+
 app.whenReady().then(async () => {
   createWindow();
+  await ageGate();
   const need = await setup.missing(ROOT);
   if (need.length) {
     log(`first run: missing ${need.map(s => s.id).join(', ')}`);

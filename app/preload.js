@@ -17,5 +17,9 @@ contextBridge.exposeInMainWorld('agentgen', {
     start: () => ipcRenderer.invoke('agentgen:setup:start'),
     onEvent: cb => ipcRenderer.on('agentgen:setup:event', (_e, ev) => cb(ev)),
   },
+  age: {
+    accept: birthdate => ipcRenderer.invoke('agentgen:age:accept', birthdate),
+    deny: () => ipcRenderer.invoke('agentgen:age:deny'),
+  },
   isApp: true,
 });

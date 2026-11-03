@@ -66,6 +66,18 @@ function onMsg(m) {
       break;
     }
     case 'seen': for (const x of m.seen) diagLine(`sees ${x.source} (${x.ms} ms): ${x.text || x.error || 'nothing'}`); break;
+    case 'web': {
+      // what her hands did on the web, in the chat: the query and the links she was handed (clickable)
+      const d = addMsg('sys', m.kind === 'fetch' ? `read ${m.url || m.query}${m.ok ? (m.title ? ` · ${m.title}` : '') : ` · ${m.error}`}`
+        : `searched "${m.query}"${m.ok ? ` · ${m.engine}` : ` · ${m.error}`}`);
+      for (const r of (m.results || []).slice(0, 5)) {
+        const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noreferrer';
+        a.textContent = r.title || r.url; a.style.cssText = 'display:block;color:var(--you);font-size:12px';
+        d.appendChild(a);
+      }
+      break;
+    }
+    case 'glance': { const g = m.glance; diagLine(`glance ${g.source} (${g.ms} ms): ${g.person ? `person, ${g.mood || '?'}` : 'nobody'}${g.doing ? `, ${g.doing}` : ''}${g.notable ? `, ${g.notable}` : ''} -> ${m.score}${m.why?.length ? ` (${m.why.join('; ')})` : ''}`); break; }
     case 'speak_error': diagLine(`voice error: ${m.error}`); break;
     case 'look': {
       if (m.stage === 'rendering') { setState('changing…'); addMsg('sys', `rendering: ${m.prompt.slice(0, 90)}`); }
@@ -163,6 +175,13 @@ const eyes = createEyes({
     if (err) addMsg('sys', `${source}: ${err}`);
   },
 });
+// ambient: while a source is shared and she is quiet, a still now and then (the hub decides whether she speaks up)
+let glanceEvery = 20000;
+setInterval(() => {
+  if (player.isSpeaking() || !(eyes.isOn('camera') || eyes.isOn('screen'))) return;
+  const frames = eyes.grab(768);
+  if (frames.length) send({ type: 'glance', frames });
+}, glanceEvery);
 $('#btn-cam').onclick = () => eyes.toggle('camera');
 $('#btn-screen').onclick = () => eyes.toggle('screen');
 

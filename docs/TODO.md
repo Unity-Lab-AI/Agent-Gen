@@ -40,7 +40,8 @@ All M2 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone
 - [~] Frame transport to the UI: WS binary frames locally, WebRTC video track for remote clients; UI shows it as a video-call feed with "what she is doing" status while tools run. (2026-10-30: MJPEG stream in an `<img>` for local; hub mirrors every sentence to the face and the UI delays audio by the reported lead. WebRTC for remote clients still open.)
 - [ ] Phoneme → mouth drive: use the voice model's per-phoneme durations as the primary lip signal where the renderer accepts it; audio-only drive for cloud TTS.
 - [ ] Track B kept as a fallback: MuseTalk-class mouth inpainting on generated video if Ditto's warp quality on moving bodies is not enough.
-- [ ] VRAM scheduling in the launcher: unload SD while the face is live, cap unity-brain context, optional second machine for the face via the ai-node pattern.
+- [~] VRAM scheduling in the launcher: unload SD while the face is live, cap unity-brain context, optional second machine for the face via the ai-node pattern. (2026-11-03, 0.5.34: SD unloads whenever her job queue empties (`IMAGE_UNLOAD_IDLE`); brain `num_ctx` sized once at start from persona + history (24576 instead of 32768), history trimmed by tokens so the persona is never cut. Second machine still open: every sidecar URL is already an env var (`FACE_URL` etc.).)
+- [~] Operator, 2026-11-03: "and i noticed her lips werent sncying to when i heard her talk". (0.5.34: face.log showed Ditto rendering 13-19 fps while her voice played at real time from each sentence's first frame, so her lips fell up to ~2 s behind by a sentence's end. `sidecars/face/server.py` now pre-rolls each sentence until enough frames are rendered to play it at exactly 25 fps, and never speeds frames up while she talks. Awaiting the operator's visible test.)
 - [ ] Record-to-video of the face feed + voice (eqvideo.js pattern).
 - [ ] Track C (research, after A ships): 3D Gaussian-splat head fitted from generated video of her for camera moves and parallax.
 
@@ -48,11 +49,11 @@ All M2 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone
 
 - [~] Camera capture (browser `getUserMedia` and Python `camera.py`) and screen capture (`getDisplayMedia`, `screen.py`) feeding frames to the hub. (2026-10-31, 0.5.32: Show camera / Show screen in the footer, one still per source with every message; `ui/eyes.js`. Python capture not needed in the app. Awaiting the operator's visible test.)
 - [~] Vision tool: local unity-brain vision / qwen-vl through Ollama, Pollinations image-to-text as cloud path. (2026-10-31, 0.5.32: `qwen3-vl:4b` via `hub/vision/client.mjs`; tested through the hub's WS with a real screenshot (she read the Discord channel on screen) and a portrait as camera (pink-streaked hair, white bikini). Cloud path still open.)
-- [ ] Ambient awareness loop with a friend threshold (presence, emotion, interjection).
+- [~] Ambient awareness loop with a friend threshold (presence, emotion, interjection). (2026-11-03, 0.5.34: with camera/screen shared the UI sends a still every 20 s; `vision.glance` reads PERSON/MOOD/DOING/NOTABLE, `friendScore` scores came back +7, looks upset +6, something notable +5, walked away +3; at `AMBIENT_THRESHOLD` 6 she says one line, never while busy or rendering, 45 s quiet, 2 min cooldown. Awaiting the operator's visible test.)
 
 ### M5 — Her hands ("websearch and playwrite and coding shit all of it", "does things ytou telleher to do")
 
-- [ ] Web search tool (DDG + Bing scrape + Playwright-rendered fallback) and web fetch tool.
+- [~] Web search tool (DDG + Bing scrape + Playwright-rendered fallback) and web fetch tool. (2026-11-03, 0.5.34: `hub/tools/web.mjs` ported from C.O.R.A web.py; her brain writes `[[search: ...]]` / `[[fetch: ...]]`, the hub runs them and she answers from the results (2 rounds max); results listed in the chat. Tested live: DDG answered, example.com fetched. Playwright fallback only when `playwright` is installed beside the hub (not shipped). Awaiting the operator's visible test.)
 - [ ] Browser tool over persistent CDP Chromium (open, click, fill, screenshot, run JS, read text).
 - [ ] Code / files / shell tools with containment (blocked paths, writable roots, timeouts, danger levels needing confirmation).
 - [ ] System tools (apps, windows, processes, media, notifications) and image generation tool with selfie mode. Per the operator ("she should be a slut sending dirt images of her self and like doing strip teases"; corrected: "dirty* not dirt.. i dont want to see dirty girls i want to see girls doing the dirty"), the selfie tool runs with the safety checker off as the vendored SD sidecars already do, with the face lock keeping her identity; no app-side filter ("the model handels all the safties already we dont need to double up").
@@ -73,7 +74,7 @@ All M2 minors completed 2026-10-30 and moved to `docs/FINALIZED.md` (§Milestone
 
 ### M8 — Launcher and packaging
 
-- [ ] Age gate at first launch ("fyi this is a 18plus application so chick can be full on 18+ type of lewdish"): adults-only confirmation before the UI loads, seeded from `D:\Deviant Thing v2\fractal_templater\web\assets\age-verification.js`; adult content allowed past the gate, minors never, anywhere.
+- [~] Age gate at first launch ("fyi this is a 18plus application so chick can be full on 18+ type of lewdish"): adults-only confirmation before the UI loads, seeded from `D:\Deviant Thing v2\fractal_templater\web\assets\age-verification.js`; adult content allowed past the gate, minors never, anywhere. (2026-11-03, 0.5.34: `app/age.html` before setup and the UI: are you 18+, then birth date, checked again by the main process and kept in `data/age.json` (not localStorage, which the Storage panel clears); no or under 18 closes the app. Awaiting the operator's visible test.)
 - [ ] Acceptance pass, visible: "when everything is complete and finished test it non headless at human viewable operations to test it and talk to her". The app window on the desktop, her voice on the speakers, a real conversation; nothing counted as tested unless the operator could see it.
 
 ---

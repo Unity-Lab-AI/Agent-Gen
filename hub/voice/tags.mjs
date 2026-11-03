@@ -4,7 +4,9 @@
 // of anything that is not her own look (shown in the chat, never her face).
 const OPEN = '[[';
 const CLOSE = ']]';
-const KINDS = /^\s*(img|image|selfie|look|do|action|pic|picture|photo|draw)\s*:\s*/i;
+const KINDS = /^\s*(img|image|selfie|look|do|action|pic|picture|photo|draw|search|websearch|google|fetch|open|read)\s*:\s*/i;
+/** Tags that are her hands on the web: the hub runs them and gives her the answer to talk about. */
+export const WEB_KINDS = ['search', 'websearch', 'google', 'fetch', 'open', 'read'];
 // a stage direction: *...*, [...] (single brackets) or (...), 3-200 chars, no newline
 const STAGE = /\*([^*\n]{3,200})\*|(?<!\[)\[(?!\[)([^\[\]\n]{3,200})\]|\(([^()\n]{3,200})\)/;
 /** Text with stage directions removed, for her voice: she does them, she does not read them aloud. */

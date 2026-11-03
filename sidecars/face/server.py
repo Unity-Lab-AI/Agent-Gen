@@ -100,13 +100,21 @@ class FrameSink:
         self.cond = threading.Condition()
         self.latest = None          # jpeg bytes
         self.latest_idx = 0         # == number of frames published so far; frame k of the feed timeline is published when latest_idx becomes k+1
-        self.cues = []              # [(frame_index, callback)] fired the moment that frame is published
+        self.cues = []              # [(frame_index, n_frames, callback)] fired the moment that frame is published
         self.frames_in = 0
         self.frames_out = 0
         self.t_last = time.time()
         self.fps_out = 0.0
         self.history = deque(maxlen=max(2, int(ARGS.loop_s * FPS)))   # last frames she played, for the hold loop
         self.view_idx = 0           # every frame shown, live or replayed; viewers wait on this
+        # Speech is the clock. The renderer runs ~13-19 fps on the 4070 Ti SUPER, below the 25 the audio needs: her
+        # voice ran on in real time while her lips fell up to 2 s behind by a sentence's end. So a sentence starts
+        # only once enough frames are buffered that the render rate finishes it in time, then plays at exactly 25.
+        self.render_fps = float(FPS)   # frames arriving from the renderer, per second (smoothed)
+        self.t_in = time.time()
+        self.speak_until = 0           # frame index where the speech being played ends; no catch-up before it
+        self.want_buffer = 0           # frames the feed may run ahead of playout for the next sentence
+        self.preroll_since = None
         self.loop = None            # [frames, position, direction] while held
         self._stop = False
         self.thread = threading.Thread(target=self._playout, daemon=True)
@@ -117,9 +125,14 @@ class FrameSink:
         ok, jpg = cv2.imencode(".jpg", np.ascontiguousarray(rgb[..., ::-1]), [int(cv2.IMWRITE_JPEG_QUALITY), ARGS.jpeg])
         if not ok:
             return
+        now = time.time()
         with self.lock:
             self.pending.append(jpg.tobytes())
             self.frames_in += 1
+            gap = now - self.t_in
+            if gap < 1.0:                     # a hold (paused, swapping) is not the render rate
+                self.render_fps = 0.95 * self.render_fps + 0.05 * min(60.0, 1.0 / max(1e-3, gap))
+            self.t_in = now
 
     def _publish(self, jpg):
         fire = []
@@ -134,8 +147,12 @@ class FrameSink:
             self.fps_out = 0.9 * self.fps_out + 0.1 * (1.0 / max(1e-3, now - self.t_last))
             self.t_last = now
             keep = []
-            for frame_index, cb in self.cues:
-                (fire if self.latest_idx > frame_index else keep).append((frame_index, cb))
+            for frame_index, n, cb in self.cues:
+                if self.latest_idx > frame_index:
+                    fire.append((frame_index, cb))
+                    self.speak_until = max(self.speak_until, frame_index + n)
+                else:
+                    keep.append((frame_index, n, cb))
             self.cues = keep
             self.cond.notify_all()
         for _, cb in fire:
@@ -172,26 +189,57 @@ class FrameSink:
             self.view_idx += 1
             self.cond.notify_all()
 
-    def cue(self, frame_index, callback):
+    def cue(self, frame_index, callback, n_frames=0):
         with self.cond:
-            self.cues.append((frame_index, callback))
+            self.cues.append((frame_index, n_frames, callback))
+            self.want_buffer = max(self.want_buffer, n_frames)
 
     def clear_cues(self):
         with self.cond:
             self.cues = []
+            self.speak_until = 0
+            self.want_buffer = 0
+            self.preroll_since = None
+
+    def _ready_to_publish(self, backlog):
+        """False while the next frame starts a sentence and too few of its frames are rendered yet to play it at
+        25 fps without running dry: at render rate r, n frames need n*(1 - r/25) of them in hand at the start.
+        Gives up waiting after the sentence's own length, so a stalled renderer cannot mute her."""
+        with self.cond:
+            due = [n for fi, n, _ in self.cues if fi == self.latest_idx]
+        if not due:
+            self.preroll_since = None
+            return True
+        n = max(due)
+        need = min(n, int(n * max(0.0, 1.0 - self.render_fps / FPS)) + 3)
+        now = time.time()
+        if self.preroll_since is None:
+            self.preroll_since = now
+        if backlog + 1 >= need or now - self.preroll_since > n / FPS:
+            self.preroll_since = None
+            return True
+        return False
 
     def _playout(self):
         next_t = time.time()
         while not self._stop:
             with self.lock:
-                jpg = self.pending.popleft() if self.pending else None
                 backlog = len(self.pending)
+            jpg = None
+            if backlog and self._ready_to_publish(backlog - 1):
+                with self.lock:
+                    jpg = self.pending.popleft() if self.pending else None
+                    backlog = len(self.pending)
             if jpg is not None:
                 self._publish(jpg)
             elif self.held():
                 self._replay()
-            # catch up gently if the renderer is ahead; hold the last frame if it is behind
-            step = FRAME_DT * (0.85 if backlog > FPS else 1.0)
+            speaking = self.latest_idx < self.speak_until
+            if not speaking and not self.cues:
+                self.want_buffer = 0
+            # catch up gently if the renderer is ahead, but never while she talks (her lips would outrun her voice);
+            # hold the last frame if it is behind
+            step = FRAME_DT * (0.85 if backlog > FPS + self.want_buffer and not speaking else 1.0)
             next_t += step
             delay = next_t - time.time()
             if delay > 0:
@@ -441,7 +489,7 @@ class LiveFace:
                 play_audio(play_wav)
             return 0.0, self.sink.latest_idx
         if play_wav is not None:
-            self.sink.cue(start_frame, lambda: play_audio(play_wav))
+            self.sink.cue(start_frame, lambda: play_audio(play_wav), n_frames=len(pcm16k) // 640)
         return queued, start_frame
 
     def interrupt(self):
@@ -477,7 +525,7 @@ class LiveFace:
         self.passthrough = None  # JPEG frames of a look with no human face, shown as they are (no lips to drive)
         while self.alive:
             while self.alive and (self.swapping or self.paused or self.passthrough is not None
-                                  or (self.fed_samples // 640 - self.sink.latest_idx) > max_lag):
+                                  or (self.fed_samples // 640 - self.sink.latest_idx) > max_lag + self.sink.want_buffer):
                 time.sleep(0.02)
                 next_t = time.time()
             new, look = self._take()
@@ -495,7 +543,7 @@ class LiveFace:
             if np.abs(new).max() > 1e-4:
                 self.spoken_s += self.STEP / self.SR
             # do not run ahead of real time by more than ~1 s of frames; the sink paces playout
-            while self.alive and self.sink.queued() > FPS:
+            while self.alive and self.sink.queued() > FPS + self.sink.want_buffer:
                 time.sleep(0.02)
             next_t += self.STEP / self.SR
             delay = next_t - time.time()
@@ -557,6 +605,7 @@ class LiveFace:
             new_sink.view_idx, new_sink.loop = old_sink.view_idx, None
             new_sink.history.clear()
             new_sink.cues = []
+            new_sink.render_fps = old_sink.render_fps
         old_sink.close()
         self.sink = new_sink
         self._instrument()
@@ -624,7 +673,7 @@ class LiveFace:
 
     def health(self):
         return {"ok": True, "loaded": True, "backend": ARGS.backend, "device": self.device, "portrait": os.path.basename(ARGS.portrait),
-                "fps": 0.0 if getattr(self, "paused", False) else round(self.sink.fps_out, 1), "looping": self.sink.loop is not None,
+                "fps": 0.0 if getattr(self, "paused", False) else round(self.sink.fps_out, 1), "render_fps": round(self.sink.render_fps, 1), "looping": self.sink.loop is not None,
                 "passthrough": getattr(self, "passthrough", None) is not None, "frames": self.sink.frames_out, "queue_s": round(self.queue_s(), 2),
                 "chunk_ms": round(self.t_chunk_ms), "chunks": self.chunks, "emo": self.emo, "steps": ARGS.steps, "overlap": ARGS.overlap,
                 "fp16": self.fp16, "stage_ms": self.stage_ms, "lag_frames": int(self.fed_samples // 640 - self.sink.latest_idx),

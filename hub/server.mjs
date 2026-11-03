@@ -5,10 +5,11 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { WebSocketServer } from 'ws';
-import { cfg, REPO } from './config.mjs';
+import { cfg, REPO, estTokens } from './config.mjs';
 import { chatStream, chatOnce, health as brainHealth, gpu } from './providers/ollama.mjs';
 import { SentenceSplitter } from './voice/sentences.mjs';
-import { TagFilter, unstaged } from './voice/tags.mjs';
+import { TagFilter, unstaged, WEB_KINDS } from './voice/tags.mjs';
+import * as web from './tools/web.mjs';
 import { SpeechQueue } from './voice/pipeline.mjs';
 import { EchoFilter } from './speech/echo-filter.mjs';
 import * as face from './face/client.mjs';
@@ -94,7 +95,11 @@ class Session {
   }
   queueJob(job) {
     this.jobs++;
-    job.finally(() => { this.jobs--; this.lastActive = Date.now(); });
+    job.finally(() => {
+      this.jobs--; this.lastActive = Date.now();
+      // nothing else queued: SD goes off the card instead of sitting beside the face and her brain
+      if (cfg.imageUnloadIdle && this.jobs === 0) image.unload().then(u => u && this.log('image engine unloaded (idle)'));
+    });
     this.looks = (this.looks || Promise.resolve()).then(() => job);
   }
   idleCheck() {
@@ -168,12 +173,45 @@ class Session {
     await this.respond(text, frames);
   }
 
-  async respond(userText, frames) {
+  /** A still from the shared camera / screen while nobody is talking: read it, score it against the last one, and
+   *  if a friend would say something, she does. Skipped whenever she is busy, a clip renders, or it is too soon. */
+  async onGlance({ frames }) {
+    if (!cfg.ambient || !frames?.length || this.glancing) return;
+    const now = Date.now();
+    if (this.busy || gpu.rendering > 0 || this.reelBusy || now - this.lastActive < cfg.ambientQuietMs) return;
+    this.glancing = true;
+    try {
+      this.glances ||= {}; this.absent ||= 0;
+      let best = null;
+      for (const f of frames.slice(0, 2)) {
+        const g = await vision.glance(f);
+        if (this.busy) return;                          // the operator spoke meanwhile; their turn wins
+        const prev = this.glances[g.source] || null;
+        const sc = vision.friendScore(g, prev, { absentGlances: this.absent });
+        if (g.source === 'camera') this.absent = g.person ? 0 : this.absent + 1;
+        this.glances[g.source] = g;
+        this.send({ type: 'glance', glance: g, score: sc.score, why: sc.why });
+        this.log(`glance ${g.source} (${g.ms} ms): person=${g.person} mood=${g.mood} doing=${g.doing} notable=${g.notable} -> ${sc.score} ${sc.why.join('; ')}`);
+        if (!best || sc.score > best.sc.score) best = { g, sc };
+      }
+      if (!best || best.sc.score < cfg.ambientThreshold) return;
+      if (Date.now() - (this.lastInterject || 0) < cfg.ambientCooldownMs || this.busy || gpu.rendering > 0) return;
+      this.lastInterject = Date.now();
+      const g = best.g;
+      const seen = g.source === 'screen' ? `on their screen: ${g.doing}${g.notable ? `; ${g.notable}` : ''}`
+        : g.person ? `through your camera: they look ${g.mood || 'the same'}, ${g.doing || ''}${g.notable ? `; ${g.notable}` : ''}` : 'through your camera: they walked away';
+      await this.respond(`[Nobody said anything. You just noticed ${seen} (${best.sc.why.join('; ')}). Say one short thing about it out loud, the way a close friend would, without asking what they want.]`, null, { ambient: true });
+    } catch (e) { this.log('glance failed', e.message); }
+    finally { this.glancing = false; }
+  }
+
+  async respond(userText, frames, { ambient = false } = {}) {
+    if (ambient && (this.busy || gpu.rendering > 0)) return;
     if (this.busy) this.interrupt('new-input');
     // the operator always wins: any clip rendering now (idle or asked for) is cancelled and the reply waits until
     // the render has really stopped, so the brain never shares the card with Wan (that jam crawled for minutes).
     // The cancelled job releases the face itself; the look it made is already on her face.
-    const freeing = gpu.rendering > 0 ? video.stopRender(3000) : null;
+    const freeing = !ambient && gpu.rendering > 0 ? video.stopRender(3000) : null;
     const epoch = ++this.epoch;
     this.queue.epoch = epoch;
     const ac = new AbortController();
@@ -181,8 +219,9 @@ class Session {
     this.busy = true;
     this.lastActive = Date.now();
     this.history.push({ role: 'user', content: userText });
-    this.lastUserText = userText;
-    if (this.lastPic && THAT_YOU.test(userText)) {
+    if (!ambient) this.lastUserText = userText;
+    if (ambient) { /* her own remark: no look adoption, no marker from the note */ }
+    else if (this.lastPic && THAT_YOU.test(userText)) {
       // the last picture becomes her look as it is; image lines she writes this turn are ignored so she cannot
       // redraw herself back to her default
       this.adoptEpoch = epoch;
@@ -195,10 +234,13 @@ class Session {
       this.markEpoch = epoch;
     }
     while (this.history.length > cfg.historyTurns * 2) this.history.shift();
-    const messages = [{ role: 'system', content: readPersona() }, ...this.history];
-    const splitter = new SentenceSplitter();
-    const tags = new TagFilter(tag => this.onTag(tag, epoch));
+    const persona = readPersona();
+    // and by tokens: past num_ctx Ollama cuts from the front, which is her persona; the oldest turns go first instead
+    const room = cfg.numCtx - cfg.numPredict - 1024 - estTokens(persona);
+    while (this.history.length > 1 && this.history.reduce((n, m) => n + estTokens(m.content), 0) > room) this.history.shift();
+    const messages = [{ role: 'system', content: persona }, ...this.history];
     let full = '';
+    const webCalls = [];
     this.send({ type: 'status', stage: frames?.length ? 'looking' : 'thinking', epoch });
     try {
       if (freeing) await freeing;           // the card is free before her brain loads
@@ -212,14 +254,29 @@ class Session {
         if (ctx) messages[messages.length - 1] = { role: 'user', content: userText + ctx };
         this.send({ type: 'status', stage: 'thinking', epoch });
       }
-      for await (const delta of chatStream(messages, { signal: ac.signal, purpose: `reply to: ${userText.slice(0, 60)}`, waitRenderMs: 30000 })) {
+      // her hands on the web: a [[search]] / [[fetch]] line is run by the hub and the answer handed back, and she
+      // goes on from there (two rounds at most, then she talks with what she has)
+      for (let round = 0; round <= cfg.webRounds; round++) {
+        const splitter = new SentenceSplitter();
+        const tags = new TagFilter(tag => WEB_KINDS.includes(tag.kind) ? (cfg.web && round < cfg.webRounds && webCalls.push(tag)) : this.onTag(tag, epoch));
+        let part = '';
+        const asked = webCalls.length;
+        for await (const delta of chatStream(messages, { signal: ac.signal, purpose: round ? 'reply, after the web' : `reply to: ${userText.slice(0, 60)}`, waitRenderMs: 30000 })) {
+          if (epoch !== this.epoch) return;
+          part += delta;
+          this.send({ type: 'delta', epoch, text: delta });
+          for (const s of splitter.push(tags.push(delta))) this.say(s, epoch);
+        }
+        for (const s of splitter.push(tags.flush())) this.say(s, epoch);
+        for (const s of splitter.flush()) this.say(s, epoch);
+        full += (full && part ? '\n' : '') + part;
+        const calls = webCalls.slice(asked);
+        if (!calls.length) break;
+        const found = await this.runWeb(calls, ac.signal, epoch);
         if (epoch !== this.epoch) return;
-        full += delta;
-        this.send({ type: 'delta', epoch, text: delta });
-        for (const s of splitter.push(tags.push(delta))) this.say(s, epoch);
+        messages.push({ role: 'assistant', content: part }, { role: 'user', content: `${found}\n[Now answer me with what you found, in your own words. Do not write another search line unless you really need one.]` });
+        this.send({ type: 'status', stage: 'thinking', epoch });
       }
-      for (const s of splitter.push(tags.flush())) this.say(s, epoch);
-      for (const s of splitter.flush()) this.say(s, epoch);
       await this.queue.drain();               // looks and clips keep rendering in the background (onTag)
     } catch (e) {
       if (!ac.signal.aborted) { this.log('brain error', e.message); this.send({ type: 'error', where: 'brain', error: String(e.message || e), epoch }); }
@@ -231,6 +288,29 @@ class Session {
       this.busy = false;
       this.send({ type: 'done', epoch, text: full.trim() });
     }
+  }
+
+  /** Run her web lines; -> the text handed back to her brain. The UI shows what she looked up. */
+  async runWeb(calls, signal, epoch) {
+    const out = [];
+    for (const c of calls.slice(0, 3)) {
+      const isFetch = ['fetch', 'open', 'read'].includes(c.kind);
+      this.send({ type: 'status', stage: isFetch ? 'reading the page' : 'searching the web', epoch });
+      const t0 = Date.now();
+      if (isFetch) {
+        const r = await web.fetchPage(c.text, { signal, maxChars: cfg.webFetchChars });
+        this.log(`fetch ${c.text}: ${r.ok ? `${r.chars} chars` : r.error} (${Date.now() - t0} ms)`);
+        this.send({ type: 'web', kind: 'fetch', query: c.text, ok: r.ok, title: r.title, url: r.url, error: r.error, epoch });
+        out.push(r.ok ? `[Page ${r.url} "${r.title || ''}":\n${r.text}]` : `[Could not read ${c.text}: ${r.error}]`);
+      } else {
+        const r = await web.search(c.text, { signal, n: cfg.webResults });
+        this.log(`search "${c.text}": ${r.ok ? `${r.results.length} from ${r.engine}` : r.error} (${Date.now() - t0} ms)`);
+        this.send({ type: 'web', kind: 'search', query: c.text, ok: r.ok, engine: r.engine, results: r.results, error: r.error, epoch });
+        out.push(r.ok ? `[Web search "${c.text}" (${r.engine}):\n${r.results.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join('\n')}]`
+          : `[Web search "${c.text}" found nothing: ${r.error}]`);
+      }
+    }
+    return out.join('\n');
   }
 
   /** A sentence to her voice, minus any stage direction in it (those become looks, not words). */
@@ -484,6 +564,7 @@ class Session {
     switch (m.type) {
       case 'utterance': return this.onUtterance(m);
       case 'text': return this.onText(m);
+      case 'glance': return this.onGlance(m);
       case 'interrupt': return this.interrupt(m.reason || 'barge-in');
       case 'reset': this.reset(); return this.send({ type: 'reset' });
       case 'ping': return this.send({ type: 'pong', t: m.t });
@@ -554,5 +635,5 @@ face.health();
 
 server.listen(cfg.port, cfg.host, () => {
   console.log(`agent-gen hub on http://${cfg.host}:${cfg.port}  ui=${cfg.uiDir}`);
-  console.log(`voice=${cfg.voiceUrl} speech=${cfg.speechUrl} ollama=${cfg.ollamaUrl} models=${cfg.brainModels.join(',')}`);
+  console.log(`voice=${cfg.voiceUrl} speech=${cfg.speechUrl} ollama=${cfg.ollamaUrl} models=${cfg.brainModels.join(',')} num_ctx=${cfg.numCtx}`);
 });

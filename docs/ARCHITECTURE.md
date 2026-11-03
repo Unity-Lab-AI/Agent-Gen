@@ -199,6 +199,18 @@ Operator charter words: *"camera"*, *"you can see and she repsondes"*.
 - **qwen3-vl gotcha.** It thinks even with `think:false`, and the thinking counts against `num_predict`: 160 tokens came back empty. 900 leaves room for the answer.
 - **Installer** step `eyes` pulls `qwen3-vl:4b`, skipped when any local Ollama already has it.
 
+- **Ambient (2026-11-03).** While a source is shared and she is quiet, the UI sends a 768 px still every 20 s (`glance`). `vision.glance` asks for four lines (PERSON / MOOD / DOING / NOTABLE); `vision.friendScore` against the previous glance of that source: came back after 2+ empty glances +7, looks sad/upset/tired/... +6, something new and notable +5, walked away +3, other mood change +2. At `AMBIENT_THRESHOLD` (6) she says one short line through the normal reply path (`respond(..., {ambient:true})`, which never cancels a render). Skipped while she is busy, a clip renders, within `AMBIENT_QUIET_MS` (45 s) of the last exchange, and within `AMBIENT_COOLDOWN_MS` (2 min) of her last remark. Scores show in the diag panel.
+
+## Her hands: web (M5, 2026-11-03)
+
+`hub/tools/web.mjs`, ported from C.O.R.A `cora_tools/web.py`: DuckDuckGo HTML, then Bing HTML, each passed through the relevance check (Bing answers non-browser clients for the first word only), then a Playwright-rendered engine table (ddg / brave / bing) if `playwright` can be imported beside the hub (not shipped today). Two requests a second at most. `fetchPage` returns the readable text of a page (scripts, nav, footers stripped; rendered fallback for JavaScript-only pages under the same condition) and refuses loopback and private-network addresses. Her brain writes `[[search: ...]]` or `[[fetch: ...]]` (`WEB_KINDS` in `hub/voice/tags.mjs`); `respond` runs them after that round's stream, hands the results back as the next user turn, and streams again, `WEB_ROUNDS` (2) at most. The UI lists the query and the links (opened in the system browser by `setWindowOpenHandler`).
+
+## VRAM and lip sync (2026-11-03)
+
+- **SD off the card when idle.** `queueJob` unloads the image engine whenever her job queue empties (`IMAGE_UNLOAD_IDLE=0` keeps it); clips already cleared it through `video.makeRoom`.
+- **Brain context sized to use.** `cfg.numCtx` is computed once at start: persona tokens (~4 chars a token) + `historyTurns` x 2 x 200 + `numPredict` + 1024, rounded up to 2048, floor 8192, cap `BRAIN_NUM_CTX_MAX` (32768); `BRAIN_NUM_CTX` pins it. Today 24576. Fixed per run because a changing `num_ctx` reloads the model. `respond` also drops the oldest turns while history exceeds what is left after the persona, since Ollama cuts the front (her persona) when the prompt overflows.
+- **Speech is the clock.** Ditto renders 13-19 fps on the 4070 Ti SUPER; the sidecar plays each sentence on the publish of its first frame, so at real-time audio her lips fell behind through the sentence. The frame sink measures the render rate and holds a sentence's first frame until `n x (1 - r/25)` of its n frames are buffered (giving up after n/25 s), then publishes at exactly 25 fps with no catch-up while she talks; the feed may run ahead by the next sentence's length to build that buffer. Cost: a short pause before she speaks when the renderer is slow, instead of drift. `/health` reports `render_fps`.
+
 ## Ports (planned, all loopback)
 
 | Port | Service | Origin |

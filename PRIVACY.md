@@ -1,6 +1,6 @@
 # Privacy
 
-Short version: **nothing you say, type, show or make leaves your computer.** No account, no telemetry, no analytics, no cloud AI, no update checks.
+Short version: **nothing you say, type, show or make leaves your computer**, except the words she searches the web for and the pages she opens when she looks something up (below). No account, no telemetry, no analytics, no cloud AI, no update checks.
 
 ## While she runs
 
@@ -20,6 +20,10 @@ Her engines start with Hugging Face offline mode on (`HF_HUB_OFFLINE`), so no mo
 
 Conversations are never written to disk by the app. **Storage → Reset to fresh** in the app clears her looks, clips, conversations, window cache and logs at any time, without reinstalling.
 
+## Her web search
+
+When she needs something she doesn't know (news, scores, weather, a page you name), her brain writes a search line and the hub sends **those search words** to DuckDuckGo (and Bing if DuckDuckGo returns nothing), or fetches **the page address** she asked for. That is a normal web request from your computer: those sites see your IP address and the query, nothing else (no conversation, no pictures, no camera). Every search and page she opens is listed in the chat. Local and private-network addresses are never fetched. To turn it off entirely, start Agent Gen with the environment variable `WEB=0`.
+
 ## First-run setup
 
 The first launch downloads what she runs on. These are plain downloads: nothing about you is sent, only the requests for the files.
@@ -33,7 +37,7 @@ The first launch downloads what she runs on. These are plain downloads: nothing 
 | Model weights (Ditto, Wan 2.2, LTX-Video, Realistic Vision 5.1, IP-Adapter, faster-whisper) | Hugging Face |
 | Her brain's base model (`dolphin3:8b`) | the Ollama registry |
 
-After setup she needs no internet at all.
+After setup she needs no internet at all, except for her web search above.
 
 ## Uninstall
 
