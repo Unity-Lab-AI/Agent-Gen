@@ -44,6 +44,9 @@
   #storage .size { color:var(--dim); font-size:13px; min-width:110px; text-align:right }
   #storage .foot { display:flex; gap:8px; justify-content:space-between; margin-top:12px }
   #storage-fresh { color:var(--bad); border-color:#4a2228 }
+  #eyes { position:absolute; right:14px; bottom:14px; display:flex; gap:8px; z-index:5 }
+  #eyes video { display:none; width:180px; border-radius:8px; border:1px solid var(--line); background:#000 }
+  #eyes video.eye-camera { transform:scaleX(-1) }
   #diag { font:11px ui-monospace, monospace; color:var(--dim); padding:6px 12px; border-top:1px solid var(--line); white-space:pre-wrap; max-height:110px; overflow:auto }
 </style>
 </head>
@@ -56,6 +59,7 @@
   <span class="light" id="l-brain"><i></i>brain <b id="brain-name"></b></span>
   <span class="light" id="l-face"><i></i>face <b id="face-fps"></b></span>
   <span class="light" id="l-image"><i></i>image <b></b></span>
+  <span class="light" id="l-eyes"><i></i>eyes</span>
   <span style="flex:1"></span>
   <span class="light" id="l-mic"><i></i>mic</span>
 </header>
@@ -68,6 +72,7 @@
   </div>
   <div id="viseme">sil</div>
   <div id="level"><i></i></div>
+  <div id="eyes"></div>
 </main>
 <aside>
   <div id="log"></div>
@@ -76,6 +81,8 @@
 <footer>
   <button id="btn-mic">Start mic</button>
   <button id="btn-mute" disabled>Mute</button>
+  <button id="btn-cam" title="Let her see you through the webcam">Show camera</button>
+  <button id="btn-screen" title="Let her see your screen">Show screen</button>
   <button id="btn-stop" title="Stop her mid-sentence">Shush</button>
   <input type="text" id="text" placeholder="or type to her and press Enter">
   <button id="btn-reset" title="Forget this conversation">Reset</button>

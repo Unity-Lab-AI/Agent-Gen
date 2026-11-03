@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agent Gen · adults only</title>
+<!-- Age gate, first launch, before anything else loads. Seeded from Deviant Thing v2's age-verification.js
+     (are-you-18 -> birthdate -> age check); the answer is kept by the main process in the data folder, not in
+     localStorage, so clearing conversations does not bring it back and nothing in the page can fake it. -->
+<style>
+  body { margin:0; background:#0b0b0f; color:#e8e6f0; font:15px/1.5 system-ui, Segoe UI, Roboto, sans-serif; height:100vh; display:flex; align-items:center; justify-content:center }
+  .box { width:440px; background:#15151d; border:1px solid #262633; border-radius:14px; padding:26px 28px; box-shadow:0 0 90px #ff4fa322 }
+  h1 { font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:#ff4fa3; margin:0 0 12px }
+  p { margin:0 0 16px; color:#c9c7d6 } small { color:#8c8aa0 }
+  .row { display:flex; gap:8px; margin-bottom:16px }
+  select { flex:1; background:#0f0f15; color:#e8e6f0; border:1px solid #262633; border-radius:8px; padding:8px }
+  .btns { display:flex; gap:10px; justify-content:flex-end }
+  button { background:#22222e; color:#e8e6f0; border:1px solid #262633; border-radius:8px; padding:9px 16px; cursor:pointer; font:inherit }
+  button.go { border-color:#ff4fa3; color:#ff4fa3 } button:disabled { opacity:.4; cursor:default }
+  .err { color:#ff5c5c; min-height:1.5em; margin:0 0 10px }
+  [hidden] { display:none !important }
+</style>
+</head>
+<body>
+<div class="box">
+  <section id="ask">
+    <h1>Adults only</h1>
+    <p>Agent Gen is an 18+ application. She talks, looks and acts like an adult with no content filter, including explicit images and video.</p>
+    <p>Are you 18 years of age or older?</p>
+    <div class="btns"><button id="no">No, close</button><button id="yes" class="go">Yes, I am 18+</button></div>
+  </section>
+  <section id="dob" hidden>
+    <h1>Your birth date</h1>
+    <p>Enter your date of birth to continue.</p>
+    <div class="row"><select id="m"></select><select id="d"></select><select id="y"></select></div>
+    <div class="err" id="err"></div>
+    <div class="btns"><button id="back">Close</button><button id="go" class="go" disabled>Continue</button></div>
+    <small>Kept on this computer only, in Agent Gen's data folder.</small>
+  </section>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const opt = (v, t) => `<option value="${v}">${t}</option>`;
+  $('m').innerHTML = opt('', 'Month') + MONTHS.map((n, i) => opt(i, n)).join('');
+  $('d').innerHTML = opt('', 'Day') + Array.from({ length: 31 }, (_, i) => opt(i + 1, i + 1)).join('');
+  const now = new Date().getFullYear();
+  $('y').innerHTML = opt('', 'Year') + Array.from({ length: now - 1900 + 1 }, (_, i) => opt(now - i, now - i)).join('');
+
+  // age in whole years, a year less while this year's birthday has not come yet (the seed's validateAge)
+  function age(y, m, d) {
+    const t = new Date();
+    let a = t.getFullYear() - y;
+    if (t.getMonth() < m || (t.getMonth() === m && t.getDate() < d)) a--;
+    return a;
+  }
+  const picked = () => [$('y').value, $('m').value, $('d').value].every(v => v !== '');
+  for (const id of ['m', 'd', 'y']) $(id).onchange = () => { $('err').textContent = ''; $('go').disabled = !picked(); };
+
+  const leave = () => window.agentgen.age.deny();
+  $('no').onclick = leave; $('back').onclick = leave;
+  $('yes').onclick = () => { $('ask').hidden = true; $('dob').hidden = false; };
+  $('go').onclick = async () => {
+    const y = +$('y').value, m = +$('m').value, d = +$('d').value;
+    const date = new Date(Date.UTC(y, m, d));
+    if (date.getUTCMonth() !== m) { $('err').textContent = `${MONTHS[m]} has no day ${d}.`; return; }
+    if (age(y, m, d) < 18) { $('err').textContent = 'Agent Gen is for adults only.'; $('go').disabled = true; setTimeout(leave, 1800); return; }
+    $('go').disabled = true;
+    await window.agentgen.age.accept(date.toISOString().slice(0, 10));
+  };
+</script>
+</body>
+</html>

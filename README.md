@@ -2,11 +2,11 @@
 
 ## ⬇️ [Releases — download the latest `AgentGen-Setup.exe`](https://github.com/Unity-Lab-AI/Agent-Gen/releases/latest)
 
-**Current: [v0.5.31](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.31)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
+**Current: [v0.5.34](https://github.com/Unity-Lab-AI/Agent-Gen/releases/tag/v0.5.34)** · [all releases, newest first](https://github.com/Unity-Lab-AI/Agent-Gen/releases) · mirror: [git.unityailab.com releases](https://git.unityailab.com/GFourteen/Agent-Gen/releases)
 
 Unity, live, in one window. Her face moves when she talks, her voice is her own, she hears you, and when you tell her to put on boxing gloves she puts on boxing gloves. One `.exe` opens everything and closes everything. Nothing leaves the machine.
 
-18+. She's an adult and the app treats you like one. Her brain decides what she will and won't do; the app does not add filters on top.
+18+. The first launch asks your age and closes for anyone under 18. She's an adult and the app treats you like one. Her brain decides what she will and won't do; the app does not add filters on top.
 
 ## What runs
 
@@ -15,6 +15,7 @@ Unity, live, in one window. Her face moves when she talks, her voice is her own,
 | Brain | Ollama, private server, `unity-local` (dolphin3 8B + her persona) | 11435 |
 | Voice | unity-voice-v2, the lab's own TTS, 63 emotion variants | 5123 |
 | Ears | faster-whisper | 5125 |
+| Eyes | `qwen3-vl:4b` on the same Ollama: describes your camera and screen | 11435 |
 | Live face | Ditto talking-head over her current look or clip | 5126 |
 | Looks | Stable Diffusion 1.5 + IP-Adapter face lock | 5124 |
 | Motion | Wan 2.2 TI2V-5B at 480x832 for everything she does, each clip from her clean look | 5127 |
@@ -57,11 +58,17 @@ Left alone she does her own thing: she picks what to do, films it, and keeps goi
 
 Tell her to write or draw on herself ("write BRAT on your thigh in purple paint", "a heart on your chest in lipstick") and it lands on that part of her, skin or clothes, sized to fit; a part that is not in the picture is not guessed at.
 
+**Show camera** / **Show screen** (footer) let her see you and your screen: one still of each goes with every message you say or type, so she can react to what you're wearing or what's on your screen. Nothing is streamed or saved.
+
+Leave the camera or screen on and she keeps half an eye on it: walk back in, look upset, or hold something up and she may say something on her own, like a friend in the room would. She keeps quiet while you're talking and doesn't nag.
+
+Ask her something she can't know (last night's score, today's news, "read this page") and she looks it up: she searches the web, reads what comes back and tells you. The searches and links show in the chat.
+
 **Shut down** (footer) unloads her from the GPU, stops every Agent Gen process and closes the app. **Storage** (footer) shows where her looks, clips, logs and conversations live and clears any of them, or resets her to fresh without reinstalling.
 
 ## Privacy
 
-Nothing leaves the machine. Everything runs over `127.0.0.1`; no telemetry, no cloud, no update checks. First-run setup downloads runtimes and model weights, and that is the only time she touches the internet. Details: [`PRIVACY.md`](PRIVACY.md).
+Nothing you say or show leaves the machine. Everything runs over `127.0.0.1`; no telemetry, no cloud, no update checks. First-run setup downloads runtimes and model weights; after that the only internet she touches is her web search (the search words and pages she opens, listed in the chat; `WEB=0` turns it off). Details: [`PRIVACY.md`](PRIVACY.md).
 
 ## License
 
