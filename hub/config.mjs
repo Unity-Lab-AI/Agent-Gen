@@ -24,10 +24,10 @@ export const cfg = {
   lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts (re-picked by pickStart)
   // Operator: "grab stills of this avi ... use them like randomly and hell maybe use the full avi ... just dont make it
   // look like the same thing ever start". Each fresh start and reset picks one of these stills (never the last one
-  // again) as her base look; startVideoChance of the time her face plays the whole video instead of a still.
+  // again) as her base look for edits; her face plays the whole video every start (START_VIDEO_CHANCE, operator: "Every start, as now").
   startsDir: process.env.STARTS_DIR || join(REPO, 'assets', 'portrait', 'starts'),
   startVideo: process.env.START_VIDEO || join(REPO, 'assets', 'portrait', 'unity.avi'),
-  startVideoChance: Number(process.env.START_VIDEO_CHANCE ?? 0.33),
+  startVideoChance: Number(process.env.START_VIDEO_CHANCE ?? 1),
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
   picWidth: Number(process.env.PIC_WIDTH || 640),     // [[pic]]: anything that is not her look
   picHeight: Number(process.env.PIC_HEIGHT || 576),

@@ -243,3 +243,7 @@ Operator, verbatim: "heres what we are doing ther is a Unity.avi in downlaods fo
 
 - 0.5.35 routine done: cascade on GitHub + Forgejo (main fe9a15d), releases v0.5.35 on GitHub (Latest) and v0.5.34 + v0.5.35 on Forgejo with the exes (`.run/forgejo-release.sh`, local helper).
 - Start looks: `scripts/pick-stills.py` (picked frames 4, 23, 35, 43, 55, 72, 111, 141), `assets/portrait/starts/`, `assets/portrait/unity.avi`, regenerated `unity-face/bust/full.jpg`, removed `unity-carbon.jpg`; `hub/config.mjs` `pickStart`, `idleLookPrompt` (white bikini, bright window room); `hub/server.mjs` `freshStart` on connect / reset / storage clear. pickStart checked: six picks, no repeats back to back, one video start.
+
+## Session 2026-11-03, 0.5.37
+
+Operator, verbatim: "delete the 08 image her eyes are closed and how did we use the full clip can we run it or something normally"; picked "Every start, as now" for the clip. Removed `assets/portrait/starts/start-08.jpg`; `START_VIDEO_CHANCE` default 1 in `hub/config.mjs`. Docs: ARCHITECTURE, TODO.
