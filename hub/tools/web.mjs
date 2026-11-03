@@ -157,3 +157,53 @@ export async function fetchPage(url, { maxChars = 12000, signal } = {}) {
     return { ok: false, url: u.href, error: String(e.message || e) };
   }
 }
+
+// ---- the operator's words decide when to look something up (her brain only writes emotion cues) -----------------
+const WEATHER = /\b(weather|forecast|temperature|how (cold|hot|warm) is it|cold out|hot out|warm out|chilly out|raining|snowing|windy out|sunny out|degrees out)\b/i;
+const CURRENT = /\b(news|headlines?|what happened|who won|score|scores|stock price|price of|exchange rate|look (it |that |this )?up|search (for|up|the web|online)|google|what time is it in|release date)\b/i;
+export const isWeather = t => WEATHER.test(String(t || ''));
+export const needsLookup = t => isWeather(t) || CURRENT.test(String(t || ''));
+/** The operator's sentence trimmed to search words (the question, not the banter after it). */
+export function searchWords(t) {
+  const q = String(t || '').split(/[?!.\n]/).map(s => s.trim()).find(s => needsLookup(s)) || String(t || '');
+  return q.replace(/\b(hey|unity|babe|baby|can you|could you|please|look (it |that )?up|search( for)?|google)\b/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+}
+
+// WMO weather codes (Open-Meteo) -> words
+const WMO = { 0: 'clear sky', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'freezing fog', 51: 'light drizzle',
+  53: 'drizzle', 55: 'heavy drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle', 61: 'light rain', 63: 'rain', 65: 'heavy rain',
+  66: 'freezing rain', 67: 'freezing rain', 71: 'light snow', 73: 'snow', 75: 'heavy snow', 77: 'snow grains', 80: 'rain showers',
+  81: 'rain showers', 82: 'violent rain showers', 85: 'snow showers', 86: 'heavy snow showers', 95: 'thunderstorm', 96: 'thunderstorm with hail', 99: 'thunderstorm with hail' };
+
+/** Current weather from Open-Meteo (no key). A place after "in"/"at"/"for" ("weather in Tokyo") is geocoded by
+ *  Open-Meteo; otherwise ip-api.com gives this computer's rough location from its IP. -> { ok, text, place, url } */
+export async function weather(t, { signal } = {}) {
+  const m = /\b(?:in|at|for)\s+([A-Z][\w.' -]{1,40}?)(?=[?!.,]|$|\s+(?:today|tonight|tomorrow|right now|now)\b)/.exec(String(t || ''));
+  const asked = m ? m[1].trim() : '';
+  let place = asked, lat, lon;
+  try {
+    if (asked) {
+      const g = JSON.parse((await get('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(asked), { signal })).text).results?.[0];
+      if (!g) return { ok: false, place: asked, error: 'no such place: ' + asked };
+      ({ latitude: lat, longitude: lon } = g); place = [g.name, g.admin1, g.country].filter(Boolean).join(', ');
+    } else {
+      const ip = JSON.parse((await get('http://ip-api.com/json/?fields=status,city,regionName,country,lat,lon', { signal })).text);
+      if (ip.status !== 'success') return { ok: false, place: 'here', error: 'could not tell where this computer is' };
+      ({ lat, lon } = ip); place = [ip.city, ip.regionName].filter(Boolean).join(', ');
+    }
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon
+      + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min'
+      + '&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=1';
+    const r = await get(url, { signal, timeoutMs: 10000 });
+    if (r.status !== 200) return { ok: false, place, url, error: 'open-meteo ' + r.status };
+    const j = JSON.parse(r.text), c = j.current || {}, d = j.daily || {};
+    const f = v => Math.round(v), cel = v => Math.round((v - 32) * 5 / 9);
+    const text = place + ': ' + f(c.temperature_2m) + '°F (' + cel(c.temperature_2m) + '°C), feels like ' + f(c.apparent_temperature) + '°F, '
+      + (WMO[c.weather_code] || 'weather code ' + c.weather_code) + ', wind ' + f(c.wind_speed_10m) + ' mph, humidity ' + c.relative_humidity_2m
+      + '%; today ' + f(d.temperature_2m_min?.[0]) + ' to ' + f(d.temperature_2m_max?.[0]) + '°F';
+    return { ok: true, text, place, url: 'https://open-meteo.com/' };
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    return { ok: false, place: place || 'here', error: String(e.message || e) };
+  }
+}

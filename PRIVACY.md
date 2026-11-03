@@ -22,7 +22,7 @@ Conversations are never written to disk by the app. **Storage → Reset to fresh
 
 ## Her web search
 
-When she needs something she doesn't know (news, scores, weather, a page you name), her brain writes a search line and the hub sends **those search words** to DuckDuckGo (and Bing if DuckDuckGo returns nothing), or fetches **the page address** she asked for. That is a normal web request from your computer: those sites see your IP address and the query, nothing else (no conversation, no pictures, no camera). Every search and page she opens is listed in the chat. Local and private-network addresses are never fetched. To turn it off entirely, start Agent Gen with the environment variable `WEB=0`.
+When you ask about the weather, news, scores or something to look up (or her brain writes a search line), the hub sends **those search words** to DuckDuckGo (and Bing if DuckDuckGo returns nothing), or fetches **the page address** she asked for. Asked about the weather, she asks ip-api.com for this computer's rough location (city, from your IP) unless you name a place, and Open-Meteo for the weather there. That is a normal web request from your computer: those sites see your IP address and the query, nothing else (no conversation, no pictures, no camera). Every search and page she opens is listed in the chat. Local and private-network addresses are never fetched. To turn it off entirely, start Agent Gen with the environment variable `WEB=0`.
 
 ## First-run setup
 
