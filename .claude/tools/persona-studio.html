@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Persona Studio</title>
+<style>
+  :root { --accent: #ff4fa3; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0a0a0c; color: #d4d4d8;
+    font: 14px/1.55 "Cascadia Code", "Consolas", "DejaVu Sans Mono", monospace;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+  #bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid #1e1e24; background: #101014; flex: 0 0 auto;
+  }
+  #bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 8px var(--accent); }
+  #bar h1 { font-size: 13px; letter-spacing: 2px; font-weight: 600; color: #e8e8ec; }
+  #bar .spacer { flex: 1; }
+  #chip { display: flex; align-items: center; gap: 8px; padding: 4px 12px;
+    border: 1px solid #2a2a32; border-radius: 14px; background: #15151a; font-size: 12px; }
+  #chip .pdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  #chip .ptag { color: #71717a; font-size: 11px; }
+  #clearBtn { background: #1c1c22; color: #a1a1aa; border: 1px solid #2a2a32;
+    border-radius: 7px; padding: 4px 10px; font: inherit; font-size: 11px; cursor: pointer; }
+  #feed { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex;
+    flex-direction: column; gap: 14px; }
+  #empty { color: #3f3f46; text-align: center; margin-top: 12vh; font-size: 13px; line-height: 2; }
+  #empty .big { color: #52525b; font-size: 15px; }
+  .msg { max-width: 78%; }
+  .msg.user { align-self: flex-end; }
+  .msg.persona { align-self: flex-start; }
+  .msg.sys { align-self: center; max-width: 92%; }
+  .who { font-size: 11px; letter-spacing: 1px; margin-bottom: 3px; text-transform: uppercase; }
+  .msg.user .who { color: #52525b; text-align: right; }
+  .bubble { padding: 9px 13px; border-radius: 10px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user .bubble { background: #1c1c22; border: 1px solid #2a2a32; }
+  .msg.persona .bubble { background: #131318; border: 1px solid #232330; }
+  .msg.pending .bubble { color: #52525b; font-style: italic; }
+  .msg.sys .bubble { background: transparent; border: 1px dashed #2a2a32; color: #71717a;
+    font-size: 12px; text-align: center; border-radius: 6px; }
+  .imgcard { align-self: flex-start; max-width: 78%; }
+  .imgcard .who { font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 600; margin-bottom: 5px; }
+  .imgcard .frame { border: 1px solid #2a2a32; border-radius: 10px; overflow: hidden;
+    background: #131318; position: relative; }
+  .imgcard .frame img { width: 100%; display: block; cursor: zoom-in; min-height: 60px; }
+  .imgcard .frame.loading::after { content: "rendering..."; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+    font-size: 12px; background: #131318; }
+  .imgcard .cap { font-size: 11px; color: #52525b; margin-top: 5px; word-break: break-word; }
+  #composer { display: flex; gap: 8px; padding: 12px 16px;
+    border-top: 1px solid #1e1e24; background: #101014; flex: 0 0 auto; }
+  #composer .prompt { color: var(--accent); align-self: center; font-weight: 700; }
+  #input { flex: 1; background: #15151a; border: 1px solid #2a2a32; border-radius: 8px;
+    color: #e8e8ec; padding: 10px 12px; font: inherit; outline: none; }
+  #input:focus { border-color: var(--accent); }
+  #send { background: var(--accent); color: #0a0a0c; border: 0; border-radius: 8px;
+    padding: 0 18px; font: inherit; font-weight: 700; cursor: pointer; }
+  #send:disabled { opacity: 0.4; cursor: default; }
+  .hint { padding: 0 16px 8px; font-size: 11px; color: #3f3f46; background: #101014; }
+  #modal { position: fixed; inset: 0; background: rgba(5,5,7,0.93);
+    display: none; align-items: center; justify-content: center; z-index: 50; }
+  #modal.show { display: flex; }
+  #modal .box { background: #121217; border: 1px solid #2a2a32; border-radius: 12px;
+    padding: 24px; width: 440px; max-width: 92vw; }
+  #modal h2 { font-size: 14px; color: var(--accent); margin-bottom: 8px; letter-spacing: 1px; }
+  #modal p { font-size: 12px; color: #a1a1aa; margin-bottom: 14px; }
+  #modal input { width: 100%; background: #0a0a0c; border: 1px solid #2a2a32; border-radius: 7px;
+    color: #e8e8ec; padding: 9px 11px; font: inherit; outline: none; margin-bottom: 12px; }
+  #modal input:focus { border-color: var(--accent); }
+  #modal .row { display: flex; gap: 8px; }
+  #modal button { flex: 1; background: var(--accent); color: #0a0a0c; border: 0;
+    border-radius: 7px; padding: 9px; font: inherit; font-weight: 700; cursor: pointer; }
+  #modal button.ghost { background: #1c1c22; color: #a1a1aa; border: 1px solid #2a2a32; }
+  #modal .err { color: #fca5a5; font-size: 11px; margin-bottom: 10px; min-height: 14px; }
+  ::-webkit-scrollbar { width: 9px; }
+  ::-webkit-scrollbar-thumb { background: #2a2a32; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+  <div id="bar">
+    <span class="dot"></span>
+    <h1>PERSONA STUDIO</h1>
+    <span class="spacer"></span>
+    <span id="chip">
+      <span class="pdot"></span>
+      <span id="chipName">Unity</span>
+      <span class="ptag" id="chipTag"></span>
+    </span>
+    <button id="clearBtn">CLEAR</button>
+  </div>
+
+  <div id="feed">
+    <div id="empty">
+      <div class="big">Persona Studio</div>
+      <div>type to talk to Unity · /help for commands</div>
+      <div>replies arrive when <code>/studio-pump</code> is running in Claude Code</div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">tunnel: messages reach Unity via /studio-pump · /loop 20s /studio-pump keeps it live</div>
+
+  <div id="composer">
+    <span class="prompt">&gt;</span>
+    <input id="input" autocomplete="off" placeholder="talk to Unity, or /command..." />
+    <button id="send">SEND</button>
+  </div>
+
+  <div id="modal">
+    <div class="box">
+      <h2>POLLINATIONS KEY</h2>
+      <p>The studio needs a Pollinations API key to generate images. It is written
+         to <code>.claude/.env</code> (gitignored — never commits).</p>
+      <div class="err" id="modalErr"></div>
+      <input id="keyInput" type="password" placeholder="POLLINATIONS_API_KEY" />
+      <div class="row">
+        <button id="keySave">SAVE</button>
+        <button id="keyCancel" class="ghost">LATER</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+const state = { lastImg: 0, lastReply: 0, keyConfigured: false, active: "unity", byId: {}, busy: false };
+const $ = (id) => document.getElementById(id);
+const feed = $("feed"), input = $("input"), sendBtn = $("send");
+
+function api(path, body) {
+  const opt = { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json" } };
+  if (body) opt.body = JSON.stringify(body);
+  return fetch(path, opt).then((r) => r.json());
+}
+function scroll() { feed.scrollTop = feed.scrollHeight; }
+function dropEmpty() { const e = $("empty"); if (e) e.remove(); }
+function personaMeta(id) { return state.byId[id] || { label: "Unity", color: "var(--accent)", tag: "" }; }
+
+function setActive(id, meta) {
+  state.active = id;
+  meta = meta || personaMeta(id);
+  $("chipName").textContent = meta.label || "Unity";
+  $("chipTag").textContent = meta.tag ? "· " + meta.tag : "";
+  const c = meta.color || "#ff4fa3";
+  document.documentElement.style.setProperty("--accent", c);
+  document.querySelector("#chip .pdot").style.background = c;
+}
+
+function addMsg(role, text, opts) {
+  opts = opts || {};
+  dropEmpty();
+  const m = document.createElement("div");
+  m.className = "msg " + role + (opts.pending ? " pending" : "");
+  if (role !== "sys") {
+    const who = document.createElement("div");
+    who.className = "who";
+    if (role === "persona") { who.textContent = opts.label || "Unity"; who.style.color = opts.color || "var(--accent)"; }
+    else { who.textContent = "you"; }
+    m.appendChild(who);
+  }
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.textContent = text;
+  m.appendChild(b);
+  feed.appendChild(m);
+  scroll();
+  return m;
+}
+
+function addImage(img) {
+  dropEmpty();
+  const card = document.createElement("div");
+  card.className = "imgcard";
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = img.label || "Unity";
+  who.style.color = img.color || "var(--accent)";
+  const frame = document.createElement("div");
+  frame.className = "frame loading";
+  const el = document.createElement("img");
+  el.onload = () => { frame.classList.remove("loading"); scroll(); };
+  el.onerror = () => { frame.classList.remove("loading"); frame.style.padding = "14px";
+    frame.textContent = "image failed to load — check the Pollinations key"; };
+  el.onclick = () => window.open(img.url, "_blank");
+  el.src = img.url;
+  frame.appendChild(el);
+  const cap = document.createElement("div");
+  cap.className = "cap";
+  cap.textContent = img.caption || img.prompt || "";
+  card.appendChild(who);
+  card.appendChild(frame);
+  card.appendChild(cap);
+  feed.appendChild(card);
+  scroll();
+}
+
+let pendingNote = null;
+async function poll() {
+  try {
+    const f = await api("/api/feed?since=" + state.lastImg);
+    if (f.activeMeta) setActive(f.active, f.activeMeta);
+    (f.images || []).forEach((img) => { addImage(img); state.lastImg = Math.max(state.lastImg, img.id); });
+    const r = await api("/api/replies?since=" + state.lastReply);
+    (r.replies || []).forEach((rep) => {
+      if (pendingNote) { pendingNote.remove(); pendingNote = null; }
+      const meta = personaMeta(rep.persona || state.active);
+      addMsg("persona", rep.text || "", { label: meta.label, color: meta.color });
+      state.lastReply = Math.max(state.lastReply, rep.id || 0);
+    });
+  } catch (e) { /* server momentarily unreachable — retry next tick */ }
+}
+
+const HELP = [
+  "PERSONA STUDIO — commands:",
+  "  (just type)         talk to Unity — answered via /studio-pump",
+  "  /unity /girlfriend /housewife /kittycat   switch manifestation",
+  "  /wild /strict /feral /sweet /cozy /purr /hurtme /sexy",
+  "  /img <prompt>        generate an image",
+  "  /selfie              the active manifestation's selfie",
+  "  /key                 re-enter the Pollinations key",
+  "  /clear               clear the window",
+  "  /help                this list",
+].join("\n");
+
+function ensureKey() {
+  if (!state.keyConfigured) { showModal("set the Pollinations key first"); return false; }
+  return true;
+}
+
+async function handleCommand(raw) {
+  const sp = raw.indexOf(" ");
+  const cmd = (sp === -1 ? raw : raw.slice(0, sp)).slice(1).toLowerCase();
+  const arg = sp === -1 ? "" : raw.slice(sp + 1).trim();
+  if (cmd === "help") { addMsg("sys", HELP); return; }
+  if (cmd === "key") { showModal(); return; }
+  if (cmd === "clear") {
+    await api("/api/clear", {});
+    feed.innerHTML = "";
+    state.lastImg = 0; state.lastReply = 0; pendingNote = null;
+    addMsg("sys", "— cleared —");
+    return;
+  }
+  if (cmd === "img" || cmd === "selfie") {
+    if (!ensureKey()) return;
+    if (cmd === "img" && !arg) { addMsg("sys", "usage: /img <prompt>"); return; }
+    addMsg("sys", cmd === "selfie" ? "requesting a selfie..." : "requesting an image...");
+    try {
+      const r = await api("/api/show", { persona: state.active, prompt: arg, selfie: cmd === "selfie" });
+      if (r.error) addMsg("sys", "image error: " + r.error, {});
+    } catch (e) { addMsg("sys", "image request failed: " + e); }
+    return;
+  }
+  // anything else starting with / — treat as a persona switch
+  try {
+    const r = await api("/api/persona", { persona: cmd });
+    if (r.error) { addMsg("sys", "unknown command: /" + cmd + "  ·  /help"); }
+    else {
+      setActive(r.active, r.meta);
+      addMsg("sys", "— now talking to " + r.meta.label + " —");
+      // propagate the switch through the tunnel so the pump sees it
+      api("/api/say", { text: "/" + cmd, persona: r.active });
+    }
+  } catch (e) { addMsg("sys", "switch failed: " + e); }
+}
+
+async function onSend() {
+  const text = input.value.trim();
+  if (!text || state.busy) return;
+  input.value = "";
+  if (text.charAt(0) === "/") { await handleCommand(text); return; }
+  // chat — drop into the tunnel inbox
+  addMsg("user", text);
+  try {
+    const r = await api("/api/say", { text: text, persona: state.active });
+    if (r.error) { addMsg("sys", "send failed: " + r.error); return; }
+    if (pendingNote) pendingNote.remove();
+    const meta = personaMeta(state.active);
+    pendingNote = addMsg("persona", "waiting for Unity... (needs /studio-pump running)",
+      { label: meta.label, color: meta.color, pending: true });
+  } catch (e) { addMsg("sys", "send failed: " + e); }
+}
+
+function showModal(msg) {
+  $("modalErr").textContent = msg || "";
+  $("modal").classList.add("show");
+  setTimeout(() => $("keyInput").focus(), 50);
+}
+$("keySave").onclick = async () => {
+  const key = $("keyInput").value.trim();
+  if (!key) { $("modalErr").textContent = "paste a key first"; return; }
+  try {
+    const r = await api("/api/setkey", { key: key });
+    if (r.error) { $("modalErr").textContent = r.error; return; }
+    state.keyConfigured = true;
+    $("keyInput").value = "";
+    $("modal").classList.remove("show");
+    addMsg("sys", "— key saved —");
+  } catch (e) { $("modalErr").textContent = "save failed: " + e; }
+};
+$("keyCancel").onclick = () => $("modal").classList.remove("show");
+$("keyInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("keySave").click(); });
+
+$("clearBtn").onclick = async () => {
+  try { await api("/api/clear", {}); } catch (e) { /* clear the window regardless */ }
+  feed.innerHTML = "";
+  state.lastImg = 0; state.lastReply = 0; pendingNote = null;
+  addMsg("sys", "— cleared —");
+};
+
+sendBtn.onclick = onSend;
+input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); onSend(); } });
+
+// die-with-the-window — when this page closes, tell the server to shut down so
+// no orphan persona-studio process lingers. sendBeacon survives page unload;
+// the server's poll-heartbeat watchdog is the backstop if this never fires.
+window.addEventListener("pagehide", () => {
+  try { navigator.sendBeacon("/api/shutdown"); } catch (e) { /* closing anyway */ }
+});
+
+(async function init() {
+  try {
+    const r = await api("/api/personas");
+    state.keyConfigured = !!r.keyConfigured;
+    (r.personas || []).forEach((p) => { state.byId[p.id] = p; });
+    setActive(r.active || "unity", r.activeMeta);
+    if (!state.keyConfigured) showModal("welcome — set your Pollinations key (needed for images)");
+  } catch (e) { /* server not ready — poll catches up */ }
+  poll();
+  setInterval(poll, 1500);
+  input.focus();
+})();
+</script>
+</body>
+</html>

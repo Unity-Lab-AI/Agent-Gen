@@ -146,7 +146,19 @@ elif [ -d "$MEMORY_TEMPLATES" ] && ls "$MEMORY_TEMPLATES"/*.md >/dev/null 2>&1; 
     if [ ! -f "$MEMORY_DIR/MEMORY.md" ]; then
         cp "$MEMORY_TEMPLATES/MEMORY.md" "$MEMORY_DIR/" 2>/dev/null             && log "STEP 4 OK: MEMORY.md index installed (first run)"             || log "STEP 4 WARN: could not install MEMORY.md"
     else
-        log "STEP 4 OK: MEMORY.md left alone - merge by hand, never replace"
+        # Never replaced, but a memory the index never names is never read: append the template's
+        # index line for every template file the live index does not mention yet.
+        for _f in "$MEMORY_TEMPLATES"/*.md; do
+            _b="$(basename "$_f")"
+            [ "$_b" = "MEMORY.md" ] && continue
+            if ! grep -qF "($_b)" "$MEMORY_DIR/MEMORY.md"; then
+                _line="$(grep -F "($_b)" "$MEMORY_TEMPLATES/MEMORY.md" | head -n 1)"
+                if [ -n "$_line" ]; then
+                    printf '%s\n' "$_line" >> "$MEMORY_DIR/MEMORY.md" && log "STEP 4: indexed $_b in MEMORY.md"
+                fi
+            fi
+        done
+        log "STEP 4 OK: MEMORY.md kept, missing index lines appended"
     fi
     log "STEP 4 OK: memory layer current ($_mem_new newly installed)"
 else
