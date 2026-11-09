@@ -30,14 +30,17 @@ const UNDRESS = /\b(take off|take of|remove|strip|undress|naked|nude|topless|bot
 // brain writes emotion cues and nothing else, so she said "now I'm all warm and cozy" and stayed topless. The
 // operator's words dress her.
 const WEAR = /\b(put (on|it on)|puts on|wear|try on|change into|cover (your ?self|yourself|up)|throw on|slip (on|into)|get dressed|dress (in|up)|hands? (you|unity|her)|gives? (you|unity|her)|here'?s (a|an|your|some))\b/i;
-const GARMENT = /\b((?:[a-z]+[- ]){0,2}?(?:hoodie|sweatshirt|sweater|jumper|t-shirt|tee|shirt|blouse|tank top|crop top|top|jacket|coat|robe|dress|gown|skirt|jeans|pants|trousers|shorts|leggings|bikini|swimsuit|lingerie|bra|panties|underwear|thong|stockings|fishnets|corset|towel|uniform|costume|pajamas|onesie|scarf|beanie|hat|cap|gloves|boots|heels|socks)(?:[- ](?:hoodie|sweatshirt|dress|top|jacket|shirt))?)\b/i;
+const GARMENT = /\b((?:[a-z]+[- ]){0,2}?(?:wife ?beater(?: tank top)?|hoodie|sweatshirt|sweater|jumper|t-shirt|tee|shirt|blouse|tank top|crop top|top|jacket|coat|robe|dress|gown|skirt|jeans|pants|trousers|shorts|leggings|bikini|swimsuit|lingerie|bra|panties|underwear|thong|stockings|fishnets|corset|towel|uniform|costume|pajamas|onesie|scarf|beanie|hat|cap|gloves|boots|heels|socks)(?:[- ](?:hoodie|sweatshirt|dress|top|jacket|shirt))?)\b/i;
 const NOT_WEAR = /\b(take (it |that |them )?off|take of|remove|strip|undress|without)\b/i;
 /** "a Hoodie Sweatshirt" -> "hoodie sweatshirt"; null when the words do not put a garment on her. */
 export function wearAsk(text) {
   const t = String(text || '');
   if (!WEAR.test(t) || NOT_WEAR.test(t)) return null;
-  const g = GARMENT.exec(t);
-  return g ? g[1].toLowerCase().replace(/^((unity|her|you|a|an|the|this|that|my|your|some|on|with)\s+)+/, '').trim() : null;
+  // every garment named, not just the first: "a white wife beater and a nano skirt" dropped the skirt
+  const all = [...t.matchAll(new RegExp(GARMENT.source, 'gi'))]
+    .map(g => g[1].toLowerCase().replace(/^((unity|her|you|a|an|the|this|that|my|your|some|on|with|and)\s+)+/, '').trim())
+    .filter((g, i, a) => g && a.indexOf(g) === i);
+  return all.length ? all.join(' and ') : null;
 }
 
 const BECOME = /\b(you are now|you're now|youre now|become|turn into|turn yourself|transform into|change (yourself|your (image|look|self))|remake your|your (image|look) (of|as)|yourself as|be an? )/i;
@@ -78,6 +81,16 @@ async function wakeCheck(text) {
   const r = await fetch(`${cfg.speechUrl}/wake`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, phrases: cfg.wakeWord }) });
   return r.json();
+}
+
+// A [[do]] clip animates HER picture, so its words must be about her: "*hands Unity a lit joint*" made the brain
+// write "Handsome man holding a lit joint", and the video model drew the operator instead of her.
+function herMotion(prompt) {
+  let t = String(prompt || '')
+    .replace(/\b(?:a |the )?(?:(?:handsome|young|old|tall|cute|hot|sexy)\s+)*(?:man|guy|dude|boy|gentleman|stranger|person|user|operator)\b/gi, 'Unity')
+    .replace(/\bhimself\b/gi, 'herself').replace(/\bhis\b/gi, 'her').replace(/\bhim\b/gi, 'her').replace(/\bhe\b/gi, 'she');
+  if (!/^\s*(?:unity|she|her)\b/i.test(t)) t = `Unity ${t.replace(/^\s*Unity\b\s*/i, '')}`;
+  return t;
 }
 
 class Session {
@@ -371,7 +384,7 @@ class Session {
    *  new picture. Operator: "she should only change or take off outfits when told to, just telling her to
    *  bounce or jiggle or dance should not instanty generate a new self image unless told that". */
   onTag(tag, epoch) {
-    const prompt = tag.text;
+    let prompt = tag.text;
     if (!prompt) return;
     if (this.adoptEpoch === epoch && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
       this.log(`tag ${tag.kind} ignored: this turn adopts the last picture as her look`);
@@ -384,6 +397,12 @@ class Session {
     if (this.markEpoch === epoch && !tag.mark && ['img', 'image', 'selfie', 'look', 'pic', 'picture', 'photo', 'draw', 'do', 'action'].includes(tag.kind)) {
       this.log(`tag ${tag.kind} ignored: this turn is marker on her, already drawn`);
       return;
+    }
+    // her own look and the operator said nothing about clothes: whatever outfit her brain invented is cut out, so
+    // what she wears only changes when she is told to change it
+    if (['img', 'image', 'selfie', 'look'].includes(tag.kind) && !tag.wear && !CLOTHES.test(this.lastUserText || '')) {
+      const kept = prompt.split(/(?<=[.,;])\s+/).filter(part => !CLOTHES.test(part)).join(' ').trim();
+      if (kept && kept !== prompt) { this.log(`outfit cut (not asked): ${prompt.slice(0, 80)}`); prompt = kept; }
     }
     this.log(`tag ${tag.kind}: ${prompt.slice(0, 120)}`);
     const lookId = ++this.lookSeq;                 // a newer look stops the older one's reel from growing
@@ -431,9 +450,9 @@ class Session {
         // a marker / paint / lipstick ask is never a restyle: "write slut across your skin" made a stranger
         const markAsk = !tag.restyle && !!parseMarks(this.lastUserText);
         const restyle = !markAsk && (tag.restyle || image.isRestyle(this.lastUserText));
-        // an edit that says nothing about clothes ("write SLUT on your shoulder") keeps what she has on: her current
-        // look rides along, or the model undressed her on its own
-        const keep = !restyle && !CLOTHES.test(prompt) ? (this.currentLookPrompt || cfg.idleLookPrompt) : '';
+        // no old look text rides along: it stacked clothing (a bikini, a past outfit) onto every new pic. The edit
+        // source picture already carries what she has on; the prompt stays only what was asked
+        const keep = '';
         const src = image.editSource(this.currentLook, restyle);
         const faceBox = src ? await face.facebox(src) : null;
         // "write SLUT on your stomach", "draw an arrow on your belly": the ink is drawn where it was asked and blended
@@ -526,7 +545,9 @@ class Session {
       await face.pause();
       await video.makeRoom();
       // LTX 2B is timid with bodies; a pushier description measured +40% motion. The big-motion engine is a model swap, not a prompt.
-      const p = cfg.motionPush ? `${prompt}, ${cfg.motionPush}` : prompt;
+      const own = herMotion(prompt);
+      if (own !== prompt) this.log(`do clip made hers: ${own}`);
+      const p = cfg.motionPush ? `${own}, ${cfg.motionPush}` : own;
       // always from her clean look image: chaining from a clip's last frame carried every smear and colour
       // blotch into the next clip, and they piled up until she melted
       const c = await video.clip(this.currentLook || cfg.lookBase, p, { engine: cfg.motionEngine });
