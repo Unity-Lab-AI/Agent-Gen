@@ -16,6 +16,17 @@ Each session entry includes:
 
 ## Completed sessions
 
+## Session 2026-11-09
+
+### Task: "round 2 L4-02, L2-04, l8-06, L2-01 are all new stand ins we will use for the application and archive the orignals in their folder currently"
+- The picked pictures are the start stills (`start-01.jpg` L4-02, `start-02.jpg` L2-04; the operator deleted the other two), old stills archived in `starts/archive/`, start video off by default, `lookBase` = start-01. Generators kept in `hub/tools/` (round2.mjs, gen-selfies.mjs, face-onto.mjs). Shipped 0.5.38.
+
+### Task: "put on a white wife beater and a nano skirt" (the skirt was dropped)
+- `wearAsk` returns every garment named, "wife beater" added. Shipped 0.5.38.
+
+### Task: "fix that in the corparate hooks and shit wo actually catch your fuck up berfore you fuck up" / "hook is failing as this was all corporate"
+- `.claude/hooks/stop-voice-filter.cjs`: bounces replies that bring up clothes or nudity the operator never typed, and replies full of machinery talk on a play message. Pre-filter and post-filter carry the operator's "more flirty ... loving and gf/wife esk" tone.
+
 ## Session 2026-10-30
 
 ### Task: "import the forgejo repo for the ual workflow templet we are starting a new project"

@@ -141,7 +141,16 @@ if exist "%MEMORY_TEMPLATES%\*.md" (
         copy /y "%MEMORY_TEMPLATES%\MEMORY.md" "%MEMORY_DIR%\" >nul
         call :log "STEP 4 OK: MEMORY.md index installed (first run)"
     ) else (
-        call :log "STEP 4 OK: MEMORY.md left alone - merge by hand, never replace"
+        REM Never replaced, but a memory the index never names is never read: append the template's
+        REM index line for every template file the live index does not mention yet.
+        for %%F in ("%MEMORY_TEMPLATES%\*.md") do (
+            if /i not "%%~nxF"=="MEMORY.md" (
+                findstr /l /c:"(%%~nxF)" "%MEMORY_DIR%\MEMORY.md" >nul 2>&1 || (
+                    findstr /l /c:"(%%~nxF)" "%MEMORY_TEMPLATES%\MEMORY.md" >> "%MEMORY_DIR%\MEMORY.md" 2>nul && call :log "STEP 4: indexed %%~nxF in MEMORY.md"
+                )
+            )
+        )
+        call :log "STEP 4 OK: MEMORY.md kept, missing index lines appended"
     )
 ) else (
     call :log "STEP 4 WARN: memory-templates folder not found at %MEMORY_TEMPLATES%"

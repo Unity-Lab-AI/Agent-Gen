@@ -21,13 +21,13 @@ export const cfg = {
   // identity anchors. No fixed age: her manifestations run 22 to 34 and the persona sets it ("fixed 25 is not a option").
   lookPrefix: process.env.LOOK_PREFIX || 'photo of Unity, pale grey-blue eyes,',   // identity only; a restyle drops it
   lookSuffix: process.env.LOOK_SUFFIX || 'photorealistic, detailed face, natural light, sharp focus',
-  lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'unity-full.jpg'),   // where every look starts (re-picked by pickStart)
+  lookBase: process.env.LOOK_BASE || join(REPO, 'assets', 'portrait', 'starts', 'start-01.jpg'),   // where every look starts (re-picked by pickStart)
   // Operator: "grab stills of this avi ... use them like randomly and hell maybe use the full avi ... just dont make it
   // look like the same thing ever start". Each fresh start and reset picks one of these stills (never the last one
   // again) as her base look for edits; her face plays the whole video every start (START_VIDEO_CHANCE, operator: "Every start, as now").
-  startsDir: process.env.STARTS_DIR || join(REPO, 'assets', 'portrait', 'starts'),
+  startsDir: process.env.STARTS_DIR || join(REPO, 'assets', 'portrait', 'starts'),   // the operator's four stand-ins; the old video stills are in starts/archive
   startVideo: process.env.START_VIDEO || join(REPO, 'assets', 'portrait', 'unity.avi'),
-  startVideoChance: Number(process.env.START_VIDEO_CHANCE ?? 1),
+  startVideoChance: Number(process.env.START_VIDEO_CHANCE ?? 0),   // the old video is a different face
   lookWidth: Number(process.env.LOOK_WIDTH || 512),
   picWidth: Number(process.env.PIC_WIDTH || 640),     // [[pic]]: anything that is not her look
   picHeight: Number(process.env.PIC_HEIGHT || 576),
@@ -63,7 +63,7 @@ export const cfg = {
   reelClips: Number(process.env.REEL_CLIPS ?? 0),
   // with nothing to do this long (fresh start, after a reset), she starts her idle routine on her own
   idleStartMs: Number(process.env.IDLE_START_MS || 20000),
-  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a young woman with long black hair with pink streaks, white string bikini, standing by a window in a bright white room',
+  idleLookPrompt: process.env.IDLE_LOOK_PROMPT || 'Unity, a 25 year old woman with long black hair with pink streaks',
   reelMaxFrames: Number(process.env.REEL_MAX_FRAMES || 450),
   reelBatch: Number(process.env.REEL_BATCH || 12),          // idle actions asked of her brain at a time
   reelMotions: (process.env.REEL_MOTIONS || 'she bounces on her toes and laughs, hair and chest bouncing|she dances, swinging her hips and raising her arms over her head|she jumps up and down excitedly, then grins at the camera|she spins around once and strikes a pose|she stretches both arms high overhead and arches her back').split('|'),
